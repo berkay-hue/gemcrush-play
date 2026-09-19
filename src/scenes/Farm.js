@@ -14,6 +14,7 @@ import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
+import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
@@ -57,15 +58,22 @@ export class Farm extends Phaser.Scene {
     if (data.cropCut) this.toast(`🌽 −${Math.round(WIN_CUT / 60000) * data.cropCut} ${t('minShort')}!`);
 
     // HUD
-    this.add.rectangle(width / 2, 50, width, 100, 0x0a0f0d, 0.92);
-    this.add.image(40, 50, 'heart').setScale(0.7);
-    this.livesTxt = txt(this, 90, 42, '', 24, '#ffffff').setOrigin(0, 0.5);
-    this.lifeTimer = txt(this, 90, 68, '', 16, '#9fb3a8').setOrigin(0, 0.5);
-    this.add.image(width - 150, 50, 'coin').setScale(0.6);
-    this.coinsTxt = txt(this, width - 120, 38, '', 22, '#ffe58a').setOrigin(0, 0.5);
-    this.gemsTxt = txt(this, width - 150, 72, '', 18, '#8fe3ff').setOrigin(0, 0.5);
-    txt(this, width / 2, 36, t('farm'), 26, '#ffb71b');
-    this.starsTxt = txt(this, width / 2, 72, '', 20, '#ffe58a');
+    // F8: sade üst bar — koyu şerit yok; sahneye yedirilmiş yarı saydam haplar + "<isim>'ın Çiftliği"
+    this.hud = this.add.container(0, 0).setDepth(5);
+    const chip = (x, y, w, h) => { const g = this.add.graphics(); g.fillStyle(0x0f1f17, 0.38).fillRoundedRect(x, y, w, h, h / 2); g.lineStyle(1, 0xf5f4eb, 0.18).strokeRoundedRect(x + 0.5, y + 0.5, w - 1, h - 1, h / 2); this.hud.add(g); };
+    const soft = (o) => o.setShadow(0, 1, 'rgba(10,15,13,0.55)', 3, false, true);
+    chip(12, 14, 132, 40); chip(width - 144, 14, 132, 40); chip(width - 144, 58, 132, 30);
+    const heart = this.add.image(36, 34, 'heart').setScale(0.46);
+    this.livesTxt = soft(txt(this, 58, 34, '', 19, '#f5f4eb').setOrigin(0, 0.5));
+    this.lifeTimer = soft(txt(this, 134, 35, '', 13, '#f5f4eb').setOrigin(1, 0.5).setAlpha(0.75));
+    const coin = this.add.image(width - 120, 34, 'coin').setScale(0.4);
+    this.coinsTxt = soft(txt(this, width - 100, 34, '', 19, '#ffe7a3').setOrigin(0, 0.5));
+    this.gemsTxt = soft(txt(this, width - 128, 73, '', 15, '#cdefff').setOrigin(0, 0.5));
+    this.titleTxt = txt(this, width / 2, 28, '', 21, '#f5f4eb').setAlpha(0.92).setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
+    this.titleTxt.setInteractive({ useHandCursor: true }).on('pointerup', () => renameBox((ok) => { if (ok) { this.drawTitle(); this.toast(`✏️ ${this.titleTxt.text}`); } }));
+    this.starsTxt = soft(txt(this, width / 2 - 8, 54, '', 15, '#ffe7a3').setOrigin(1, 0.5).setAlpha(0.9));
+    this.hud.add([heart, this.livesTxt, this.lifeTimer, coin, this.coinsTxt, this.gemsTxt, this.titleTxt, this.starsTxt]);
+    this.drawTitle();
     button(this, width - 50, 180, 80, 40, `🧺 ${t('market')}`, () => this.market(), 0xffb71b, '#1a1200', 16);
     const hs = hatchState();
     if (owns('kumes')) {
@@ -78,7 +86,8 @@ export class Farm extends Phaser.Scene {
     if (!decor().includes(se.id)) button(this, 50, 180, 80, 40, `${se.emoji} 💎${se.price}`, () => this.seasonal(), 0x8fe3ff, '#06222e', 16);
     button(this, width - 50, 130, 80, 40, `🗺 ${t('map')}`, () => this.scene.start('Map'), 0x2a333a, '#fff', 16);
 
-    this.energyTxt = txt(this, width / 2, 100, `⚡${energy()}/${E_MAX}`, 16, '#ffe58a').setOrigin(0.5, 0);
+    this.energyTxt = txt(this, width / 2 + 8, 54, `⚡${energy()}/${E_MAX}`, 15, '#ffe7a3').setOrigin(0, 0.5).setAlpha(0.9).setShadow(0, 1, 'rgba(10,15,13,0.55)', 3, false, true);
+    this.hud.add(this.energyTxt);
     this.drawBereket();
     // OYNA sign
     const lvN = Math.min(save.level, this.levels.length);
@@ -762,11 +771,15 @@ export class Farm extends Phaser.Scene {
     }, 0x2ee06a, '#04220e', 22));
   }
 
+  drawTitle() {
+    this.titleTxt.setText(`${farmTitle()}  ✎`);
+  }
+
   refreshHud() {
     tickLives();
-    this.livesTxt.setText(`${save.lives} / ${CONFIG.lives.max}`);
+    this.livesTxt.setText(`${save.lives}/${CONFIG.lives.max}`);
     const ms = msToNextLife();
-    this.lifeTimer.setText(ms ? `${t('nextLife')} ${fmtMs(ms)}` : t('full'));
+    this.lifeTimer.setText(ms ? fmtMs(ms) : t('full'));
     this.coinsTxt.setText(String(save.coins));
     this.gemsTxt.setText(`💎 ${save.gems}`);
     this.starsTxt.setText(`⭐ ${starBalance()}`);
