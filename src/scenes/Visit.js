@@ -6,6 +6,8 @@ import { getWorld } from '../farm3d/FarmWorld.js';
 import { CATALOG, ARSA } from '../meta/farm.js';
 import { PETS } from '../meta/bond.js';
 import { themeById } from '../meta/themes.js';
+import { helpFriend } from '../meta/save.js';
+import { track } from '../analytics.js';
 
 export class Visit extends Phaser.Scene {
   constructor() { super('Visit'); }
@@ -48,6 +50,17 @@ export class Visit extends Phaser.Scene {
     g.fillStyle(0x0f1f17, 0.42).fillRoundedRect(width / 2 - 170, 12, 340, 62, 31);
     txt(this, width / 2, 34, `${(f && f.avatar) || '🧑‍🌾'} ${getLang() === 'en' ? `${(f && f.name) || '?'}'s Farm` : `${possessive((f && f.name) || '?')} Çiftliği`}`, 21, '#f5f4eb').setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
     txt(this, width / 2, 58, `👀 ${t('frVisiting')} · ${t('level')} ${(f && f.level) || 1}`, 14, '#ffe7a3').setAlpha(0.9);
+    // F11: yardım et — ekinleri sula / hayvanları besle; ikiniz de ödül alırsınız (günde 1)
+    if (f && f.code) {
+      const note = txt(this, width / 2, height - 172, '', 16, '#ffe7a3').setShadow(0, 2, 'rgba(10,15,13,0.7)', 6, false, true);
+      let busy = false;
+      const hb = button(this, width / 2, height - 132, 240, 56, `💧 ${t('frHelp')}`, async () => {
+        if (busy) return; busy = true;
+        try { await helpFriend(f.code); track('friend_help'); note.setText(`🌱 ${t('frHelped')}`).setColor('#8ff0b0'); if (w && w.burst) owned.slice(0, 6).forEach((id) => w.burst(id, 0x6fd3ff, 10)); }
+        catch (er) { note.setText(String(er.message).includes('bugun') ? t('frHelpedToday') : `⚠️ ${t('rkOffline')}`).setColor('#ffe7a3'); }
+        hb.setAlpha(0.5);
+      }, 0x2ee06a, '#04220e', 20);
+    }
     button(this, width / 2, height - 60, 240, 64, `⬅ ${t('frBack')}`, () => this.scene.start('Farm'), 0xffb71b, '#1a1200', 22);
   }
 }

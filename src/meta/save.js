@@ -120,6 +120,34 @@ export const friendList = () => rpc('gc_friend_list', { p_token: tok() });
 export const friendAdd = (code) => rpc('gc_friend_add', { p_token: tok(), p_code: code });
 export const friendRemove = (code) => rpc('gc_friend_remove', { p_token: tok(), p_code: code });
 export const friendFarm = (code) => rpc('gc_friend_farm', { p_token: tok(), p_code: code });
+// F11: arkadaş etkileşimi — can gönder/iste, ziyarette yardım (arkadaş başına günde 1), gelen kutusu, arkadaş sıralaması
+export const giftSend = (code, kind) => rpc('gc_gift_send', { p_token: tok(), p_code: code, p_kind: kind });
+export const inbox = () => rpc('gc_inbox', { p_token: tok() });
+export async function friendLb() { clearTimeout(syncTimer); await pushCloud(); return rpc('gc_friend_lb', { p_token: tok() }); }
+export const HELP_REWARD = { helper: 25, owner: 40 };
+export const GIFT_LIFE_CAP = 10; // hediye canlar üst sınırı aşabilir (max+5)
+export function applyInbox(r) {
+  const life = (r && r.life) || 0, help = (r && r.help) || 0;
+  if (life) save.lives = Math.max(save.lives, Math.min(GIFT_LIFE_CAP, save.lives + life));
+  if (help) save.coins += help * HELP_REWARD.owner;
+  persist();
+  return { life, help, coins: help * HELP_REWARD.owner };
+}
+export async function helpFriend(code) { await giftSend(code, 'help'); save.coins += HELP_REWARD.helper; persist(); return HELP_REWARD.helper; }
+export async function claimInbox() { return applyInbox(await rpc('gc_inbox_claim', { p_token: tok() })); }
+// günlük hediye kutusu (cihazda, günde 1)
+export function giftBoxReady(now = Date.now()) { return (save.giftBox || -1) !== Math.floor(now / 86400000); }
+export function openGiftBox(now = Date.now(), rnd = Math.random) {
+  if (!giftBoxReady(now)) return null;
+  save.giftBox = Math.floor(now / 86400000);
+  const x = rnd();
+  let r;
+  if (x < 0.15) { r = { gems: 1 }; save.gems += 1; }
+  else if (x < 0.4) { r = { life: 1 }; save.lives = Math.min(GIFT_LIFE_CAP, save.lives + 1); }
+  else { r = { coins: 60 + Math.floor(rnd() * 10) * 10 }; save.coins += r.coins; }
+  persist();
+  return r;
+}
 export function logout() { clearTimeout(syncTimer); setAccount(null); }
 // açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
 export async function syncOnBoot() {
