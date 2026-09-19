@@ -1,5 +1,6 @@
 import { buildTextures } from '../textures.js';
-import { save, tickLives, account, syncOnBoot, settlePendingLevel } from '../meta/save.js';
+import { save, tickLives, account, syncOnBoot, settlePendingLevel, publicFarm } from '../meta/save.js';
+import { linkCode } from '../meta/link.js';
 import { authForm } from '../ui/authForm.js';
 import { setLang, detectLang, t } from '../i18n.js';
 import { track } from '../analytics.js';
@@ -48,6 +49,12 @@ export class Boot extends Phaser.Scene {
     this.tweens.add({ targets: logo, scale: 1.04, delay: 600, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     this.tweens.add({ targets: prog, p: 1, duration: 1000, ease: 'Sine.InOut', onUpdate: draw, onComplete: async () => {
       // hesap yoksa oyun giriş ekranıyla açılır; "hesapsız devam" her zaman mümkün
+      // F36: ?ciftlik=KOD → kurulumsuz, girişsiz canlı çiftlik görüntüsü
+      const lc = linkCode();
+      if (lc) {
+        const f = await publicFarm(lc).catch(() => null);
+        if (f) { track('link_open'); this.cameras.main.fadeOut(220, 10, 15, 13); this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('Visit', { f, guest: true })); return; }
+      }
       if (!account()) await new Promise((res) => authForm(res, t('guest')));
       await synced;
       this.cameras.main.fadeOut(220, 10, 15, 13);

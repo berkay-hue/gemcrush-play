@@ -1,7 +1,7 @@
 // F9: arkadaşlar paneli — kendi kodun + kopyala, kodla ekle, liste (ziyaret / çıkar). Hesap gerekir.
 // F11: ❤ can gönder / 🙏 can iste (arkadaş başına günde 1), 📬 gelen kutusu, 🎁 günlük kutu, 🏆 haftalık arkadaş sıralaması
 import { t } from '../i18n.js';
-import { account, myFriendCode, friendList, friendAdd, friendRemove, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox } from '../meta/save.js';
+import { account, myFriendCode, friendList, friendAdd, friendRemove, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox, farmLink } from '../meta/save.js';
 import { track } from '../analytics.js';
 import { authForm } from './authForm.js';
 import { shield } from './widgets.js';
@@ -28,6 +28,8 @@ export function friendsPanel(onVisit, onAuth, onChange) {
       <div class="code" style="flex:1;font-size:24px;font-weight:800;letter-spacing:3px;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 12px;color:#ffe58a">…</div>
       <button data-copy style="${btn};background:#2a333a;color:#fff;font-size:15px;padding:10px 12px">📋 ${t('frCopy')}</button>
     </div>
+    <button data-share style="${btn};width:100%;background:linear-gradient(#8fd8ff,#3fa9e6);color:#04202e;font-size:16px;padding:10px 12px;margin:-6px 0 4px">🔗 ${t('lkShare')}</button>
+    <div style="font-size:12px;color:#9fb3a8;margin:0 2px 12px">${t('lkHint')}</div>
     <form style="display:flex;gap:8px;margin-bottom:4px">
       <input name="c" autocapitalize="characters" autocomplete="off" maxlength="20" placeholder="${t('frAddHint')}" style="flex:1;min-width:0;box-sizing:border-box;font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid #35574a;background:#f5f4eb;font-family:inherit">
       <button style="${btn};background:linear-gradient(#6ff29a,#2ee06a);color:#04220e;font-size:16px;padding:10px 14px">+ ${t('frAdd')}</button>
@@ -50,6 +52,13 @@ export function friendsPanel(onVisit, onAuth, onChange) {
 
   let code = '';
   myFriendCode().then((r) => { code = (r && r.code) || ''; $('.code').textContent = code || '—'; }).catch(() => { $('.code').textContent = '—'; msg(t('rkOffline')); });
+  // F36: canlı çiftlik linki — paylaş menüsü yoksa panoya
+  $('[data-share]').addEventListener('click', async () => {
+    if (!code) return msg(t('rkOffline'));
+    const url = farmLink(code); track('link_share');
+    try { if (navigator.share) { await navigator.share({ text: t('lkShareText'), url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(`${t('lkShareText')} ${url}`); msg(t('lkCopied'), true); } catch { msg(url, true); }
+  });
   $('[data-copy]').addEventListener('click', async () => {
     if (!code) return;
     try { await navigator.clipboard.writeText(code); msg(t('copied'), true); } catch { msg(code, true); }

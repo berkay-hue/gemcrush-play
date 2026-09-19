@@ -138,6 +138,15 @@ export function applyInbox(r) {
   return { life, help, coins: help * HELP_REWARD.owner };
 }
 export async function helpFriend(code) { await giftSend(code, 'help'); save.coins += HELP_REWARD.helper; persist(); return HELP_REWARD.helper; }
+// F36: canlı çiftlik linki — herkese açık görüntü + cihaz başına günde 1 sulama; sahibi girişte toplar
+export const publicFarm = (code) => rpc('gc_public_farm', { p_code: code });
+export function deviceId() {
+  try { let d = localStorage.getItem('gc_dev'); if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`); localStorage.setItem('gc_dev', d); } return d; }
+  catch { return `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+}
+export const publicWater = (code) => rpc('gc_public_water', { p_code: code, p_device: deviceId() });
+export const waterClaimRaw = () => rpc('gc_water_claim', { p_token: tok() });
+export const farmLink = (code, base = (typeof location !== 'undefined' ? location.origin + location.pathname : '')) => `${base}?ciftlik=${encodeURIComponent(code)}`;
 export async function claimInbox() { return applyInbox(await rpc('gc_inbox_claim', { p_token: tok() })); }
 // günlük hediye kutusu (cihazda, günde 1)
 export function giftBoxReady(now = Date.now()) { return (save.giftBox || -1) !== Math.floor(now / 86400000); }

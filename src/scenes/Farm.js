@@ -10,6 +10,7 @@ import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
 import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, ARSA, arsa, ownsPlot, plotStatus, buyPlot, inPlot, ANIMAL_MAX, animalCount, moreStatus, buyMore, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
 import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
+import { claimWater } from '../meta/link.js';
 import { t, getLang } from '../i18n.js';
 import { SLOTS, refreshOrders, canDeliver, deliver, skip, readyCount, xpProgress } from '../meta/orders.js';
 import { energy, E_MAX } from '../meta/energy.js';
@@ -137,6 +138,7 @@ export class Farm extends Phaser.Scene {
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
     button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
     this.inboxBadge(width - 16, 264);
+    this.waterClaim();
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 380, 80, 40, '📸', () => this.snap(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 430, 80, 40, '❓', () => this.guide(0), 0x2a333a, '#fff', 20); // F25: kuzu rehberi
@@ -1108,6 +1110,14 @@ export class Farm extends Phaser.Scene {
       c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
       c.add(txt(this, 0, 0, String(Math.min(n, 9)), 14, '#fff'));
     }).catch(() => {});
+  }
+  // F36: linkten gelen sulamaları topla → 🪙 + ekinler hızlanır
+  waterClaim() {
+    if (!account() || Farm._wClaiming) return; Farm._wClaiming = true;
+    claimWater().then((r) => {
+      if (!r || !this.sys.isActive()) return;
+      this.refreshHud(); this.toast(`💧 ${r.n} ${t('lkGot')} · +${r.coins} 🪙`);
+    }).catch(() => {}).finally(() => { Farm._wClaiming = false; });
   }
   friends() {
     friendsPanel((code) => {

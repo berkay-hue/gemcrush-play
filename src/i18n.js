@@ -22,6 +22,7 @@ const DICT = {
     tut1: 'Yan yana 3 mücevheri eşle', tut2: '4\'lü = Işın, L/T = Bomba, 5\'li = Prizma', tut3: 'İki özeli takas et: KOMBO',
     outOfMoves: 'Hamle kalmadı. Devam et?', continueFor: 'Devam et', notEnoughCoins: 'Yeterli altın yok',
     lives: 'Can', full: 'DOLU', farmStars: 'çiftlik yıldızı',
+    lkShare: 'Çiftliğimi paylaş', lkShareText: 'Çiftliğime gel, tek dokunuşla sula! 💧', lkCopied: 'Link kopyalandı!', lkWater: 'Sula', lkWatered: 'Suladın! Teşekkürler 💧', lkToday: 'Bugün bu çiftliği suladın', lkFull: 'Bugünlük su yeter, yarın gel', lkMine: 'Kendi çiftliğini kur', lkWaters: 'bugün sulayan', lkGot: 'kişi çiftliğini suladı', lkHint: 'Linkini paylaş: herkes indirmeden çiftliğini görür ve sular',
   },
   en: {
     nt_lives_t: "❤️ Lives refilled!", nt_lives_b: "All 5 lives are ready — time for a new level?", nt_crops_t: "{e} Harvest time!", nt_crops_b: "{e} Your field is ready, collect it and fill your barn.", nt_festEnd_t: "🌾 Last day of the festival!", nt_festEnd_b: "The Harvest Festival ends tomorrow — don't miss the rewards.", nt_festStart_t: "🌾 Harvest Festival is on!", nt_festStart_b: "10 special levels and festival rewards await.",
@@ -46,6 +47,7 @@ const DICT = {
     tut1: 'Match 3 gems in a row', tut2: '4 = Beam, L/T = Bomb, 5 = Prism', tut3: 'Swap two specials: COMBO',
     outOfMoves: 'Out of moves. Continue?', continueFor: 'Continue for', notEnoughCoins: 'Not enough coins',
     lives: 'Lives', full: 'FULL', farmStars: 'farm stars',
+    lkShare: 'Share my farm', lkShareText: 'Visit my farm and water it with one tap! 💧', lkCopied: 'Link copied!', lkWater: 'Water', lkWatered: 'Watered! Thanks 💧', lkToday: 'You already watered this farm today', lkFull: 'Enough water for today, come back tomorrow', lkMine: 'Start your own farm', lkWaters: 'watered today', lkGot: 'people watered your farm', lkHint: 'Share your link: anyone can see and water your farm, no install',
   },
 };
 let lang = 'en';

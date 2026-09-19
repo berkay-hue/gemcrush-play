@@ -6,13 +6,15 @@ import { getWorld } from '../farm3d/FarmWorld.js';
 import { CATALOG, ARSA } from '../meta/farm.js';
 import { PETS } from '../meta/bond.js';
 import { themeById } from '../meta/themes.js';
-import { helpFriend } from '../meta/save.js';
+import { helpFriend, publicWater, account } from '../meta/save.js';
+import { clearLink } from '../meta/link.js';
+import { authForm } from '../ui/authForm.js';
 import { track } from '../analytics.js';
 
 export class Visit extends Phaser.Scene {
   constructor() { super('Visit'); }
 
-  create({ f }) {
+  create({ f, guest }) {
     const { width, height } = this.scale;
     const w = this.w3 = getWorld();
     const farm = (f && f.farm) || {};
@@ -50,6 +52,24 @@ export class Visit extends Phaser.Scene {
     g.fillStyle(0x0f1f17, 0.42).fillRoundedRect(width / 2 - 170, 12, 340, 62, 31);
     txt(this, width / 2, 34, `${(f && f.avatar) || '🧑‍🌾'} ${getLang() === 'en' ? `${(f && f.name) || '?'}'s Farm` : `${possessive((f && f.name) || '?')} Çiftliği`}`, 21, '#f5f4eb').setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
     txt(this, width / 2, 58, `👀 ${t('frVisiting')} · ${t('level')} ${(f && f.level) || 1}`, 14, '#ffe7a3').setAlpha(0.9);
+    // F36: linkten gelen misafir — günde 1 sulama + kendi çiftliğini kur
+    if (guest && f && f.code) {
+      const cnt = txt(this, width / 2, 82, `💧 ${f.waters || 0} ${t('lkWaters')}`, 14, '#bfe9ff').setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
+      const note = txt(this, width / 2, height - 208, '', 15, '#ffe7a3').setShadow(0, 2, 'rgba(10,15,13,0.7)', 6, false, true);
+      let busy = false, done = false;
+      const wb = button(this, width / 2, height - 150, 260, 60, `💧 ${t('lkWater')}`, async () => {
+        if (busy || done) return; busy = true;
+        try { const r = await publicWater(f.code); done = true; track('link_water'); cnt.setText(`💧 ${r.waters} ${t('lkWaters')}`); note.setText(`🌱 ${t('lkWatered')}`).setColor('#8ff0b0'); if (w && w.burst) owned.slice(0, 8).forEach((id) => w.burst(id, 0x6fd3ff, 12)); }
+        catch (er) { const m = String(er.message); done = /bugun|dolu/.test(m); note.setText(m.includes('bugun') ? t('lkToday') : m.includes('dolu') ? t('lkFull') : `⚠️ ${t('rkOffline')}`).setColor('#ffe7a3'); }
+        busy = false; if (done) wb.setAlpha(0.5);
+      }, 0x2ee06a, '#04220e', 22);
+      button(this, width / 2, height - 72, 260, 60, `🌱 ${t('lkMine')}`, async () => {
+        clearLink(); track('link_join');
+        if (!account()) await new Promise((res) => authForm(res, t('guest')));
+        this.scene.start('Farm');
+      }, 0xffb71b, '#1a1200', 20);
+      return;
+    }
     // F11: yardım et — ekinleri sula / hayvanları besle; ikiniz de ödül alırsınız (günde 1)
     if (f && f.code) {
       const note = txt(this, width / 2, height - 172, '', 16, '#ffe7a3').setShadow(0, 2, 'rgba(10,15,13,0.7)', 6, false, true);
