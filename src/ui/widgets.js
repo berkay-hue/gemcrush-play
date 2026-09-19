@@ -210,3 +210,37 @@ export function shine(scene, x, y, w, h, color = 0xffe58a) {
   scene.tweens.add({ targets: g, alpha: 0.15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   return g;
 }
+
+// F28: dükkân tentesi — kırmızı/krem çizgili, fistolu alt kenar (premium mağaza başlığı)
+export function awning(scene, cx, y, w, h = 34, n = 10) {
+  const g = scene.add.graphics(), L = cx - w / 2, sw = w / n, r = sw / 2;
+  g.fillStyle(0x000000, 0.3); g.fillRoundedRect(L, y + 6, w, h, { tl: 14, tr: 14, bl: 0, br: 0 });
+  for (let i = 0; i < n; i++) {
+    const red = i % 2 === 0, x = L + i * sw;
+    const top = red ? 0xff5a5a : 0xfff4dc, bot = red ? 0xc42a36 : 0xe8d3a8;
+    g.fillGradientStyle(top, top, bot, bot, 1);
+    g.fillRect(x, y, sw + 0.5, h);
+    g.fillStyle(bot, 1); g.fillCircle(x + r, y + h, r);
+    g.fillStyle(0x000000, 0.12); g.fillCircle(x + r, y + h + 3, r * 0.55);
+  }
+  g.fillStyle(0xffffff, 0.3); g.fillRect(L, y + 2, w, 4);
+  g.fillStyle(0x7a4f14, 1); g.fillRoundedRect(L - 6, y - 8, w + 12, 12, 6);
+  g.fillStyle(0xffd45a, 1); g.fillRoundedRect(L - 6, y - 8, w + 12, 5, 4);
+  return g;
+}
+
+// F28: asılı altın tabela (başlık)
+export function signBoard(scene, cx, y, label, size = 26) {
+  const c = scene.add.container(cx, y);
+  const t = txt(scene, 0, -1, label, size, '#3a2206');
+  const w = t.width + 56, h = size + 22;
+  const g = scene.add.graphics();
+  g.lineStyle(3, 0x5a3a0c, 1); g.lineBetween(-w / 2 + 18, -h / 2, -w / 2 + 26, -h / 2 - 22); g.lineBetween(w / 2 - 18, -h / 2, w / 2 - 26, -h / 2 - 22);
+  g.fillStyle(0x5a3a0c, 1); g.fillRoundedRect(-w / 2, -h / 2 + 5, w, h, 14);
+  g.fillGradientStyle(0xffe27a, 0xffe27a, 0xe79a12, 0xe79a12, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+  g.fillStyle(0xffffff, 0.35); g.fillRoundedRect(-w / 2 + 6, -h / 2 + 4, w - 12, h * 0.36, 9);
+  g.lineStyle(3, 0x7a4f14, 1); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+  c.add([g, t]);
+  scene.tweens.add({ targets: c, angle: { from: -1.2, to: 1.2 }, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  return c;
+}

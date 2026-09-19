@@ -15,7 +15,8 @@ import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { CineMixin } from './farmCine.js';
-import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel } from '../ui/widgets.js';
+import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel, ribbon, shine, awning, signBoard } from '../ui/widgets.js';
+import { dailyDeal, owns as wOwns, locked as wLocked, buy as wBuy, wear as wWear, look as wLook } from '../meta/wardrobe.js';
 import { buildIcons } from '../ui/icons.js';
 import { flyCoins, countUp, haptic } from '../ui/juice.js';
 import { farmTitle, renameBox, nameBox } from '../ui/farmTitle.js';
@@ -620,19 +621,36 @@ export class Farm extends Phaser.Scene {
   // ---- F12: Mağaza (sekmeli), F15: bölüm kilitleri ----
   shop(tab = 'building') {
     const { width, height } = this.scale;
-    const { c, close } = modal(this, 500, 760);
+    const { c, close } = modal(this, 500, 830);
     markSeen(CATALOG.filter((i) => status(i.id) !== 'locked' || (save.level || 1) >= (i.lvl || 1)).map((i) => i.id));
-    const top = height / 2 - 380;
-    c.add(txt(this, width / 2, top + 34, `🏪 ${t('shop')}`, 28, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
-    { const ch = [chip(this, 0, top + 68, '⭐', starBalance(), 0xffd23f), chip(this, 0, top + 68, '🪙', save.coins || 0, 0xffb71b), chip(this, 0, top + 68, '💎', save.gems || 0, 0x46c8ff)]; let x = width / 2 - (ch.reduce((s, k) => s + k.w, 0) + 20) / 2 + 17; ch.forEach((k) => { k.x = x; x += k.w + 10; c.add(k); }); }
-    { const promo = button(this, width / 2, top + 722, 440, 48, getLang() === 'en' ? '💎 Gem & coin packs  ›' : '💎 Elmas & altın paketleri  ›', () => { close(); track('farm_promo'); this.scene.start('Map', { shop: true }); }, 0x8a3dd6, '#ffffff', 19); c.add(promo); }
-    const tabs = [...TABS, ['land', '🗺️'], ['theme', '🎨']];
-    tabs.forEach(([k, e], i) => c.add(button(this, width / 2 - 200 + i * 80, top + 112, 72, 48, e, () => { close(); this.shop(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 26)));
+    const top = height / 2 - 415, en = getLang() === 'en';
+    // F28: tente + asılı altın tabela
+    c.add(awning(this, width / 2, top + 10, 488, 34, 12));
+    c.add(signBoard(this, width / 2, top + 66, `🏪 ${t('shop')}`, 24));
+    { const ch = [chip(this, 0, top + 108, '⭐', starBalance(), 0xffd23f), chip(this, 0, top + 108, '🪙', save.coins || 0, 0xffb71b), chip(this, 0, top + 108, '💎', save.gems || 0, 0x46c8ff)]; let x = width / 2 - (ch.reduce((s, k) => s + k.w, 0) + 20) / 2 + 17; ch.forEach((k) => { k.x = x; x += k.w + 10; c.add(k); }); }
+    { const promo = button(this, width / 2, top + 792, 440, 48, en ? '💎 Gem & coin packs  ›' : '💎 Elmas & altın paketleri  ›', () => { close(); track('farm_promo'); this.scene.start('Map', { shop: true }); }, 0x8a3dd6, '#ffffff', 19); c.add(promo); c.add(shine(this, width / 2, top + 792, 440, 48, 0xd9a8ff)); }
+    // F28: etiketli sekme şeridi (7 sekme; 👕 gardırobu açar)
+    const TL = { building: ['Bina', 'Build'], animal: ['Hayvan', 'Animals'], plot: ['Tarla', 'Fields'], vehicle: ['Araç', 'Vehicle'], land: ['Arsa', 'Land'], theme: ['Tema', 'Theme'], wardrobe: ['Giysi', 'Outfits'] };
+    const tabs = [...TABS, ['land', '🗺️'], ['theme', '🎨'], ['wardrobe', '👕']];
+    { const bar = this.add.graphics(); bar.fillStyle(0x0a1410, 0.75); bar.fillRoundedRect(width / 2 - 232, top + 136, 464, 62, 18); bar.lineStyle(2, 0xffb71b, 0.35); bar.strokeRoundedRect(width / 2 - 232, top + 136, 464, 62, 18); c.add(bar); }
+    tabs.forEach(([k, e], i) => {
+      const x = width / 2 - 198 + i * 66, on = k === tab;
+      const b = button(this, x, top + 160, 60, 40, e, () => { if (on) return; sfx.click(); close(); if (k === 'wardrobe') this.wardrobe(); else this.shop(k); }, on ? 0xffb71b : 0x2a333a, on ? '#1a1200' : '#fff', 22);
+      c.add(b);
+      c.add(txt(this, x, top + 188, TL[k][en ? 1 : 0], 11, on ? '#ffd45a' : '#9fb3a8'));
+    });
+    this.dealCard(c, close, top + 238, tab);
+    const n0 = c.list.length;
+    this.time.delayedCall(0, () => c.list.slice(n0).forEach((o, i) => {
+      if (o.y === undefined) return;
+      const y = o.y; o.setAlpha(0); o.y = y + 18;
+      this.tweens.add({ targets: o, alpha: 1, y, duration: 260, delay: 60 + Math.floor(i / 5) * 45, ease: 'Back.Out' });
+    }));
     if (tab === 'land') {
-      c.add(txt(this, width / 2, top + 150, t('landHint'), 15, '#9fb3a8'));
+      c.add(txt(this, width / 2, top + 300, t('landHint'), 15, '#9fb3a8'));
       ARSA.forEach((a, i) => {
-        const y = top + 210 + i * 84, st = plotStatus(a.id), side = a.id.startsWith('sol') ? '⬅️' : '➡️';
-        c.add(card(this, width / 2, y, 450, 74, st === 'owned' ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.5 } : st === 'ok' ? { top: 0x6b4a1a, bottom: 0x35240c, accent: 0xffe58a, accentA: 0.5 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
+        const y = top + 350 + i * 72, st = plotStatus(a.id), side = a.id.startsWith('sol') ? '⬅️' : '➡️';
+        c.add(card(this, width / 2, y, 450, 64, st === 'owned' ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.5 } : st === 'ok' ? { top: 0x6b4a1a, bottom: 0x35240c, accent: 0xffe58a, accentA: 0.5 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
         c.add(iconSlot(this, width / 2 - 185, y, 52, side, st === 'level' ? 0x5b646a : 0x6fcf6a, 26));
         c.add(txt(this, width / 2 - 145, y - 12, `${t('plot')} ${i + 1}`, 20, '#fff').setOrigin(0, 0.5));
         c.add(txt(this, width / 2 - 145, y + 14, st === 'owned' ? `✅ ${t('plotOwned')}` : `${t('level')} ${a.lvl}+ · 🪙 ${a.coins}`, 13, st === 'level' ? '#ff9a9a' : '#9dffb8').setOrigin(0, 0.5));
@@ -643,10 +661,9 @@ export class Farm extends Phaser.Scene {
     }
     if (tab === 'theme') {
       const lang = getLang() === 'en' ? 'en' : 'tr';
-      c.add(txt(this, width / 2, top + 150, `💎 ${save.gems || 0}`, 18, '#8fe3ff'));
-      THEMES.forEach((th, i) => {
-        const y = top + 205 + i * 74, own = ownsTheme(th.id), cur = currentTheme().id === th.id;
-        c.add(card(this, width / 2, y, 450, 66, cur ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.9, glow: true } : { top: 0x24455a, bottom: 0x10212c, accent: 0x8fe3ff, accentA: 0.3 }));
+            THEMES.forEach((th, i) => {
+        const y = top + 330 + i * 64, own = ownsTheme(th.id), cur = currentTheme().id === th.id;
+        c.add(card(this, width / 2, y, 450, 58, cur ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.9, glow: true } : { top: 0x24455a, bottom: 0x10212c, accent: 0x8fe3ff, accentA: 0.3 }));
         const g = this.add.graphics(); g.fillGradientStyle(th.sky[0], th.sky[0], th.hills[1], th.hills[1], 1); g.fillRoundedRect(width / 2 - 215, y - 26, 52, 52, 10); c.add(g);
         c.add(txt(this, width / 2 - 189, y, th.icon, 26));
         c.add(txt(this, width / 2 - 150, y - 11, th[lang], 18, '#fff').setOrigin(0, 0.5));
@@ -658,7 +675,7 @@ export class Farm extends Phaser.Scene {
       return;
     }
     CATALOG.filter((i) => i.kind === tab).forEach((it, i) => {
-      const y = top + 175 + i * 84, st = status(it.id);
+      const y = top + 342 + i * 78, st = status(it.id);
       const lk = st === 'locked';
       c.add(card(this, width / 2, y, 450, 74, lk ? { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 } : st === 'owned' ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.45 } : { top: 0x6b4a1a, bottom: 0x35240c, accent: 0xffe58a, accentA: 0.55, glow: st === 'buyable' }));
       c.add(iconSlot(this, width / 2 - 185, y, 58, it.emoji, lk ? 0x5b646a : 0xffb71b, 32).setAlpha(lk ? 0.6 : 1));
@@ -695,6 +712,27 @@ export class Farm extends Phaser.Scene {
         if (MOVABLE(it.id)) this.placeStart(it.id, false); else this.scene.restart({ dlg: it.id });
       }, st === 'buyable' ? 0x2ee06a : 0x2a333a, st === 'buyable' ? '#04220e' : '#888', 20));
     });
+  }
+
+  // F28: Günün Fırsatı — kuzunun gardırobundan her gün bir parça %50 indirimli, gece yarısına geri sayım
+  dealCard(c, close, y, tab) {
+    const { width } = this.scale, en = getLang() === 'en', { it, price } = dailyDeal();
+    const own = wOwns(it.id), lk = wLocked(it.id), cur = price.g ? '💎' : '🪙', amt = price.g || price.c, old = it.cost.g || it.cost.c;
+    c.add(card(this, width / 2, y, 450, 84, { top: 0x7a2a52, bottom: 0x3a0f28, accent: 0xffb3d9, accentA: 0.7, glow: !own }));
+    if (!own) c.add(shine(this, width / 2, y, 450, 84, 0xffc2e6));
+    c.add(ribbon(this, width / 2 - 150, y - 44, en ? '⚡ DEAL OF THE DAY' : '⚡ GÜNÜN FIRSATI', 0xe0337a));
+    c.add(iconSlot(this, width / 2 - 185, y + 4, 58, it.emoji || '👕', it.color || 0xffb3d9, 30));
+    c.add(txt(this, width / 2 - 145, y - 8, it.name[en ? 'en' : 'tr'], 19, '#fff').setOrigin(0, 0.5));
+    const cd = txt(this, width / 2 - 145, y + 18, '', 13, '#ffd1ea').setOrigin(0, 0.5); c.add(cd);
+    const tick = () => { if (!cd.active) return; const d = new Date(), m = new Date(d); m.setHours(24, 0, 0, 0); const q = Math.floor((m - d) / 1000), hh = Math.floor(q / 3600), mm = String(Math.floor(q / 60) % 60).padStart(2, '0'), ss = String(q % 60).padStart(2, '0'); cd.setText(`⏳ ${hh}:${mm}:${ss} · ${cur}${old} → ${cur}${amt}`); };
+    tick(); const tm = this.time.addEvent({ delay: 1000, loop: true, callback: () => (cd.active ? tick() : tm.remove()) });
+    if (own) { c.add(txt(this, width / 2 + 160, y + 4, en ? 'Owned ✓' : 'Alındı ✓', 18, '#8ff0b0')); return; }
+    if (lk) { c.add(button(this, width / 2 + 160, y + 4, 110, 48, `🔒 ${it.lvl}`, () => this.toast(`${t('level')} ${it.lvl}`), 0x2a333a, '#aaa', 18)); return; }
+    c.add(button(this, width / 2 + 160, y + 4, 110, 50, `${cur} ${amt}`, () => {
+      const r = wBuy(it.id, 0.5);
+      if (r !== 'ok') { sfx.error(); this.toast(r === 'gems' ? t('needGems') : t('needCoins')); return; }
+      wWear(it.id); this.w3 && this.w3.mascotDress && this.w3.mascotDress(wLook()); this.lambReact && this.lambReact('dance', en ? 'How do I look? 😍' : 'Yakıştı mı? 😍'); sfx.coin(); track('deal_buy', { item: it.id }); close(); this.toast(en ? `${it.name.en} — Lambkin is wearing it!` : `${it.name.tr} — Kuzucuk giydi!`); this.shop(tab); this.refreshHud();
+    }, 0xff4f9a, '#ffffff', 20));
   }
 
   // ---- F13: taşıma / yerleştirme ----

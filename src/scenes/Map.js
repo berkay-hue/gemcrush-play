@@ -5,7 +5,7 @@ import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
-import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine } from '../ui/widgets.js';
+import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine, awning, signBoard } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
 import { nameBox } from '../ui/farmTitle.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
@@ -179,7 +179,8 @@ export class Map extends Phaser.Scene {
     const { width, height } = this.scale, cx = width / 2;
     const { c, close } = modal(this, 500, 860);
     const top = height / 2 - 430, en = getLang() === 'en';
-    c.add(txt(this, cx, top + 42, `🏪 ${t('shop')}`, 32, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
+    c.add(awning(this, cx, top + 8, 488, 26, 12));
+    c.add(signBoard(this, cx, top + 50, `🏪 ${t('shop')}`, 22));
     const ch1 = chip(this, 0, top + 88, '🪙', save.coins || 0, 0xffb71b), ch2 = chip(this, 0, top + 88, '💎', save.gems || 0, 0x46c8ff);
     const gap = 16, tw = ch1.w + ch2.w + gap; ch1.x = cx - tw / 2 + 17; ch2.x = ch1.x + ch1.w + gap; c.add([ch1, ch2]);
     const P = CONFIG.iap.products, buyP = async (p) => { if (await buy(p)) { sfx.coin(); track('shop_buy', { id: p.id }); close(); this.refreshHud(); this.shop(); } };

@@ -43,11 +43,20 @@ export const locked = (id) => { const it = byId[id]; return !!it && !!it.lvl && 
 export const worn = (id) => { const it = byId[id]; return !!it && st()[it.slot] === id; };
 
 // 'ok' | 'owned' | 'locked' | 'coins' | 'gems'
-export function buy(id) {
+// F28: günün fırsatı — ücretli parçalardan tarihe göre biri, %50 indirimli
+export function dailyDeal(d = new Date()) {
+  const paid = WARDROBE.filter((w) => w.cost), day = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5);
+  const it = paid[(day * 7 + 3) % paid.length];
+  return { it, off: 0.5, price: it.cost.g ? { g: Math.ceil(it.cost.g / 2) } : { c: Math.round(it.cost.c / 2) } };
+}
+export const priceOf = (it, off = 0) => (it.cost.g ? { g: Math.ceil(it.cost.g * (1 - off)) } : { c: Math.round(it.cost.c * (1 - off)) });
+
+export function buy(id, off = 0) {
   const it = byId[id]; if (!it) return 'locked';
   if (owns(id)) return 'owned';
   if (locked(id)) return 'locked';
-  if (it.cost.g ? !spendGems(it.cost.g) : !spendCoins(it.cost.c)) return it.cost.g ? 'gems' : 'coins';
+  const pr = priceOf(it, off);
+  if (pr.g ? !spendGems(pr.g) : !spendCoins(pr.c)) return pr.g ? 'gems' : 'coins';
   st().own.push(id); persist(); return 'ok';
 }
 export function wear(id) {
