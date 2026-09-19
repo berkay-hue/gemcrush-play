@@ -113,6 +113,13 @@ export async function leaderboard(kind) {
   if (a) { clearTimeout(syncTimer); await pushCloud(); }
   return rpc('gc_leaderboard', { p_kind: kind, p_token: a ? a.token : null, p_limit: 50 });
 }
+// F9: arkadaşlar — kod (ya da kullanıcı adı) ile ekle, çiftliğini salt-okunur ziyaret et
+const tok = () => { const a = account(); if (!a) throw new Error('hesap'); return a.token; };
+export const myFriendCode = () => rpc('gc_me', { p_token: tok() });
+export const friendList = () => rpc('gc_friend_list', { p_token: tok() });
+export const friendAdd = (code) => rpc('gc_friend_add', { p_token: tok(), p_code: code });
+export const friendRemove = (code) => rpc('gc_friend_remove', { p_token: tok(), p_code: code });
+export const friendFarm = (code) => rpc('gc_friend_farm', { p_token: tok(), p_code: code });
 export function logout() { clearTimeout(syncTimer); setAccount(null); }
 // açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
 export async function syncOnBoot() {

@@ -45,6 +45,24 @@ const DECOR = [
   ['rock_smallC', [7.5, 7.3], 0.5, 1], ['log_stack', [-5.4, -5.6], 0.7, 0.4], ['stump_round', [7, 4.2], 0.4, 0],
   ['town/cart', [2.4, -3.8], 1.1, -0.8], ['town/lantern', [1.5, 1.2], 1.4, 0], ['campfire_logs', [-2.8, -5.6], 0.4, 0],
 ];
+// F9: dekorun çarpışma yarıçapı (hayvanlar içinden geçmesin)
+const DECOR_R = (n) => n === 'b:degirmen' ? 1.5 : n === 'town/fountain-round' ? 1.25 : n.startsWith('tree_') ? 0.6 : n === 'town/cart' ? 0.75 : n === 'log_stack' ? 0.5 : n === 'campfire_logs' ? 0.45 : n === 'town/lantern' ? 0.25 : n.startsWith('rock_') || n.startsWith('stump') ? 0.35 : 0;
+const ITEM_R = { ambar: 1.8, ahir: 1.6, kumes: 1.05, market: 1.3, traktor: 0.85 };
+// F9: çiftliğin dışı sık orman — harita sınırı. Oynanan alan: x ±22 (arsalar dahil), z -10..10
+function forestPts() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const P = [], step = LOW_END ? 2.6 : 1.9;
+  for (let x = -50; x <= 50; x += step) for (let z = -40; z <= 30; z += step) {
+    const jx = x + (rnd() - 0.5) * step * 0.8, jz = z + (rnd() - 0.5) * step * 0.8;
+    const ax = Math.abs(jx);
+    const inPlay = ax < 23.2 && jz > -11.2 && jz < 11.2;
+    if (inPlay) continue;
+    if (ax < 16 && jz < -11 && jz > -17) { if (rnd() < 0.55) continue; }   // tema dekoru için arka şeritte seyrek
+    if (jz > 11 && jz < 15 && rnd() < 0.5) continue;                        // ön kenar: kamerayı kapatmasın
+    P.push({ x: jx, z: jz, k: Math.floor(rnd() * 1000), s: 0.8 + rnd() * 0.55, ry: rnd() * 6.28 });
+  }
+  return P;
+}
 const POND = [[8, -7], [10, -7], [8, -9], [6, -9]]; // 2x2 göl karoları (ada-yerel)
 const ISL = [12, 10]; // ana ada yarı boyutları
 
@@ -125,7 +143,7 @@ export class FarmWorld {
     if (n.startsWith('b:')) o = await this.building(n.slice(2));
     else if (n === 'p:sheep') o = this.sheep();
     else o = SU.clone((await this.load(n)).scene);
-    o.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true; });
+    o.traverse((m) => { if (m.isMesh) { m.castShadow = m.receiveShadow = true; this.tint(m.material); } });
     if (h) { o.updateMatrixWorld(true); const b = new T.Box3().setFromObject(o, true); s = h / (b.max.y - b.min.y); o.position.y = -b.min.y * s; }
     o.scale.setScalar(s); o.position.x = x; o.position.z = z; o.rotation.y = ry;
     parent.add(o); return o;
@@ -133,8 +151,9 @@ export class FarmWorld {
 
   // Kenney kare zemin adası (ground_grass ×2) + toprak gövde, çevresi göl
   buildGround() {
-    const sea = new T.Mesh(new T.PlaneGeometry(260, 260), new T.MeshStandardMaterial({ color: 0x5fb8d6, roughness: 0.35 }));
-    sea.rotation.x = -Math.PI / 2; sea.position.y = -0.5; sea.receiveShadow = true; this.S.add(sea);
+    // F9: mavi deniz yerine orman tabanı (tema rengiyle boyanır)
+    const fl = this.floor = new T.Mesh(new T.PlaneGeometry(260, 260), new T.MeshStandardMaterial({ color: 0x5f9e3c, roughness: 1 }));
+    fl.rotation.x = -Math.PI / 2; fl.position.y = -0.06; fl.receiveShadow = true; this.S.add(fl);
     this.island(0, ...ISL, POND);
     for (const [n, [x, z], h, ry, s] of DECOR) this.put(n, x, z, h ? { h, ry } : { s, ry });
   }
@@ -187,9 +206,75 @@ export class FarmWorld {
   setTheme(th) {
     this.skyBase = th.skyBase || 0xa8dcf2; this.daylight();
     if (this._dressId === th.id) return; this._dressId = th.id;
+    // F9: tema tüm çiftliği boyar — çimen, yapraklar, orman tabanı ve orman ağaçları
+    this.th = th;
+    this.floor.material.color.set(th.ground || 0x5f9e3c);
+    const seen = new Set();
+    this.S.traverse((m) => { if (m.isMesh && m.material && !seen.has(m.material)) { seen.add(m.material); this.tint(m.material); } });
+    this.forest(th);
     if (this._dressG) this.S.remove(this._dressG);
     const g = this._dressG = new T.Group(); this.S.add(g);
     for (const [m, x, z, h, ry = 0] of th.dress || []) this.put(m, x, z, { h, ry, parent: g });
+  }
+
+  // F9: Kenney malzemeleri ada göre: 'grass' → tema çimeni, 'leafs*' → tema yaprağı (önbellekte paylaşılır)
+  tint(mat) {
+    if (Array.isArray(mat)) return mat.forEach((m) => this.tint(m));
+    const n = mat && mat.name || '', th = this.th || {};
+    const [c, k] = n === 'grass' ? (th.grassTint || []) : n.startsWith('leafs') ? (th.leafTint || []) : [];
+    if (!n || mat.transparent || (mat.userData.base === undefined && k === undefined)) return;
+    if (mat.userData.base === undefined) mat.userData.base = mat.color.getHex();   // sayı: clone() JSON kopyasında bozulmaz
+    mat.color.setHex(mat.userData.base); if (k) mat.color.lerp(new T.Color(c), k);
+  }
+  // F9: orman halkası — tür başına InstancedMesh (yüzlerce ağaç, birkaç draw call)
+  async forest(th) {
+    const kinds = th.trees || ['tree_default', 'tree_oak', 'tree_pineRoundA', 'tree_fat', 'tree_pineTallA', 'tree_detailed'];
+    const tok = this._forestTok = (this._forestTok || 0) + 1;
+    const pts = this._fpts || (this._fpts = forestPts());
+    const dz = (p) => Math.abs(p.x) < 16.5 && p.z < -10.5 && p.z > -18.5;   // tema dekor şeridi açık kalsın
+    const use = (th.dress || []).length ? pts.filter((p) => !dz(p)) : pts;
+    const g = new T.Group();
+    await Promise.all(kinds.map(async (name, ki) => {
+      const list = use.filter((p) => p.k % kinds.length === ki); if (!list.length) return;
+      const src = (await this.load(name)).scene; src.updateMatrixWorld(true);
+      const b = new T.Box3().setFromObject(src, true), base = 3.2 / (b.max.y - b.min.y);
+      const M = new T.Matrix4(), q = new T.Quaternion(), up = new T.Vector3(0, 1, 0);
+      src.traverse((m) => {
+        if (!m.isMesh) return; this.tint(m.material);
+        const im = new T.InstancedMesh(m.geometry, m.material, list.length);
+        list.forEach((p, i) => {
+          const s = base * p.s; q.setFromAxisAngle(up, p.ry);
+          M.compose(new T.Vector3(p.x, -b.min.y * s - 0.06, p.z), q, new T.Vector3(s, s, s)).multiply(m.matrixWorld);
+          im.setMatrixAt(i, M);
+        });
+        im.castShadow = !LOW_END; im.receiveShadow = false; g.add(im);
+      });
+    }));
+    if (tok !== this._forestTok) return;
+    if (this._forestG) this.S.remove(this._forestG);
+    this._forestG = g; this.S.add(g);
+  }
+  // F9: hayvanların geçemeyeceği daireler [x, z, r] — sahip olunan binalar, tarlalar, dekor
+  colliders() {
+    const C = [];
+    for (const [n, [x, z]] of DECOR) { const r = DECOR_R(n); if (r) C.push([x, z, r]); }
+    for (const id in LAYOUT) {
+      const it = this.items[id], L = LAYOUT[id];
+      if (!it || it.state !== 'owned' || L.area) continue;
+      const [x, z] = this.where(id); C.push([x, z, L.plot ? 1.15 : ITEM_R[id] || 1]);
+    }
+    return C;
+  }
+  // pen=true: ağıl çiti de engel (ağılda yaşamayan hayvanlar için)
+  blocked(x, z, pad = 0.25, pen = false) {
+    for (const c of this._col || []) if (Math.hypot(x - c[0], z - c[1]) < c[2] + pad) return c;
+    const f = pen && this._pen;
+    if (f && x > f[0] - pad && x < f[2] + pad && z > f[1] - pad && z < f[3] + pad) return 'pen';
+    return null;
+  }
+  freeIn(b, pen) {
+    for (let i = 0; i < 12; i++) { const p = this.rndIn(b); if (!this.blocked(p[0], p[1], 0.35, pen)) return p; }
+    return this.rndIn(b);
   }
 
   island(cx, hw, hd, water = [], parent = this.S) {
@@ -243,6 +328,7 @@ export class FarmWorld {
   async setItem(id, state, opts = {}) {
     const L = LAYOUT[id]; if (!L) return;
     const cur = this.items[id];
+    if (id === 'ahir' && state !== 'owned') this._pen = null;
     const stage = opts.crop === 'growing' ? Math.min(2, Math.floor((opts.growth || 0) * 3)) : -1;
     const pos = state === 'hidden' ? '' : String(this.where(id));
     const sig = state + '|' + (opts.crop || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '');
@@ -271,15 +357,16 @@ export class FarmWorld {
     } else if (L.area) {
       const n = state === 'owned' ? L.n : 1, area = this.areaOf(id);
       for (let i = 0; i < n; i++) {
-        const [x, z] = this.rndIn(area);
+        this._col = this.colliders();
+        const [x, z] = this.freeIn(area, HOME[id] !== 'ahir');
         const o = await this.put(L.model, x, z, { h: L.h, ry: Math.random() * 6, parent: g });
-        if (state === 'owned') this.movers.push({ id, o, area, st: 'idle', until: 0, tx: x, tz: z, ph: Math.random() * 9, v: (L.h < 0.5 ? 0.8 : 0.45) * (opts.sick ? 0.35 : 1), sick: !!opts.sick, ry0: 0, jump: 0, pet: L.pet });
+        if (state === 'owned') this.movers.push({ id, o, area, st: 'idle', until: 0, tx: x, tz: z, ph: Math.random() * 9, v: (L.h < 0.5 ? 0.8 : 0.45) * (opts.sick ? 0.35 : 1), sick: !!opts.sick, ry0: 0, jump: 0, pet: L.pet, pen: HOME[id] !== 'ahir', stk: 0 });
       }
     } else {
       const [x, z] = this.where(id);
       await this.put(L.model, x, z, { h: L.h, ry: L.ry || 0, parent: g });
       // ahır ağılı binayla birlikte taşınır
-      if (id === 'ahir' && state === 'owned') { const d = hex(...L.at), ox = x - d[0], oz = z - d[1]; this.fenceRect(2.6 + ox, -1.4 + oz, 7.4 + ox, 3 + oz, g); }
+      if (id === 'ahir' && state === 'owned') { const d = hex(...L.at), ox = x - d[0], oz = z - d[1]; this._pen = [2.6 + ox, -1.4 + oz, 7.4 + ox, 3 + oz]; this.fenceRect(...this._pen, g); }
     }
     if (state === 'place') g.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.6; m.material.color.lerp(new T.Color(opts.bad ? 0xff4040 : 0x40ff70), 0.5); } });
     if (opts.sick) g.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.lerp(new T.Color(0x7fbf4a), 0.45); } });
@@ -398,15 +485,39 @@ export class FarmWorld {
   }
   hide() { this.running = false; this.R.setAnimationLoop(null); this.canvas.style.display = 'none'; }
 
+  // F9: çarpışmalı adım — engele gelince teğet boyunca kayar, ilerleyemezse vazgeçer (false)
+  step(a, ux, uz, v) {
+    const p = a.o.position, pad = 0.3, k = v / (a.v || 1);
+    let nx = p.x + ux * v, nz = p.z + uz * v;
+    if (this.blocked(p.x, p.z, 0, a.pen)) { p.x = nx; p.z = nz; return true; }   // zaten içindeyse serbestçe çıksın
+    const c = this.blocked(nx, nz, pad, a.pen);
+    if (c === 'pen') { a.stk += k; return a.stk < 1.5; }
+    if (c) {
+      let ox = nx - c[0], oz = nz - c[1]; const od = Math.hypot(ox, oz) || 1; ox /= od; oz /= od;
+      const sg = Math.sign(-oz * ux + ox * uz) || 1;             // hedefe yakın taraftan dolan
+      nx = p.x - oz * sg * v; nz = p.z + ox * sg * v;
+      const c2 = this.blocked(nx, nz, pad, a.pen);
+      if (c2 && c2 !== 'pen') { const qx = nx - c2[0], qz = nz - c2[1], qd = Math.hypot(qx, qz) || 1; nx = c2[0] + qx / qd * (c2[2] + pad); nz = c2[1] + qz / qd * (c2[2] + pad); }
+      if (this.blocked(nx, nz, pad * 0.9, a.pen)) { a.stk += k; return a.stk < 1.5; }
+      a.stk += k * 0.3; if (a.stk > 5) return false;
+    }
+    p.x = nx; p.z = nz; return true;
+  }
+
   frame(t, dt) {
     // F2: small state machine per animal: idle -> look / eat / walk, squash-stretch hop
+    if (!this._colT || t - this._colT > 600) { this._colT = t; this._col = this.colliders(); }
     for (const a of this.movers) {
       const p = a.o.position, c = a.o.children[0];
       if (t > a.until && a.st !== 'walk') {
         const r = Math.random(), slow = a.sick ? 2.5 : 1;
-        if (a.pet === 'follow' && r < 0.8) { a.st = 'walk'; a.tx = this.target.x + (Math.random() - 0.5) * 3; a.tz = this.target.z + 1 + Math.random() * 2; }
+        if (a.pet === 'follow' && r < 0.8) {
+          a.st = 'walk'; a.stk = 0;
+          a.tx = Math.max(-11, Math.min(11, this.target.x + (Math.random() - 0.5) * 3)); a.tz = Math.max(-8.5, Math.min(8.5, this.target.z + 1 + Math.random() * 2));
+          if (this.blocked(a.tx, a.tz, 0.35, true)) [a.tx, a.tz] = this.freeIn([a.tx - 2, a.tz - 2, a.tx + 2, a.tz + 2], true);
+        }
         else if (a.pet === 'sun' && r < 0.6) a.st = 'sun';
-        else if (r < 0.45) { a.st = 'walk'; [a.tx, a.tz] = this.rndIn(a.area); }
+        else if (r < 0.45) { a.st = 'walk'; a.stk = 0; [a.tx, a.tz] = this.freeIn(a.area, a.pen); }
         else if (r < 0.7) { a.st = 'look'; a.ry0 = a.o.rotation.y; }
         else if (r < 0.9) a.st = 'eat';
         else a.st = 'idle';
@@ -416,7 +527,8 @@ export class FarmWorld {
       if (a.st === 'walk') {
         const dx = a.tx - p.x, dz = a.tz - p.z, d = Math.hypot(dx, dz), v = a.v * dt * (a.pet === 'follow' && d > 3 ? 3 : 1);
         if (d < 0.05) { a.st = 'idle'; a.until = t + 800; }
-        else { p.x += dx / d * v; p.z += dz / d * v; let r = Math.atan2(dx, dz) - a.o.rotation.y; r = Math.atan2(Math.sin(r), Math.cos(r)); a.o.rotation.y += r * 0.1; }
+        else if (!this.step(a, dx / d, dz / d, v)) { a.st = 'idle'; a.until = t + 600; }
+        else { let r = Math.atan2(dx, dz) - a.o.rotation.y; r = Math.atan2(Math.sin(r), Math.cos(r)); a.o.rotation.y += r * 0.1; }
         const s = Math.sin(t / (a.sick ? 220 : 110) + a.ph); hop = Math.abs(s) * 0.06; sq = 1 + (Math.abs(s) < 0.25 ? -0.08 : 0.04);
       } else if (a.st === 'look') a.o.rotation.y = a.ry0 + Math.sin(t / 400 + a.ph) * 0.6;
       else if (a.st === 'sun') { sq = 0.72 + Math.sin(t / 900 + a.ph) * 0.02; }   // kedi yayılıp güneşlenir

@@ -3,6 +3,7 @@ import { Boot } from './scenes/Boot.js';
 import { Map as MapScene } from './scenes/Map.js';
 import { Game } from './scenes/Game.js';
 import { Farm } from './scenes/Farm.js';
+import { Visit } from './scenes/Visit.js';
 import { Zone } from './scenes/Zone.js';
 import { initAds } from './monetize/ads.js';
 import { initIap } from './monetize/iap.js';
@@ -24,7 +25,7 @@ window.__game = new Phaser.Game({
   transparent: true,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 2 },
-  scene: [Boot, Farm, Zone, MapScene, Game],
+  scene: [Boot, Farm, Zone, MapScene, Game, Visit],
 });
 
 // her sahne açılışında yumuşak geçiş (Boot hariç)

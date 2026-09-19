@@ -15,6 +15,8 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
+import { friendsPanel } from '../ui/friends.js';
+import { friendFarm } from '../meta/save.js';
 import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
@@ -107,6 +109,7 @@ export class Farm extends Phaser.Scene {
     this.drawHint();
     if (!Farm._greeted) { Farm._greeted = true; this.time.delayedCall(700, () => this.greet()); }
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
+    button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
       const n = this.nodes[data.harvest];
@@ -769,6 +772,13 @@ export class Farm extends Phaser.Scene {
       const r = farmClaimDaily(); if (r) { sfx.coin && sfx.coin(); track('daily_claim', { streak: r.streak, reward: r.coins, src: 'farm' }); this.toast(`+🪙${r.coins}${r.gems ? ' +💎1' : ''}`); }
       this.refreshHud(); close(); next();
     }, 0x2ee06a, '#04220e', 22));
+  }
+
+  // F9: arkadaşlar paneli → ziyaret
+  friends() {
+    friendsPanel((code) => {
+      friendFarm(code).then((f) => this.scene.start('Visit', { f })).catch(() => this.toast(`⚠️ ${t('frFarmErr')}`));
+    }, () => this.friends());
   }
 
   drawTitle() {
