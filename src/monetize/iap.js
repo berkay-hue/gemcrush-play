@@ -12,7 +12,7 @@ export async function initIap() {
   store = CdvPurchase.store;
   const platform = CdvPurchase.Platform[window.Capacitor?.getPlatform?.() === 'ios' ? 'APPLE_APPSTORE' : 'GOOGLE_PLAY'];
   for (const p of CONFIG.iap.products) {
-    store.register({ id: p.id, type: p.removeAds ? CdvPurchase.ProductType.NON_CONSUMABLE : CdvPurchase.ProductType.CONSUMABLE, platform });
+    store.register({ id: p.id, type: p.removeAds || p.starter ? CdvPurchase.ProductType.NON_CONSUMABLE : CdvPurchase.ProductType.CONSUMABLE, platform });
   }
   store.when().approved((tx) => tx.verify()).verified((r) => { grant(r.productId); r.finish(); });
   await store.initialize([platform]);
@@ -22,6 +22,8 @@ function grant(productId) {
   const p = CONFIG.iap.products.find((x) => x.id === productId);
   if (!p) return;
   if (p.removeAds) save.removeAds = true;
+  if (p.starter) save.starterBought = true;
+  if (p.lives) save.lives = Math.max(save.lives || 0, 0) + p.lives;
   if (p.coins) addCoins(p.coins);
   if (p.gems) addGems(p.gems);
   persist();

@@ -18,6 +18,7 @@ import { txt, button, modal, FONT } from '../ui/widgets.js';
 import { currentTheme, themeById } from '../meta/themes.js';
 import { festWin, festNext, festivalLevels } from '../meta/event.js';
 import { addXp, winXp } from '../meta/pass.js';
+const BAR_W = 290;
 
 let OX = 14, OY = 210; // board origin (create() ortalar)
 const px = (c) => OX + c * CELL + CELL / 2;
@@ -55,23 +56,33 @@ export class Game extends Phaser.Scene {
     this.woodPlank(hud, 0, 0, width, 200, 0);
     hud.fillStyle(0xffb71b, 0.9); hud.fillRect(0, 196, width, 4);
     hud.fillStyle(0x000000, 0.25); hud.fillRect(0, 200, width, 6);
-    for (const bx of [60, width - 200]) {
-      hud.fillStyle(0x000000, 0.3); hud.fillRoundedRect(bx, 78, 140, 74, 18);
-      hud.fillStyle(0xf5e6c4, 1); hud.fillRoundedRect(bx, 74, 140, 74, 18);
-      hud.lineStyle(3, 0x8a5a2b, 1); hud.strokeRoundedRect(bx, 74, 140, 74, 18);
+    // F16: sol=kuzu maskot, orta=hedefler, sağ=kurt(boss) ya da sepet
+    const BX = [104, width - 196];
+    for (const bx of BX) {
+      hud.fillStyle(0x000000, 0.3); hud.fillRoundedRect(bx, 78, 92, 74, 18);
+      hud.fillStyle(0xf5e6c4, 1); hud.fillRoundedRect(bx, 74, 92, 74, 18);
+      hud.fillStyle(0xffffff, 0.35); hud.fillRoundedRect(bx + 6, 78, 80, 16, 8);
+      hud.lineStyle(3, 0x8a5a2b, 1); hud.strokeRoundedRect(bx, 74, 92, 74, 18);
     }
     hud.fillStyle(0x3a2412, 0.55); hud.fillRoundedRect(width / 2 - 90, 8, 180, 30, 15);
     button(this, 40, 40, 60, 44, '✕', () => this.quit(), 0x2a333a, '#fff', 20);
     this.add.text(width / 2, 22, this.level.festival ? this.level.name : `${t('level')} ${this.level.id}`, { fontFamily: FONT, fontSize: '20px', color: '#ffe8b0', fontStyle: 'bold' }).setOrigin(0.5);
-    txt(this, 130, 90, t('moves'), 16, '#8a5a2b'); this.movesTxt = txt(this, 130, 125, '', 40, '#3a2412');
-    txt(this, width - 130, 90, t('score'), 16, '#8a5a2b'); this.scoreTxt = txt(this, width - 130, 125, '0', 34, '#c0620a');
-    this.objTxt = this.add.container(width / 2, 108);
+    txt(this, 150, 90, t('moves'), 15, '#8a5a2b'); this.movesTxt = txt(this, 150, 125, '', 38, '#3a2412');
+    txt(this, width - 150, 90, t('score'), 15, '#8a5a2b'); this.scoreTxt = txt(this, width - 150, 125, '0', 24, '#c0620a');
+    this.objTxt = this.add.container(width / 2, 104);
     this.objIcons = [];
     this.buildObjectives();
     // score bar with star marks
-    this.barBg = this.add.rectangle(width / 2, 178, 400, 14, 0x000000, 0.5).setOrigin(0.5).setStrokeStyle(2, 0xffffff, 0.15);
-    this.bar = this.add.rectangle(width / 2 - 200, 178, 0, 10, 0xffb71b).setOrigin(0, 0.5);
-    this.starMarks = [1, 2, 3].map((i) => this.add.image(width / 2 - 200 + 400 * i / 3 - (i === 3 ? 10 : 0), 178, 'stargray').setScale(0.45));
+    this.barBg = this.add.rectangle(width / 2, 180, BAR_W + 4, 16, 0x000000, 0.5).setOrigin(0.5).setStrokeStyle(2, 0xffffff, 0.15);
+    this.bar = this.add.rectangle(width / 2 - BAR_W / 2, 180, 0, 10, 0xffb71b).setOrigin(0, 0.5);
+    this.starMarks = [1, 2, 3].map((i) => this.add.image(width / 2 - BAR_W / 2 + BAR_W * i / 3 - (i === 3 ? 10 : 0), 180, 'stargray').setScale(0.45));
+    // maskot kuzu
+    this.lambHome = { x: 54, y: 200 };
+    this.lamb = this.add.image(54, 200, 'lamb').setOrigin(0.5, 1).setDisplaySize(112, 112).setDepth(30);
+    this.lambScale = this.lamb.scaleX;
+    this.lambIdle = this.tweens.add({ targets: this.lamb, scaleY: this.lambScale * 1.04, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.lamb.setInteractive({ useHandCursor: true }).on('pointerup', () => this.lambMood('happy', 900));
+    if (!this.level.boss) this.drawBasket(width - 52, 196);
     if (this.level.boss) this.buildBoss();
     this.refreshHud();
 
@@ -102,7 +113,7 @@ export class Game extends Phaser.Scene {
     if (this.level.id === 1 && !save.tutorialDone) this.tutorial();
     else if (this.level.id >= 6) this.preLevel();
     // level intro toast
-    this.toast(this.level.boss ? `💀 ${t('hardLevel')} 💀` : (this.level.name || `${t('level')} ${this.level.id}`), this.level.boss ? 36 : 30);
+    if (!this.level.boss) this.toast(this.level.name || `${t('level')} ${this.level.id}`, 30);
     const q = currentQuest(); if (q) this.time.delayedCall(1400, () => { if (!this.ended) this.toast(`📜 ${t('questNext')}: ${q.text[getLang()] || q.text.tr}`, 20); });
   }
 
@@ -161,7 +172,9 @@ export class Game extends Phaser.Scene {
     g.fillStyle(0x000000, 0.35); g.fillRoundedRect(x - 8, y + 4, W + 36, H + 36, 26);
     this.woodPlank(g, x - 8, y - 8, W + 36, H + 36, 2, 26);
     g.lineStyle(3, 0xffb71b, 0.9); g.strokeRoundedRect(x - 8, y - 8, W + 36, H + 36, 26);
-    g.fillStyle(0x0c2418, 0.94); g.fillRoundedRect(x + 2, y + 2, W + 16, H + 16, 18);
+    g.fillStyle(0x12301f, 0.95); g.fillRoundedRect(x + 2, y + 2, W + 16, H + 16, 18);
+    g.fillGradientStyle(0x2d6b45, 0x2d6b45, 0x0f2a1b, 0x0f2a1b, 0.55); g.fillRect(x + 12, y + 8, W - 4, H + 4);
+    g.fillStyle(0xffffff, 0.06); g.fillRoundedRect(x + 8, y + 6, W + 4, 26, 12);
     g.lineStyle(2, 0x000000, 0.5); g.strokeRoundedRect(x + 2, y + 2, W + 16, H + 16, 18);
     for (const [nx, ny] of [[x, y], [x + W + 20, y], [x, y + H + 20], [x + W + 20, y + H + 20]]) { g.fillStyle(0x6b4a2a, 1); g.fillCircle(nx, ny, 5); g.fillStyle(0xe8c98f, 1); g.fillCircle(nx - 1, ny - 1, 2.5); }
     for (let r = 0; r < this.board.H; r++) for (let c = 0; c < this.board.W; c++) {
@@ -218,7 +231,8 @@ export class Game extends Phaser.Scene {
     if (b.moves <= 5 && b.moves > 0 && !this.movesPulse) this.movesPulse = this.tweens.add({ targets: this.movesTxt, scale: 1.18, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     if ((b.moves > 5 || b.moves === 0) && this.movesPulse) { this.movesPulse.stop(); this.movesPulse = null; this.movesTxt.setScale(1); }
     this.scoreTxt.setText(String(b.score));
-    this.tweens.add({ targets: this.bar, width: 400 * b.objFrac(), duration: 250, ease: 'Cubic.Out' });
+    if (this.lamb && !this.ended && this.lamb.texture.key !== 'lamb_happy') this.lamb.setTexture(b.moves <= 3 ? 'lamb_scared' : 'lamb');
+    this.tweens.add({ targets: this.bar, width: BAR_W * b.objFrac(), duration: 250, ease: 'Cubic.Out' });
     if (this.bossBar) { const hp = Math.max(0, 1 - b.objFrac()); this.tweens.add({ targets: this.bossBar, width: 196 * hp, duration: 300 }); this.bossTurn.setText(`⚡${BOSS_EVERY - (b.used % BOSS_EVERY)}`); }
     const st = b.stars();
     this.starMarks.forEach((m, i) => {
@@ -230,7 +244,7 @@ export class Game extends Phaser.Scene {
   }
   buildObjectives() {
     const prog = this.board.progress();
-    const n = prog.length; const gap = 90;
+    const n = prog.length; const gap = n >= 3 ? 66 : 84;
     prog.forEach((p, i) => {
       const x = (i - (n - 1) / 2) * gap;
       const c = this.add.container(x, 0);
@@ -329,7 +343,7 @@ export class Game extends Phaser.Scene {
         }
         case 'combo': {
           if (e.kind === 'single') { sfx.combo(); await this.wait(60); break; }
-          sfx.combo(); this.comboFx(px(e.at[1]), py(e.at[0]), e.kind);
+          sfx.combo(); this.comboFx(px(e.at[1]), py(e.at[0]), e.kind); this.lambMood('happy', 1100);
           this.toast(e.kind === 'prism_prism' ? t('legendary') : t('amazing'), 44);
           await this.wait(DUR.combo + 150);
           break;
@@ -607,7 +621,7 @@ export class Game extends Phaser.Scene {
     else this.particles(px(at[1]), py(at[0]), 6);
   }
   async bossAttackFx(cells) {
-    if (this.boss) this.tweens.add({ targets: this.boss, scale: 1.35, yoyo: true, duration: 160 });
+    await this.wolfLunge(false);
     this.toast(t('bossAttack'), 30);
     for (const [r, c] of cells) {
       const k = r * 100 + c + 20000; if (this.overlays[k]) this.overlays[k].destroy();
@@ -640,18 +654,79 @@ export class Game extends Phaser.Scene {
   // ---------- F13: boss + seviye öncesi güçlendirici ----------
   buildBoss() {
     const { width } = this.scale;
-    const x = width / 2 - 80, y = 56;
+    const x = width / 2 - 100, y = 56;
     this.add.rectangle(x + 100, y, 200, 14, 0x000000, 0.55).setStrokeStyle(2, 0x9b4dff, 0.9);
     this.bossBar = this.add.rectangle(x + 2, y, 196, 10, 0xe0203c).setOrigin(0, 0.5);
-    this.boss = txt(this, x - 26, y, '🐺', 34);
+    this.add.image(x - 18, y, 'wolf').setDisplaySize(36, 36);
     this.bossTurn = txt(this, x + 226, y, '', 16, '#e7c6ff');
-    this.tweens.add({ targets: this.boss, angle: { from: -8, to: 8 }, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.InOut' });
+    this.wolfHome = { x: width - 54, y: 200 };
+    this.boss = this.add.image(this.wolfHome.x, this.wolfHome.y, 'wolf').setOrigin(0.5, 1).setDisplaySize(116, 116).setDepth(30);
+    this.wolfScale = this.boss.scaleX;
+    this.wolfIdle = this.tweens.add({ targets: this.boss, angle: { from: -4, to: 4 }, yoyo: true, repeat: -1, duration: 800, ease: 'Sine.InOut' });
+    if (this.level.id < 6) this.time.delayedCall(300, () => this.bossIntro());
+  }
+  // kurt tahtanın ortasına fırlar, kuzuya "hamm" diye atılır, sonra köşesine çekilir
+  bossIntro() {
+    if (this.introDone || this.ended) return; this.introDone = true; this.busy = true;
+    const { width } = this.scale;
+    const cy = OY + this.board.H * CELL / 2;
+    const dim = this.add.rectangle(width / 2, this.scale.height / 2, width, this.scale.height, 0x000000, 0).setDepth(80);
+    const L = this.add.image(width / 2 - 120, cy + 150, 'lamb_scared').setOrigin(0.5, 1).setDisplaySize(190, 190).setDepth(82).setAlpha(0);
+    const Wf = this.add.image(width + 200, cy + 130, 'wolf').setOrigin(0.5, 1).setDisplaySize(330, 330).setDepth(83);
+    const ws = Wf.scaleX;
+    const cap = txt(this, width / 2, cy - 250, t('bossIntro') || 'Kurt geldi!', 40, '#ffe0e0').setStroke('#5a0010', 8).setDepth(84).setAlpha(0);
+    this.boss.setVisible(false); this.lamb.setAlpha(0);
+    this.tweens.add({ targets: dim, fillAlpha: 0.6, duration: 250 });
+    this.tweens.add({ targets: L, alpha: 1, duration: 250 });
+    this.tweens.add({ targets: L, x: L.x - 6, yoyo: true, repeat: 14, duration: 60, delay: 300 });
+    this.tweens.chain({ targets: Wf, tweens: [
+      { x: width / 2 + 90, duration: 420, ease: 'Back.Out' },
+      { x: width / 2 + 40, y: cy + 110, scaleX: ws * 1.12, scaleY: ws * 1.12, angle: -10, duration: 220, ease: 'Quad.In', onStart: () => { sfx.rock && sfx.rock(); this.cameras.main.shake(160, 0.01); this.tweens.add({ targets: cap, alpha: 1, scale: { from: 0.4, to: 1 }, duration: 260, ease: 'Back.Out' }); } },
+      { x: width / 2 + 90, y: cy + 130, scaleX: ws, scaleY: ws, angle: 0, duration: 260, ease: 'Sine.Out', hold: 600 },
+    ] });
+    this.time.delayedCall(1900, () => {
+      this.tweens.add({ targets: dim, fillAlpha: 0, duration: 350, onComplete: () => dim.destroy() });
+      this.tweens.add({ targets: cap, alpha: 0, duration: 250, onComplete: () => cap.destroy() });
+      this.tweens.add({ targets: Wf, x: this.wolfHome.x, y: this.wolfHome.y, displayWidth: 116, displayHeight: 116, duration: 450, ease: 'Cubic.InOut', onComplete: () => { Wf.destroy(); this.boss.setVisible(true); } });
+      this.tweens.add({ targets: L, x: this.lambHome.x, y: this.lambHome.y, displayWidth: 112, displayHeight: 112, duration: 450, ease: 'Cubic.InOut', onComplete: () => { L.destroy(); this.lamb.setAlpha(1); this.lambMood('scared', 1200); if (!this.ended) this.busy = false; } });
+    });
+  }
+  lambMood(m, ms = 0) {
+    if (!this.lamb || !this.lamb.active) return;
+    const key = m === 'idle' ? 'lamb' : `lamb_${m}`;
+    this.lamb.setTexture(key);
+    if (m === 'happy') this.tweens.add({ targets: this.lamb, y: this.lambHome.y - 18, duration: 160, yoyo: true, repeat: 1, ease: 'Quad.Out' });
+    if (m === 'scared') this.tweens.add({ targets: this.lamb, x: this.lambHome.x - 3, duration: 50, yoyo: true, repeat: 5, onComplete: () => this.lamb.active && this.lamb.setX(this.lambHome.x) });
+    if (this.lambTimer) this.lambTimer.remove();
+    if (ms) this.lambTimer = this.time.delayedCall(ms, () => this.lamb.active && this.lamb.setTexture(this.board.moves <= 3 && !this.ended ? 'lamb_scared' : 'lamb'));
+  }
+  // kurt kuzuya atılır (saldırı/kayıp anı)
+  wolfLunge(big = false) {
+    if (!this.boss || !this.boss.active) return Promise.resolve();
+    const b = this.boss, s = this.wolfScale, h = this.wolfHome;
+    this.lambMood('scared', 900);
+    return new Promise((res) => this.tweens.chain({ targets: b, tweens: [
+      { x: h.x + 14, scaleX: s * 0.92, scaleY: s * 1.06, duration: 120, ease: 'Quad.Out' },
+      { x: big ? this.lambHome.x + 110 : h.x - 150, y: h.y + (big ? 60 : 20), scaleX: s * (big ? 1.7 : 1.3), scaleY: s * (big ? 1.7 : 1.3), angle: -12, duration: 200, ease: 'Quad.In', onComplete: () => this.cameras.main.shake(120, 0.008) },
+      { x: h.x, y: h.y, scaleX: s, scaleY: s, angle: 0, duration: 380, ease: 'Back.Out', delay: big ? 350 : 60, onComplete: res },
+    ] }));
+  }
+  drawBasket(x, y) {
+    const g = this.add.graphics().setDepth(29);
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(x, y - 2, 92, 14);
+    g.fillStyle(0x9a6a36, 1); g.fillRoundedRect(x - 42, y - 50, 84, 46, 14);
+    g.lineStyle(3, 0x5a3a1a, 1); g.strokeRoundedRect(x - 42, y - 50, 84, 46, 14);
+    g.lineStyle(2, 0x6d4520, 0.8); for (let i = 1; i < 6; i++) g.lineBetween(x - 42 + i * 14, y - 48, x - 42 + i * 14, y - 6);
+    g.lineBetween(x - 40, y - 30, x + 40, y - 30);
+    const gems = [[-22, -56, 0], [0, -64, 2], [22, -56, 4], [-10, -50, 1], [12, -50, 3]].map(([dx, dy, k]) => this.add.image(x + dx, y + dy, `gem${k}`).setScale(0.42).setDepth(28));
+    g.lineStyle(5, 0x7a4f25, 1); g.beginPath(); g.arc(x, y - 50, 36, Math.PI, 0); g.strokePath();
+    this.tweens.add({ targets: gems, y: '-=3', yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.InOut', delay: (i) => i * 120 });
   }
   preLevel() {
     const { width, height } = this.scale;
     this.busy = true;
     const m = modal(this, 560, 430); const cx = width / 2, top = height / 2 - 215;
-    const done = () => { if (!this.ended) this.busy = false; };
+    const done = () => { if (!this.ended) this.busy = false; if (this.level.boss) this.time.delayedCall(250, () => this.bossIntro()); };
     m.c.list[0].once('pointerup', () => { m.close(); done(); });
     const origClose = m.close; m.close = () => { origClose(); done(); };
     m.c.add(txt(this, cx, top + 50, t('preTitle'), 28, '#ffe58a'));
@@ -726,6 +801,8 @@ export class Game extends Phaser.Scene {
   async win() {
     this.ended = true; sfx.win(); endLevel(true);
     const left = this.board.moves;
+    this.lambMood('happy');
+    if (this.boss && this.boss.active) { this.wolfIdle && this.wolfIdle.stop(); this.boss.setTexture('wolf_hurt'); this.tweens.add({ targets: this.boss, x: this.scale.width + 140, angle: 20, duration: 700, delay: 350, ease: 'Back.In' }); }
     await this.victoryFx(left);
     const bonus = this.board.cashOutMoves();
     const stars = this.board.stars(); const score = this.board.score;
@@ -742,6 +819,8 @@ export class Game extends Phaser.Scene {
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
+    const wl = this.add.image(width / 2 - 200, height / 2 - 150, 'lamb_happy').setDisplaySize(130, 130); c.add(wl);
+    this.tweens.add({ targets: wl, y: wl.y - 14, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' });
     for (let i = 0; i < 3; i++) {
       const sx = width / 2 - 80 + i * 80, sy = height / 2 - 90;
       const s = this.add.image(sx, sy, i < stars ? 'star' : 'stargray').setScale(0); c.add(s);
@@ -778,11 +857,15 @@ export class Game extends Phaser.Scene {
   }
   async lose() {
     this.ended = true; sfx.lose(); recordLoss(); endLevel(false);
+    if (this.lamb) this.lamb.setTexture('lamb_scared');
+    if (this.boss && this.boss.active) await this.wolfLunge(true);
     if (sheepOnLoss()) { addLife(1); this.time.delayedCall(600, () => this.toast('🐑 +1 ❤', 30)); }
     track('level_fail', { level: this.level.id, score: this.board.score });
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 340);
     c.add(txt(this, width / 2, height / 2 - 100, t('lose'), 36, '#ff3b5c'));
+    c.add(this.add.image(width / 2 - 190, height / 2 - 130, 'lamb_scared').setDisplaySize(120, 120));
+    if (this.level.boss) c.add(this.add.image(width / 2 + 190, height / 2 - 130, 'wolf').setDisplaySize(120, 120));
     c.add(txt(this, width / 2, height / 2 - 40, `${t('score')}: ${this.board.score}`, 22, '#fff'));
     c.add(button(this, width / 2, height / 2 + 40, 300, 64, t('retry'), async () => { await maybeInterstitial('level_end'); this.scene.start(save.lives > 0 ? 'Game' : 'Farm', { level: this.level }); }, 0x2ee06a, '#04220e'));
     c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm'); }, 0x2a333a, '#fff', 18));

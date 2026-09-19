@@ -1,6 +1,7 @@
 // F8: üst bar başlığı — "<isim>'ın Çiftliği" (Türkçe iyelik eki ünlü uyumuyla) + isim değiştirme kutusu.
 import { save, account, setProfile } from '../meta/save.js';
 import { getLang, t } from '../i18n.js';
+import { shield } from './widgets.js';
 
 export function playerName() {
   const p = save.profile && save.profile.name;
@@ -34,7 +35,7 @@ export function renameBox(onDone) {
     <div style="display:flex;gap:8px"><button type="button" data-x style="flex:1;font-size:16px;padding:10px;border-radius:12px;border:0;background:#e4e0cc;color:#1f3a2e;font-family:inherit;font-weight:700">${t('cancel')}</button>
     <button style="flex:1;font-size:16px;padding:10px;border-radius:12px;border:0;background:#2e7d4f;color:#fff;font-family:inherit;font-weight:800">${t('saveBtn')}</button></div></form>`;
   if (!document.getElementById('gcpop')) { const st = document.createElement('style'); st.id = 'gcpop'; st.textContent = '@keyframes gcpop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}'; document.head.appendChild(st); }
-  document.body.appendChild(wrap);
+  document.body.appendChild(shield(wrap));
   const f = wrap.querySelector('form'), pv = wrap.querySelector('.pv');
   f.n.value = playerName();
   const show = () => { const v = f.n.value.trim(); pv.textContent = v ? (getLang() === 'en' ? `${v}'s Farm` : `${possessive(v)} Çiftliği`) : ''; };

@@ -4,6 +4,7 @@ import { t } from '../i18n.js';
 import { account, myFriendCode, friendList, friendAdd, friendRemove, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox } from '../meta/save.js';
 import { track } from '../analytics.js';
 import { authForm } from './authForm.js';
+import { shield } from './widgets.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ERR = { bulunamadi: 'frNotFound', kendin: 'frSelf', limit: 'frLimit' };
@@ -40,7 +41,7 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     <div class="list" style="overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
   </div>`;
   if (!document.getElementById('gcpop')) { const st = document.createElement('style'); st.id = 'gcpop'; st.textContent = '@keyframes gcpop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}'; document.head.appendChild(st); }
-  document.body.appendChild(wrap);
+  document.body.appendChild(shield(wrap));
   const $ = (q) => wrap.querySelector(q);
   const msg = (s, ok) => { $('.msg').textContent = s || ''; $('.msg').style.color = ok ? '#8ff0b0' : '#ff8a80'; };
   const close = () => wrap.remove();

@@ -3,6 +3,7 @@
 import { CONFIG } from '../config.js';
 import { save } from '../meta/save.js';
 import { track } from '../analytics.js';
+import { shield } from '../ui/widgets.js';
 
 let AdMob = null;
 let ready = false;
@@ -70,7 +71,7 @@ function webAd(kind) {
     el.style.cssText = 'position:fixed;inset:0;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99;font:20px system-ui';
     let left = kind === 'rewarded' ? 3 : 2;
     el.innerHTML = `<div style="font-size:14px;opacity:.6;margin-bottom:12px">TEST AD (${kind})</div><div id="adc" style="font-size:48px">${left}</div><button id="adx" style="margin-top:24px;padding:10px 24px;display:none">Close</button>`;
-    document.body.appendChild(el);
+    document.body.appendChild(shield(el));
     const iv = setInterval(() => {
       left--; el.querySelector('#adc').textContent = left;
       if (left <= 0) { clearInterval(iv); el.querySelector('#adx').style.display = 'block'; }

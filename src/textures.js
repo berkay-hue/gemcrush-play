@@ -1,6 +1,7 @@
 // Procedural jewel art via Canvas (zero external assets).
 // Everything is drawn at 2x resolution and downsampled for crisp edges.
 import { CONFIG } from './config.js';
+import { buildCharacters } from './characters.js';
 
 export const CELL = 64;
 const SS = 2; // supersample
@@ -161,7 +162,7 @@ function drawPrism(ctx, s) {
 function drawTile(ctx, s, alt) {
   const p = s * 0.03;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = s * 0.06; ctx.shadowOffsetY = s * 0.03;
-  ctx.fillStyle = alt ? 'rgba(18,30,26,.9)' : 'rgba(26,42,36,.9)';
+  ctx.fillStyle = alt ? 'rgba(34,70,52,.92)' : 'rgba(46,90,66,.92)';
   ctx.beginPath(); ctx.roundRect(p, p, s - 2 * p, s - 2 * p, s * 0.14); ctx.fill(); ctx.restore();
   const g = ctx.createLinearGradient(0, 0, 0, s);
   g.addColorStop(0, 'rgba(255,255,255,.10)'); g.addColorStop(1, 'rgba(0,0,0,.25)');
@@ -169,12 +170,15 @@ function drawTile(ctx, s, alt) {
   ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = s * 0.02; ctx.beginPath(); ctx.roundRect(p + 1, p + 1, s - 2 * p - 2, s - 2 * p - 2, s * 0.13); ctx.stroke();
 }
 function drawJelly(ctx, s, strong) {
-  const p = s * 0.05;
-  const g = ctx.createLinearGradient(0, 0, 0, s);
-  g.addColorStop(0, strong ? 'rgba(150,90,255,.85)' : 'rgba(150,100,255,.5)'); g.addColorStop(1, strong ? 'rgba(80,20,200,.9)' : 'rgba(90,40,220,.55)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(p, p, s - 2 * p, s - 2 * p, s * 0.16); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.roundRect(p + s * 0.08, p + s * 0.06, s * 0.5, s * 0.16, s * 0.08); ctx.fill();
-  ctx.strokeStyle = strong ? 'rgba(230,210,255,.95)' : 'rgba(210,190,255,.7)'; ctx.lineWidth = s * 0.04; ctx.beginPath(); ctx.roundRect(p, p, s - 2 * p, s - 2 * p, s * 0.16); ctx.stroke();
+  // F16: yumuşak reçel/jöle — kalın mor çerçeve yerine parlak, yarı saydam dolgu
+  const p = s * 0.04, r = s * 0.2;
+  const g = ctx.createRadialGradient(s * 0.4, s * 0.35, s * 0.05, s / 2, s / 2, s * 0.62);
+  if (strong) { g.addColorStop(0, 'rgba(255,170,220,.78)'); g.addColorStop(1, 'rgba(214,70,160,.82)'); }
+  else { g.addColorStop(0, 'rgba(255,200,235,.5)'); g.addColorStop(1, 'rgba(230,110,190,.5)'); }
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(p, p, s - 2 * p, s - 2 * p, r); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.ellipse(s * 0.32, s * 0.2, s * 0.17, s * 0.06, -0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(s * 0.76, s * 0.74, s * 0.035, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = strong ? 'rgba(255,225,245,.75)' : 'rgba(255,225,245,.45)'; ctx.lineWidth = s * 0.022; ctx.beginPath(); ctx.roundRect(p + 1, p + 1, s - 2 * p - 2, s - 2 * p - 2, r); ctx.stroke();
 }
 function drawRock(ctx, s, dark) {
   const p = s * 0.06;
@@ -325,6 +329,7 @@ export function buildTextures(scene) {
   make('stargray', (ctx) => drawStar(ctx, s, false));
   make('heart', (ctx) => { const c = s / 2; ctx.save(); ctx.shadowColor = 'rgba(255,60,90,.7)'; ctx.shadowBlur = s * 0.1; const g = ctx.createRadialGradient(c - s * 0.1, c - s * 0.05, 2, c, c, s * 0.4); g.addColorStop(0, '#ff8ca0'); g.addColorStop(0.6, '#ff3b5c'); g.addColorStop(1, '#a8102c'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(c, s * 0.82); ctx.bezierCurveTo(s * 0.05, s * 0.5, s * 0.15, s * 0.12, c, s * 0.34); ctx.bezierCurveTo(s * 0.85, s * 0.12, s * 0.95, s * 0.5, c, s * 0.82); ctx.fill(); ctx.restore(); ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.ellipse(s * 0.36, s * 0.36, s * 0.09, s * 0.05, -0.5, 0, Math.PI * 2); ctx.fill(); });
   make('coin', (ctx) => { const c = s / 2; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2; const g = ctx.createRadialGradient(c - 8, c - 8, 4, c, c, s * 0.42); g.addColorStop(0, '#fff6c0'); g.addColorStop(0.6, '#ffc21a'); g.addColorStop(1, '#c97e00'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, s * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.strokeStyle = '#a86e00'; ctx.lineWidth = 3; ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c, c, s * 0.32, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = '#a86e00'; ctx.font = `bold ${s * 0.42}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', c, c + 1); });
+  buildCharacters(make); // F16 maskot + kurt
   make('bgGrad', (ctx, w, h) => { const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#12332a'); g.addColorStop(0.5, '#0b1a15'); g.addColorStop(1, '#050a08'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); const v = ctx.createRadialGradient(w / 2, h * 0.45, w * 0.2, w / 2, h * 0.5, w * 0.9); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)'); ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); }, 270, 480);
 }
 

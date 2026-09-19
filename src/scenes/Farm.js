@@ -14,7 +14,7 @@ import { SLOTS, refreshOrders, canDeliver, deliver, skip, readyCount, xpProgress
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
-import { txt, button, modal, fmtMs } from '../ui/widgets.js';
+import { txt, button, modal, fmtMs, card, iconSlot, chip } from '../ui/widgets.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
@@ -365,26 +365,28 @@ export class Farm extends Phaser.Scene {
     const { width, height } = this.scale;
     const { c, close } = modal(this, 480, 700);
     const top = height / 2 - 350;
-    c.add(txt(this, width / 2, top + 42, `🧺 ${t('market')}  ·  🏚️ ${ambarUsed()}/${ambarCap()}`, 26, '#ffb71b'));
-    [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 105 + i * 210, top + 100, 196, 50, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 19)));
+    c.add(txt(this, width / 2, top + 36, `🧺 ${t('market')}`, 28, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
+    { const a = chip(this, 0, top + 70, '🪙', save.coins || 0, 0xffb71b), b = chip(this, 0, top + 70, '🏚️', `${ambarUsed()}/${ambarCap()}`, ambarFull() ? 0xff5a5a : 0x9dffb8); a.x = width / 2 - (a.w + b.w + 14) / 2 + 17; b.x = a.x + a.w + 14; c.add([a, b]); }
+    [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 105 + i * 210, top + 118, 196, 48, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 19)));
     const inv = inventory();
     const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
     const again = () => { close(); this.market(tab); this.refreshHud(); };
     if (tab === 'sell') {
       Object.values(GOODS).forEach((p, i) => {
-        const y = top + 180 + i * 88; const n = inv[p.good] || 0;
-        c.add(this.add.rectangle(width / 2, y, 440, 76, 0x000000, 0.25).setStrokeStyle(2, 0xffffff, 0.12));
-        c.add(txt(this, width / 2 - 195, y, `${p.emoji} ×${n}`, 26, '#fff').setOrigin(0, 0.5));
+        const y = top + 192 + i * 88; const n = inv[p.good] || 0;
+        c.add(card(this, width / 2, y, 440, 76, n ? { top: 0x7a5420, bottom: 0x3e2a0e, accent: 0xffe58a, accentA: 0.45 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
+        c.add(iconSlot(this, width / 2 - 178, y, 54, p.emoji, n ? 0xffb71b : 0x5b646a, 28));
+        c.add(txt(this, width / 2 - 140, y, `×${n}`, 26, n ? '#fff' : '#8a949a').setOrigin(0, 0.5));
         c.add(button(this, width / 2 + 40, y, 110, 46, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); again(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));
         if (TRADES[p.good]) c.add(button(this, width / 2 + 160, y, 110, 46, `3→${icons[TRADES[p.good]]}`, () => { if (trade(p.good)) { sfx.coin(); track('market_trade', { good: p.good }); again(); } }, n >= 3 ? 0x3f7bff : 0x2a333a, n >= 3 ? '#fff' : '#777', 18));
       });
       c.add(txt(this, width / 2, top + 650, `🐥 ×${save.farm.chicks || 0}`, 20, '#ffe58a'));
       return;
     }
-    c.add(txt(this, width / 2, top + 150, t('tradeHint'), 15, '#9fb3a8'));
+    c.add(txt(this, width / 2, top + 160, t('tradeHint'), 15, '#9fb3a8'));
     RECIPES.forEach((r, i) => {
-      const y = top + 220 + i * 100, ok = canCraft(i);
-      c.add(this.add.rectangle(width / 2, y, 440, 86, 0x000000, 0.25).setStrokeStyle(2, ok ? 0x2ee06a : 0xffffff, ok ? 0.6 : 0.12));
+      const y = top + 232 + i * 100, ok = canCraft(i);
+      c.add(card(this, width / 2, y, 440, 86, ok ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.8, glow: true } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
       const need = Object.entries(r.need).map(([g, n]) => `${GOODS[g].emoji}${Math.min(inv[g] || 0, n)}/${n}`).join('  ');
       c.add(txt(this, width / 2 - 200, y, need, 20, '#fff').setOrigin(0, 0.5));
       c.add(button(this, width / 2 + 160, y, 110, 50, `→ ${icons[r.give]}`, () => {
@@ -559,15 +561,17 @@ export class Farm extends Phaser.Scene {
     const { c, close } = modal(this, 500, 760);
     markSeen(CATALOG.filter((i) => status(i.id) !== 'locked' || (save.level || 1) >= (i.lvl || 1)).map((i) => i.id));
     const top = height / 2 - 380;
-    c.add(txt(this, width / 2, top + 40, `🏪 ${t('shop')}  ·  ⭐ ${starBalance()}`, 26, '#ffb71b'));
+    c.add(txt(this, width / 2, top + 34, `🏪 ${t('shop')}`, 28, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
+    { const ch = [chip(this, 0, top + 68, '⭐', starBalance(), 0xffd23f), chip(this, 0, top + 68, '🪙', save.coins || 0, 0xffb71b), chip(this, 0, top + 68, '💎', save.gems || 0, 0x46c8ff)]; let x = width / 2 - (ch.reduce((s, k) => s + k.w, 0) + 20) / 2 + 17; ch.forEach((k) => { k.x = x; x += k.w + 10; c.add(k); }); }
+    { const promo = button(this, width / 2, top + 722, 440, 48, getLang() === 'en' ? '💎 Gem & coin packs  ›' : '💎 Elmas & altın paketleri  ›', () => { close(); track('farm_promo'); this.scene.start('Map', { shop: true }); }, 0x8a3dd6, '#ffffff', 19); c.add(promo); }
     const tabs = [...TABS, ['land', '🗺️'], ['theme', '🎨']];
-    tabs.forEach(([k, e], i) => c.add(button(this, width / 2 - 200 + i * 80, top + 100, 72, 50, e, () => { close(); this.shop(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 26)));
+    tabs.forEach(([k, e], i) => c.add(button(this, width / 2 - 200 + i * 80, top + 112, 72, 48, e, () => { close(); this.shop(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 26)));
     if (tab === 'land') {
       c.add(txt(this, width / 2, top + 150, t('landHint'), 15, '#9fb3a8'));
       ARSA.forEach((a, i) => {
         const y = top + 210 + i * 84, st = plotStatus(a.id), side = a.id.startsWith('sol') ? '⬅️' : '➡️';
-        c.add(this.add.rectangle(width / 2, y, 450, 74, 0x000000, 0.25).setStrokeStyle(2, 0xffffff, 0.12));
-        c.add(txt(this, width / 2 - 185, y, side, 32));
+        c.add(card(this, width / 2, y, 450, 74, st === 'owned' ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.5 } : st === 'ok' ? { top: 0x6b4a1a, bottom: 0x35240c, accent: 0xffe58a, accentA: 0.5 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
+        c.add(iconSlot(this, width / 2 - 185, y, 52, side, st === 'level' ? 0x5b646a : 0x6fcf6a, 26));
         c.add(txt(this, width / 2 - 145, y - 12, `${t('plot')} ${i + 1}`, 20, '#fff').setOrigin(0, 0.5));
         c.add(txt(this, width / 2 - 145, y + 14, st === 'owned' ? `✅ ${t('plotOwned')}` : `${t('level')} ${a.lvl}+ · 🪙 ${a.coins}`, 13, st === 'level' ? '#ff9a9a' : '#9dffb8').setOrigin(0, 0.5));
         if (st === 'owned') return;
@@ -580,7 +584,7 @@ export class Farm extends Phaser.Scene {
       c.add(txt(this, width / 2, top + 150, `💎 ${save.gems || 0}`, 18, '#8fe3ff'));
       THEMES.forEach((th, i) => {
         const y = top + 205 + i * 74, own = ownsTheme(th.id), cur = currentTheme().id === th.id;
-        c.add(this.add.rectangle(width / 2, y, 450, 66, 0x000000, 0.25).setStrokeStyle(2, cur ? 0x2ee06a : 0xffffff, cur ? 0.9 : 0.12));
+        c.add(card(this, width / 2, y, 450, 66, cur ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.9, glow: true } : { top: 0x24455a, bottom: 0x10212c, accent: 0x8fe3ff, accentA: 0.3 }));
         const g = this.add.graphics(); g.fillGradientStyle(th.sky[0], th.sky[0], th.hills[1], th.hills[1], 1); g.fillRoundedRect(width / 2 - 215, y - 26, 52, 52, 10); c.add(g);
         c.add(txt(this, width / 2 - 189, y, th.icon, 26));
         c.add(txt(this, width / 2 - 150, y - 11, th[lang], 18, '#fff').setOrigin(0, 0.5));
@@ -593,8 +597,9 @@ export class Farm extends Phaser.Scene {
     }
     CATALOG.filter((i) => i.kind === tab).forEach((it, i) => {
       const y = top + 175 + i * 84, st = status(it.id);
-      c.add(this.add.rectangle(width / 2, y, 450, 74, 0x000000, 0.25).setStrokeStyle(2, 0xffffff, 0.12));
-      c.add(txt(this, width / 2 - 185, y, it.emoji, 38));
+      const lk = st === 'locked';
+      c.add(card(this, width / 2, y, 450, 74, lk ? { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 } : st === 'owned' ? { top: 0x2c6a48, bottom: 0x123522, accent: 0x7dffa8, accentA: 0.45 } : { top: 0x6b4a1a, bottom: 0x35240c, accent: 0xffe58a, accentA: 0.55, glow: st === 'buyable' }));
+      c.add(iconSlot(this, width / 2 - 185, y, 58, it.emoji, lk ? 0x5b646a : 0xffb71b, 32).setAlpha(lk ? 0.6 : 1));
       c.add(txt(this, width / 2 - 145, y - 12, this.itemName(it), 20, '#fff').setOrigin(0, 0.5));
       let sub = '';
       if (st === 'locked') sub = (save.level || 1) < (it.lvl || 1) ? `🔒 ${t('level')} ${it.lvl}` : `🔒 ${t('farmNeeds')}: ${this.itemName(item(it.needs))}`;

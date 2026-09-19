@@ -19,6 +19,7 @@ export const CONFIG = {
   },
   iap: {
     products: [
+      { id: 'starter_pack', coins: 1500, gems: 80, lives: 5, priceLabel: '$1.99', was: '$6.99', starter: true },
       { id: 'coins_500', coins: 500, priceLabel: '$1.99' },
       { id: 'coins_1500', coins: 1500, priceLabel: '$4.99', badge: 'popular' },
       { id: 'coins_4000', coins: 4000, priceLabel: '$9.99', badge: 'best' },

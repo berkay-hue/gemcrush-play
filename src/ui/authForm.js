@@ -1,6 +1,7 @@
 // Giriş / kayıt formu: gerçek HTML input (şifre gizli, mobil klavye) — Phaser tuvalinin üstünde.
 import { t } from '../i18n.js';
 import { register, login, authError } from '../meta/save.js';
+import { shield } from './widgets.js';
 
 export function authForm(onDone, cancelLabel) {
   const wrap = document.createElement('div');
@@ -17,7 +18,7 @@ export function authForm(onDone, cancelLabel) {
     <button data-m="close" type="button" style="width:100%;font-size:15px;padding:9px;border-radius:14px;border:0;background:transparent;color:#9fb3a8;font-family:inherit">${cancelLabel || t('cancel')}</button>
   </form>`;
   if (!document.getElementById('gcpop')) { const st = document.createElement('style'); st.id = 'gcpop'; st.textContent = '@keyframes gcpop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}'; document.head.appendChild(st); }
-  document.body.appendChild(wrap);
+  document.body.appendChild(shield(wrap));
   const f = wrap.querySelector('form'), err = wrap.querySelector('.err');
   const done = (ok) => { wrap.remove(); onDone && onDone(ok); };
   let mode = 'login', busy = false;

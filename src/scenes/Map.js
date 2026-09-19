@@ -5,7 +5,7 @@ import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
-import { txt, button, modal, fmtMs } from '../ui/widgets.js';
+import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 
@@ -165,25 +165,52 @@ export class Map extends Phaser.Scene {
   }
 
   shop() {
-    const { width, height } = this.scale;
-    const { c, close } = modal(this, 460, 620);
-    c.add(txt(this, width / 2, height / 2 - 270, t('shop'), 34, '#ffb71b'));
-    let y = height / 2 - 200;
-    // free coins via ad
-    c.add(button(this, width / 2, y, 400, 60, `📺 ${t('watchAd')} · +${CONFIG.ads.rewardedCoins}`, async () => {
-      if (await showRewarded('shop_coins')) { addCoins(CONFIG.ads.rewardedCoins); sfx.coin(); this.refreshHud(); }
-    }, 0x3f7bff, '#ffffff', 20));
-    y += 80;
-    for (const p of CONFIG.iap.products) {
-      if (p.removeAds && save.removeAds) continue;
-      const label = p.removeAds ? `🚫 ${t('removeAds')} +${p.coins}` : p.gems ? `💎 ${p.gems}` : `🪙 ${p.coins} ${t('coins')}`;
-      const b = button(this, width / 2, y, 400, 64, `${label}   ${price(p)}`, async () => { if (await buy(p)) { sfx.coin(); this.refreshHud(); } }, p.badge === 'best' ? 0x2ee06a : 0xffb71b, '#1a1200', 20);
-      c.add(b);
-      if (p.badge) c.add(txt(this, width / 2 + 170, y - 28, p.badge === 'best' ? 'BEST' : 'POPULAR', 12, '#ff3b5c'));
-      y += 78;
+    const { width, height } = this.scale, cx = width / 2;
+    const { c, close } = modal(this, 500, 860);
+    const top = height / 2 - 430, en = getLang() === 'en';
+    c.add(txt(this, cx, top + 42, `🏪 ${t('shop')}`, 32, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
+    const ch1 = chip(this, 0, top + 88, '🪙', save.coins || 0, 0xffb71b), ch2 = chip(this, 0, top + 88, '💎', save.gems || 0, 0x46c8ff);
+    const gap = 16, tw = ch1.w + ch2.w + gap; ch1.x = cx - tw / 2 + 17; ch2.x = ch1.x + ch1.w + gap; c.add([ch1, ch2]);
+    const P = CONFIG.iap.products, buyP = async (p) => { if (await buy(p)) { sfx.coin(); track('shop_buy', { id: p.id }); close(); this.refreshHud(); this.shop(); } };
+    let y = top + 132;
+    // Başlangıç paketi afişi
+    const sp = P.find((p) => p.starter);
+    if (sp && !save.starterBought) {
+      const h = 136; y += h / 2;
+      c.add(shine(this, cx, y, 450, h));
+      c.add(card(this, cx, y, 450, h, { top: 0x8a3dd6, bottom: 0x3a1470, accent: 0xffe58a, accentA: 0.9 }));
+      c.add(this.add.image(cx - 170, y + 8, 'lamb_happy').setDisplaySize(108, 108));
+      c.add(txt(this, cx + 30, y - 50, en ? 'STARTER PACK' : 'BAŞLANGIÇ PAKETİ', 22, '#ffe58a').setShadow(0, 2, 'rgba(0,0,0,.5)', 3, true, true));
+      c.add(txt(this, cx + 30, y - 16, `🪙${sp.coins}  💎${sp.gems}  ❤️+${sp.lives}`, 20, '#ffffff'));
+      c.add(txt(this, cx - 30, y + 34, sp.was, 17, '#d9c2ff').setStroke('#3a1470', 1));
+      const ln = this.add.rectangle(cx - 30, y + 34, 50, 2, 0xff6b8a); c.add(ln);
+      c.add(button(this, cx + 90, y + 34, 150, 52, price(sp), () => buyP(sp), 0x2ee06a, '#04220e', 22));
+      c.add(ribbon(this, cx + 180, y - h / 2 + 6, '-70%', 0xff3b5c));
+            y += h / 2 + 18;
     }
-    c.add(button(this, width / 2, y + 10, 260, 44, t('restore'), () => restore(), 0x2a333a, '#ffffff', 16));
-    c.add(button(this, width / 2, height / 2 + 270, 160, 50, '✕', close, 0x2a333a, '#ffffff'));
+    // Ücretsiz: reklam izle
+    y += 30;
+    c.add(card(this, cx, y, 450, 60, { top: 0x2f5fd0, bottom: 0x1a3478, accent: 0x9fc0ff, accentA: 0.5 }));
+    c.add(txt(this, cx - 200, y, `📺 ${t('watchAd')}`, 19, '#fff').setOrigin(0, 0.5));
+    c.add(button(this, cx + 150, y, 120, 44, `+${CONFIG.ads.rewardedCoins} 🪙`, async () => {
+      if (await showRewarded('shop_coins')) { addCoins(CONFIG.ads.rewardedCoins); sfx.coin(); this.refreshHud(); close(); this.shop(); }
+    }, 0xffffff, '#1a3478', 17));
+    y += 30 + 22;
+    // Paket ızgarası (2 sütun): altın + elmas
+    const packs = P.filter((p) => !p.starter && !(p.removeAds && save.removeAds));
+    const cw = 216, chh = 128, colX = [cx - 117, cx + 117];
+    const sizeOf = (p) => p.removeAds ? '🚫' : (p.gems ? ['💎', '💎💎', '💎💎💎'] : ['🪙', '🪙🪙', '💰'])[p.gems ? (p.gems >= 300 ? 2 : p.gems >= 100 ? 1 : 0) : (p.coins >= 4000 ? 2 : p.coins >= 1500 ? 1 : 0)];
+    packs.forEach((p, i) => {
+      const x = colX[i % 2], yy = y + chh / 2 + Math.floor(i / 2) * (chh + 14), best = p.badge === 'best', gem = !!p.gems;
+      if (best) c.add(shine(this, x, yy, cw, chh, 0x7dffa8));
+      c.add(card(this, x, yy, cw, chh, gem ? { top: 0x1f6fa8, bottom: 0x0d2f52, accent: best ? 0x7dffa8 : 0x8fe3ff, accentA: best ? 0.9 : 0.4 } : { top: 0x9a6a12, bottom: 0x4a2f06, accent: best ? 0x7dffa8 : 0xffe58a, accentA: best ? 0.9 : 0.4 }));
+      c.add(iconSlot(this, x, yy - 30, 52, sizeOf(p), gem ? 0x46c8ff : 0xffb71b, sizeOf(p).length > 2 ? 18 : 26));
+      c.add(txt(this, x, yy + 12, p.removeAds ? (en ? 'No ads' : 'Reklamsız') : gem ? `${p.gems}` : `${p.coins}`, p.removeAds ? 20 : 24, '#ffffff').setShadow(0, 2, 'rgba(0,0,0,.5)', 3, true, true));
+      c.add(button(this, x, yy + 44, 140, 38, price(p), () => buyP(p), best ? 0x2ee06a : 0xffb71b, best ? '#04220e' : '#1a1200', 19));
+      if (p.badge) c.add(ribbon(this, x + cw / 2 - 30, yy - chh / 2 + 4, best ? (en ? 'BEST' : 'EN İYİ') : (en ? 'POPULAR' : 'POPÜLER'), best ? 0x22b85a : 0xff3b5c));
+    });
+    y += Math.ceil(packs.length / 2) * (chh + 14);
+    c.add(txt(this, cx, Math.min(y + 14, top + 836), `↺ ${t('restore')}`, 15, '#9fb3a8').setInteractive({ useHandCursor: true }).on('pointerup', () => restore()));
   }
 
   // harita arka planı temaya göre (her tema için bir kez üretilir)

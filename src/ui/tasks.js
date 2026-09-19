@@ -2,6 +2,7 @@
 import { t, getLang } from '../i18n.js';
 import { dailyTasks, weeklyTasks, claimTask, chestReady, openChest, CHEST, achList, claimAch, SETS, CARDS, hasCard, setState, claimSet, weekIdx } from '../meta/tasks.js';
 import { track } from '../analytics.js';
+import { shield } from './widgets.js';
 
 const nm = (o) => (getLang() === 'tr' ? o.tr : o.en);
 const fmtLeft = (ms) => { const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000); return h >= 24 ? `${Math.floor(h / 24)}${t('dShort')} ${h % 24}${t('hShort')}` : `${h}${t('hShort')} ${m}${t('mShort')}`; };
@@ -22,7 +23,7 @@ export function tasksPanel(onChange, tab0 = 'd') {
     <div class="body" style="overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px"></div>
   </div>`;
   if (!document.getElementById('gcpop')) { const st = document.createElement('style'); st.id = 'gcpop'; st.textContent = '@keyframes gcpop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}'; document.head.appendChild(st); }
-  document.body.appendChild(wrap);
+  document.body.appendChild(shield(wrap));
   const $ = (q) => wrap.querySelector(q);
   const msg = (s) => { $('.msg').textContent = s || ''; };
   const close = () => { wrap.remove(); clearInterval(tick); };
