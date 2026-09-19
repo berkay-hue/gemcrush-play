@@ -3,6 +3,7 @@
 import { CONFIG } from '../config.js';
 import { save, tickLives, msToNextLife, starBalance } from '../meta/save.js';
 import { SEASONS, currentSeason, decor, buySeasonal } from '../meta/season.js';
+import { MEVSIM, ORDER, mevsim, nextMevsim, daysLeft, inSeason, SPEED } from '../meta/mevsim.js';
 import { showRewarded } from '../monetize/ads.js';
 import { Visitors, KINDS } from '../farm3d/visitors.js';
 import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
@@ -26,7 +27,7 @@ import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
-import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
+import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
@@ -142,6 +143,7 @@ export class Farm extends Phaser.Scene {
     this.festBadge(86, 314);
     button(this, 50, 380, 80, 40, '🎟️', () => this.seasonPass(), 0x2a333a, '#fff', 20);
     this.passBadge(86, 364);
+    button(this, 50, 430, 80, 40, mevsim().emoji, () => this.seasonModal(), 0x2a333a, '#fff', 20); // F31: mevsimler
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
       const n = this.nodes[data.harvest];
@@ -217,7 +219,7 @@ export class Farm extends Phaser.Scene {
     this.cameras.main.transparent = true;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
     { const ah = autoHarvest(); if (ah) this.time.delayedCall(600, () => this.toast(`🚜 +${ah} 🪙`)); }
-    w.show(); w.posOf = posOf; w.tmpPos = null; if (w.chainBelt) w.chainBelt(owns('degirmen') && owns('firin')); w.setPlots(ARSA.map((a) => ({ ...a, owned: ownsPlot(a.id) }))); w.setTheme(currentTheme());
+    w.show(); w.posOf = posOf; w.tmpPos = null; if (w.chainBelt) w.chainBelt(owns('degirmen') && owns('firin')); w.setPlots(ARSA.map((a) => ({ ...a, owned: ownsPlot(a.id) }))); w.setTheme(currentTheme()); w.setSeason && w.setSeason(mevsim());
     if (!w.visitors) w.visitors = new Visitors(w);
     this.events.once('shutdown', () => w.hide());
     // drag = pan, pinch/wheel = zoom, short tap = raycast pick
@@ -367,14 +369,18 @@ export class Farm extends Phaser.Scene {
       m.add(cg);
       m.add(txt(this, x, y - 22, S.emoji, 40).setAlpha(open ? 1 : 0.4));
       m.add(txt(this, x, y + 14, S.name[getLang()] || S.name.tr, 16, open ? '#ffffff' : '#9aa'));
-      m.add(txt(this, x, y + 36, open ? `⏳${Math.round(S.ms / 3600000)}${t('hShort')} · 🪙${S.price}` : `🔒 ${t('level')} ${S.lvl}`, 12, open ? '#ffe58a' : '#ff9a9a'));
+      const sz = inSeason(k), hh = S.ms * (sz ? SPEED : 1) / 3600000;
+      if (sz) { cg.lineStyle(3, 0x9fe870, 0.9); cg.strokeRoundedRect(x - 62, y - 52, 124, 104, 15); }
+      m.add(txt(this, x, y + 36, open ? `⏳${hh < 10 ? Math.round(hh * 10) / 10 : Math.round(hh)}${t('hShort')} · 🪙${seedPrice(k)}` : `🔒 ${t('level')} ${S.lvl}`, 12, open ? '#ffe58a' : '#ff9a9a'));
       if (open && S.cost) m.add(txt(this, x + 50, y - 44, `-${S.cost}🪙`, 12, '#ffd9a0'));
       if (S.good && open) m.add(txt(this, x - 50, y - 44, '🏚️', 14));
+      if (sz) m.add(txt(this, x - 50, y - 22, '✨', 16));
       const z = this.add.zone(x, y, 132, 112).setInteractive({ useHandCursor: open });
       z.on('pointerup', () => { if (open) go(k); else this.toast(`🔒 ${t('level')} ${S.lvl}`); });
       m.add(z);
     });
-    m.add(txt(this, width / 2, height / 2 + 250, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 14, '#cfe8d8'));
+    m.add(txt(this, width / 2, height / 2 + 240, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 13, '#cfe8d8'));
+    m.add(txt(this, width / 2, height / 2 + 260, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}`, 13, '#9fe870'));
     m.add(button(this, width / 2, height / 2 + 290, 280, 40, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
   }
   // F29: katmanlı tarla — gübre → fıskiye → sera; her katman tarlada 3D görünür
@@ -1112,6 +1118,25 @@ export class Farm extends Phaser.Scene {
     const c = this.pBadge = this.add.container(x, y).setDepth(50);
     c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
     c.add(txt(this, 0, 0, String(Math.min(n, 9)), 14, '#fff'));
+  }
+  // F31: haftalık mevsim döngüsü — sahne rengi + parçacık + mevsim tohumlarına bonus
+  seasonModal() {
+    const en = getLang() === 'en', L = en ? 'en' : 'tr', M = mevsim(), N = nextMevsim(), d = daysLeft();
+    const { width, height } = this.scale, cx = width / 2, cy = height / 2; const { c, close } = modal(this, 480, 500);
+    c.add(txt(this, cx, cy - 205, `${M.emoji} ${M[L]}`, 34, '#ffb71b'));
+    c.add(txt(this, cx, cy - 165, en ? `${d} day${d > 1 ? 's' : ''} left · seasons change every Monday` : `${d} gün kaldı · mevsim her pazartesi döner`, 15, '#9fb3a8'));
+    c.add(txt(this, cx, cy - 120, en ? 'Season seeds' : 'Mevsim tohumları', 18, '#fff'));
+    M.seeds.forEach((k, i) => {
+      const x = cx + (i - 1) * 120, S = SEEDS[k];
+      const g = this.add.graphics(); g.fillStyle(0x3d7a58, 1); g.fillRoundedRect(x - 50, cy - 95, 100, 90, 16); g.lineStyle(3, 0x9fe870, 0.9); g.strokeRoundedRect(x - 50, cy - 95, 100, 90, 16); c.add(g);
+      c.add(txt(this, x, cy - 62, S ? S.emoji : '🌱', 36));
+      c.add(txt(this, x, cy - 24, S ? (S.name[getLang()] || S.name.tr) : k, 13, '#fff'));
+    });
+    c.add(txt(this, cx, cy + 25, en ? '✨ +25% faster growth · +20% sale price' : '✨ %25 daha hızlı büyür · %20 daha pahalı satılır', 16, '#9fe870'));
+    c.add(txt(this, cx, cy + 70, en ? `Next: ${N.emoji} ${N[L]}  (${N.seeds.map((k) => SEEDS[k] ? SEEDS[k].emoji : '').join(' ')})` : `Sıradaki: ${N.emoji} ${N[L]}  (${N.seeds.map((k) => SEEDS[k] ? SEEDS[k].emoji : '').join(' ')})`, 16, '#cfe8d8'));
+    c.add(txt(this, cx, cy + 105, ORDER.map((k) => MEVSIM[k]).map((x) => x.id === M.id ? `[${x.emoji}]` : x.emoji).join('  →  '), 20, '#fff'));
+    const empty = Object.keys(this.nodes).find((id) => /^tarla/.test(id) && owns(id) && cropState(id) === 'empty');
+    c.add(button(this, cx, cy + 165, 260, 46, empty ? (en ? '🌱 Plant a season seed' : '🌱 Mevsim tohumu ek') : (en ? '👍 Got it' : '👍 Tamam'), () => { close(); if (empty) this.seedPicker(empty); }, 0x5aa83a, '#fff', 18));
   }
   seasonPass() {
     const { width, height } = this.scale; const cx = width / 2, cy = height / 2;

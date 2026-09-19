@@ -5,6 +5,7 @@ import { bereketLeft } from './bereket.js';
 import { owns, bldLvl, BLD_MAX } from './farm.js';
 import { stash } from './produce.js';
 import { layerSpeed, layerYield, hasLayer } from './layers.js';
+import { inSeason, SPEED, PRICE } from './mevsim.js';
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -41,9 +42,12 @@ const F = () => (save.farm.crops = save.farm.crops || {});
 export const CROP_GOODS = { tarla1: 'wheat', tarla2: 'corn' }; // eski; artık SEEDS[x].good
 // F4: tarla seviyesi (paraya yükseltilir, BLD_MAX'e kadar): -%10 süre / seviye, ürün 1,1,2,2,3
 export const plotLvl = (id) => bldLvl(id);
-const baseMs = (id, seed) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id));
+// F31: mevsim tohumu %25 hızlı büyür
+const baseMs = (id, seed, now = Date.now()) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id) * (inSeason(seed, now) ? SPEED : 1));
 // ekili ürün kendi süresini taşır (sonradan gübre alınca ilerleme çubuğu sıçramaz)
-export const cropMs = (id) => (F()[id] && F()[id].ms) || Math.round(cropInfo(id).ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id));
+export const cropMs = (id) => (F()[id] && F()[id].ms) || baseMs(id, SEEDS[seedOf(id)] ? seedOf(id) : 'wheat');
+// F31: mevsimde ekilen ürün %20 pahalı satılır (ekim anındaki mevsim geçerli)
+export const seedPrice = (seed, now = Date.now()) => Math.round(SEEDS[seed].price * (inSeason(seed, now) ? PRICE : 1));
 export const cropYield = (id) => 1 + Math.floor((plotLvl(id) - 1) / 2) + layerYield(id);
 export const plotUpgradeCost = (id) => 60 * plotLvl(id) * plotLvl(id);
 export function upgradePlot(id) {
@@ -68,18 +72,19 @@ export function plant(id, now = Date.now(), seed = seedOf(id)) {
   if (!CROPS[id] || !owns(id) || F()[id] || !SEEDS[seed]) return false;
   const cost = SEEDS[seed].cost || 0; if ((save.coins || 0) < cost) return false;
   save.coins -= cost; (save.farm.lastSeed || (save.farm.lastSeed = {}))[id] = seed;
-  const ms = baseMs(id, seed); F()[id] = { seed, readyAt: now + ms, ms }; persist(); return true;
+  const ms = baseMs(id, seed, now); F()[id] = { seed, readyAt: now + ms, ms }; if (inSeason(seed, now)) F()[id].sez = 1; persist(); return true;
 }
 export function harvest(id, now = Date.now()) {
   if (cropState(id, now) !== 'ready') return null;
   const info = cropInfo(id), seed = seedOf(id);
+  const sez = !!F()[id].sez;
   delete F()[id]; save.farm.harvests = (save.farm.harvests || 0) + 1;
   const n = cropYield(id) * (bereketLeft(now) ? 2 : 1), good = info.good || null;
   const put = good ? stash(good, n) : 0; // ambar doluysa kalan paraya döner
-  const coins = info.price * (n - put); if (coins) addCoins(coins);
+  const coins = Math.round(info.price * (sez ? PRICE : 1)) * (n - put); if (coins) addCoins(coins);
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant };
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {

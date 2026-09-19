@@ -50,6 +50,12 @@ export class Ambience {
     const rg = new T.BufferGeometry(); rg.setAttribute('position', new T.BufferAttribute(rp, 3));
     this.rain = new T.LineSegments(rg, new T.LineBasicMaterial({ color: 0xdde9ff, transparent: true, opacity: 0.7, depthWrite: false }));
     this.rain.frustumCulled = false; this.rain.visible = this.weather === 'yagmur'; S.add(this.rain);
+    // F31: mevsim parçacıkları (kar, yaprak, taç yaprağı, polen) — kamera çevresinde süzülür
+    const P = 220, pp = new Float32Array(P * 3);
+    this.flakes = []; for (let i = 0; i < P; i++) this.flakes.push([(Math.random() - 0.5) * 30, Math.random() * 12, (Math.random() - 0.5) * 24, Math.random() * 9, 0.5 + Math.random()]);
+    const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pp, 3));
+    this.sezPts = new T.Points(pg, new T.PointsMaterial({ map: glowTex(), size: 0.3, transparent: true, depthWrite: false, opacity: 0.9 }));
+    this.sezPts.frustumCulled = false; this.sezPts.visible = false; S.add(this.sezPts);
     // su birikintisi halkaları
     this.rings = [];
     // kuş sürüsü
@@ -74,6 +80,13 @@ export class Ambience {
     this.birds = { g, dir, v: 3 + Math.random() * 1.5 };
   }
 
+  setFx(fx) {
+    this.fx = fx; const M = this.sezPts.material;
+    const col = { snow: 'rgba(255,255,255,1)', leaf: 'rgba(235,120,40,1)', petal: 'rgba(255,170,205,1)', pollen: 'rgba(255,235,120,1)' }[fx];
+    this.sezPts.visible = !!col; if (!col) return;
+    M.map = glowTex(col); M.size = fx === 'snow' ? 0.32 : fx === 'pollen' ? 0.18 : 0.36;
+    M.blending = fx === 'pollen' ? T.AdditiveBlending : T.NormalBlending; M.needsUpdate = true;
+  }
   tick(t, dt) {
     const w = this.w, night = this.night = w.nightK || 0, rain = this.weather === 'yagmur';
     // fenerler: gece + yağmurda yanar, ateş titrer
@@ -104,6 +117,19 @@ export class Ambience {
         }
         const x = c.x + d[0], z = c.z + d[2];
         p.setXYZ(i * 2, x, d[1], z); p.setXYZ(i * 2 + 1, x - sl * 0.7, d[1] + 0.7, z);
+      });
+      p.needsUpdate = true;
+    }
+    // F31: mevsim parçacıkları
+    if (this.sezPts.visible) {
+      const p = this.sezPts.geometry.attributes.position, c = w.target, f = this.fx;
+      const fall = f === 'snow' ? 1.3 : f === 'leaf' ? 1.1 : f === 'petal' ? 0.8 : 0.15, sw = f === 'pollen' ? 0.6 : 1.2;
+      this.flakes.forEach((d, i) => {
+        d[1] -= dt * fall * d[4]; d[0] += dt * (this.wind * 1.2 + Math.sin(t / 700 + d[3]) * sw) * 0.6;
+        if (f === 'pollen') d[1] += Math.sin(t / 900 + d[3]) * dt * 0.3;
+        if (d[1] < 0 || d[1] > 12) { d[1] = f === 'pollen' ? 0.5 + Math.random() * 3 : 10 + Math.random() * 2; d[0] = (Math.random() - 0.5) * 30; }
+        if (d[0] > 15) d[0] -= 30;
+        p.setXYZ(i, c.x + d[0], d[1], c.z + d[2]);
       });
       p.needsUpdate = true;
     }
