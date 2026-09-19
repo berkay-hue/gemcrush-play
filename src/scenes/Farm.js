@@ -16,6 +16,7 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel } from '../ui/widgets.js';
 import { buildIcons } from '../ui/icons.js';
+import { flyCoins, countUp, haptic } from '../ui/juice.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
@@ -946,7 +947,15 @@ export class Farm extends Phaser.Scene {
     this.livesTxt.setText(`${save.lives}/${CONFIG.lives.max}`);
     const ms = msToNextLife();
     this.lifeTimer.setText(ms ? fmtMs(ms) : t('full'));
-    this.coinsTxt.setText(String(save.coins));
+    if (this._coinShown == null) { this._coinShown = save.coins; this.coinsTxt.setText(String(save.coins)); }
+    else if (save.coins !== this._coinShown && !this._coinAnim) {
+      const from = this._coinShown, to = save.coins; this._coinShown = to;
+      if (to > from) {
+        this._coinAnim = true;
+        const { width, height } = this.scale, src = this.coinFrom || { x: width / 2, y: height / 2 }; this.coinFrom = null;
+        flyCoins(this, src.x, src.y, width - 116, 34, Math.ceil((to - from) / 10), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { this._coinAnim = false; countUp(this, this.coinsTxt, from, to, 450); });
+      } else countUp(this, this.coinsTxt, from, to, 300);
+    }
     this.gemsTxt.setText(`💎 ${save.gems}`);
     this.starsTxt.setText(`⭐ ${starBalance()}`);
     if (this.nodes) this.tickCrops();

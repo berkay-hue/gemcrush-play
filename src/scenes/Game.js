@@ -15,6 +15,7 @@ import { showRewarded, maybeInterstitial } from '../monetize/ads.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, FONT } from '../ui/widgets.js';
+import { haptic, hitStop, comboZoom, countUp, flyCoins, squash } from '../ui/juice.js';
 import { currentTheme, themeById } from '../meta/themes.js';
 import { festWin, festNext, festivalLevels } from '../meta/event.js';
 import { addXp, winXp } from '../meta/pass.js';
@@ -300,6 +301,7 @@ export class Game extends Phaser.Scene {
   select(cell) {
     this.clearSel();
     this.sel = cell;
+    squash(this, this.sprites[cell[0] * 100 + cell[1]], 1); haptic('light');
     this.selRect = this.add.rectangle(px(cell[1]), py(cell[0]), CELL - 4, CELL - 4).setStrokeStyle(4, 0xffffff, 0.9).setDepth(40);
   }
   clearSel() { this.sel = null; if (this.selRect) { this.selRect.destroy(); this.selRect = null; } }
@@ -336,22 +338,23 @@ export class Game extends Phaser.Scene {
       switch (e.type) {
         case 'swap': {
           const sa = this.sprites[e.from[0] * 100 + e.from[1]], sb = this.sprites[e.to[0] * 100 + e.to[1]];
-          sfx.swap();
+          sfx.swap(); if (sa) squash(this, sa, 0.8); if (sb) squash(this, sb, 0.8);
           await this.tw([sa && { targets: sa, x: px(e.to[1]), y: py(e.to[0]), duration: DUR.swap }, sb && { targets: sb, x: px(e.from[1]), y: py(e.from[0]), duration: DUR.swap }].filter(Boolean));
           this.sprites[e.from[0] * 100 + e.from[1]] = sb; this.sprites[e.to[0] * 100 + e.to[1]] = sa;
           break;
         }
         case 'combo': {
           if (e.kind === 'single') { sfx.combo(); await this.wait(60); break; }
-          sfx.combo(); this.comboFx(px(e.at[1]), py(e.at[0]), e.kind); this.lambMood('happy', 1100);
-          this.toast(e.kind === 'prism_prism' ? t('legendary') : t('amazing'), 44);
+          sfx.combo(); hitStop(this, 90); haptic('heavy'); this.comboFx(px(e.at[1]), py(e.at[0]), e.kind); this.lambMood('happy', 1100);
+          comboZoom(this, px(e.at[1]), py(e.at[0]), e.kind === 'prism_prism' ? t('legendary') : t('amazing'), e.kind === 'prism_prism' ? 1.6 : 1);
           await this.wait(DUR.combo + 150);
           break;
         }
         case 'convert': { const s = this.sprites[e.at[0] * 100 + e.at[1]]; if (s) { s.setTexture(`gem${s.gemType}_${e.special}`); s.special = e.special; } break; }
         case 'match': {
           maxCascade = Math.max(maxCascade, e.cascade);
-          sfx.match(e.cascade);
+          sfx.match(e.cascade); haptic(e.cascade >= 3 ? 'medium' : 'light');
+          if (e.cascade >= 3) hitStop(this, 45 + e.cascade * 8);
           this.floatScore(e.cells, e.score);
           if (e.cascade >= 2) this.cascadeFx(e.cells, e.cascade);
           break;
@@ -370,7 +373,7 @@ export class Game extends Phaser.Scene {
         case 'specials_fire': {
           let ms = 200;
           for (const h of e.hits) { const s = this.sprites[h.at[0] * 100 + h.at[1]]; ms = Math.max(ms, this.fireFx(px(h.at[1]), py(h.at[0]), h.special, s && s.gemType)); }
-          sfx.special(); await this.wait(ms);
+          sfx.special(); haptic('medium'); hitStop(this, 55); await this.wait(ms);
           break;
         }
         case 'rock_hit': { sfx.rock(); this.updOverlay(e.at); this.shake(e.at); break; }
@@ -394,7 +397,7 @@ export class Game extends Phaser.Scene {
             delete this.sprites[r * 100 + c];
             this.burst(s.x, s.y, s.gemType, e.reason);
             if (flyN < 8 && this.flyToGoal(s.x, s.y, s.gemType)) flyN++;
-            tws.push({ targets: s, scale: 1.3, alpha: 0, duration: DUR.clear, ease: 'Quad.Out', onComplete: () => s.destroy() });
+            tws.push({ targets: s, scaleX: { from: s.scaleX * 1.25, to: s.scaleX * 0.2 }, scaleY: { from: s.scaleY * 0.8, to: s.scaleY * 1.5 }, alpha: 0, duration: DUR.clear, ease: 'Quad.In', onComplete: () => s.destroy() });
           }
           if (tws.length) await this.tw(tws);
           break;
@@ -425,7 +428,7 @@ export class Game extends Phaser.Scene {
     }
     this.syncBoard(); // authoritative resync
     this.refreshHud();
-    if (maxCascade >= 3) this.toast(maxCascade >= 5 ? t('legendary') : t('great'), 40);
+    if (maxCascade >= 3) { comboZoom(this, this.scale.width / 2, this.scale.height / 2, maxCascade >= 5 ? t('legendary') : t('great'), maxCascade >= 5 ? 1.3 : 0.6); haptic(maxCascade >= 5 ? 'heavy' : 'medium'); }
     this.busy = false;
     this.checkEnd();
   }
@@ -799,7 +802,7 @@ export class Game extends Phaser.Scene {
     if (this.board.isLost()) return this.outOfMoves();
   }
   async win() {
-    this.ended = true; sfx.win(); endLevel(true);
+    this.ended = true; sfx.win(); endLevel(true); haptic('heavy');
     const left = this.board.moves;
     this.lambMood('happy');
     if (this.boss && this.boss.active) { this.wolfIdle && this.wolfIdle.stop(); this.boss.setTexture('wolf_hurt'); this.tweens.add({ targets: this.boss, x: this.scale.width + 140, angle: 20, duration: 700, delay: 350, ease: 'Back.In' }); }
@@ -829,7 +832,8 @@ export class Game extends Phaser.Scene {
     this.confetti(c);
     c.add(txt(this, width / 2, height / 2 - 20, `${t('score')}: ${score}`, 26, '#fff'));
     if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
-    c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); c.add(txt(this, width / 2 + 10, height / 2 + 60, `+${coins}`, 26, '#ffe58a'));
+    c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); const coinT = txt(this, width / 2 + 10, height / 2 + 60, '+0', 26, '#ffe58a'); c.add(coinT);
+    this.time.delayedCall(900, () => flyCoins(this, width / 2, height / 2 - 90, width / 2 - 40, height / 2 + 60, Math.ceil(coins / 15), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { const o = { v: 0 }; this.tweens.add({ targets: o, v: coins, duration: 500, ease: 'Quad.Out', onUpdate: () => coinT.setText(`+${Math.round(o.v)}`), onComplete: () => { coinT.setText(`+${coins}`); this.tweens.add({ targets: coinT, scale: 1.3, duration: 90, yoyo: true }); } }); }));
     const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : ''].filter(Boolean).join('  ·  ');
     c.add(txt(this, width / 2, height / 2 + 95, extra, 19, '#ffb71b'));
     if (cut.length) c.add(txt(this, width / 2, height / 2 - 140, `🌽 ${t('cropFaster')} −${WIN_CUT / 60000} ${t('minShort')}`, 18, '#9dffb8'));

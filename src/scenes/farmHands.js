@@ -57,6 +57,7 @@ export const HandsMixin = {
       this.tweens.add({ targets: f, y: cy - 30, duration: 160, delay: i * 30, ease: 'Quad.Out' });
       this.tweens.add({ targets: f, x: this.scale.width - 140, y: 40, scale: 0.4, delay: 200 + i * 80, duration: 650, ease: 'Cubic.In', onComplete: () => f.destroy() });
     }
+    if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
     if (!quiet) this.toast([r.n ? `+${r.n} ${it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
     return { ...r, emoji: it.emoji };
