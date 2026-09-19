@@ -18,7 +18,7 @@ import { CineMixin } from './farmCine.js';
 import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel } from '../ui/widgets.js';
 import { buildIcons } from '../ui/icons.js';
 import { flyCoins, countUp, haptic } from '../ui/juice.js';
-import { farmTitle, renameBox } from '../ui/farmTitle.js';
+import { farmTitle, renameBox, nameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
 import { tasksBadge } from '../meta/tasks.js';
@@ -36,6 +36,7 @@ import { LambMixin } from './farmLamb.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
+const PLOT_W = 2.1, PLOT_D = 1.9; // F22: tarla ayak izi (2 sıra toprak) — komşu tarla bu kadar ötede
 const ISL_HW = 11, ISL_HD = 9; // ana ada (FarmWorld ISL 12×10, kenar payı)
 const MOVABLE = (id) => ['building', 'plot', 'vehicle'].includes((item(id) || {}).kind);
 
@@ -212,7 +213,12 @@ export class Farm extends Phaser.Scene {
     // drag = pan, pinch/wheel = zoom, short tap = raycast pick
     const pad = this.add.zone(0, 0, this.scale.width, this.scale.height).setOrigin(0).setInteractive().setDepth(-10);
     let down = null, pinch = 0;
-    pad.on('pointerdown', (p) => { down = { x: p.x, y: p.y, lx: p.x, ly: p.y, t: Date.now(), moved: false }; this.harvestStart(p, down); });
+    pad.on('pointerdown', (p) => {
+      down = { x: p.x, y: p.y, lx: p.x, ly: p.y, t: Date.now(), moved: false };
+      // F22: yerleştirirken nesnenin üstüne basıp sürükle (kamera kaymaz)
+      if (this.placing) { const g = w.groundAt(p.x, p.y), q = this.placing.p; if (g && Math.hypot(g[0] - q[0], g[1] - q[1]) < 2.4) down.drag = [q[0] - g[0], q[1] - g[1]]; }
+      else this.harvestStart(p, down);
+    });
     this.input.on('pointermove', (p) => {
       const a = this.input.pointer1, b = this.input.pointer2;
       if (a && b && a.isDown && b.isDown) {
@@ -222,6 +228,7 @@ export class Farm extends Phaser.Scene {
       pinch = 0;
       if (!down || !p.isDown || this.bucketDrag) return;
       if (down.harvest) { this.harvestAt(p, down); down.moved = true; return; }
+      if (down.drag && this.placing) { const g = w.groundAt(p.x, p.y); if (g) { this.placing.p = this.placeSnap(this.placing.id, [g[0] + down.drag[0], g[1] + down.drag[1]]); this.placeShow(); } down.moved = true; return; }
       w.pan(p.x - down.lx, p.y - down.ly); down.lx = p.x; down.ly = p.y;
       if (Math.hypot(p.x - down.x, p.y - down.y) > 12) down.moved = true;
     });
@@ -463,8 +470,7 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, width / 2, height / 2 - 40, nameOf(id) || 'Adı yok', 28, '#ffb71b'));
     c.add(txt(this, width / 2, height / 2 - 8, (it.name && (it.name[getLang()] || it.name.tr)) || it.name, 16, '#ccc'));
     c.add(button(this, width / 2 - (PETS[id] ? 0 : 90), height / 2 + 50, 170, 50, '✏️ Ad ver', () => {
-      const n = window.prompt('Adı ne olsun?', nameOf(id) || '');
-      if (n !== null) { setName(id, n); close(); this.nameModal(id); }
+      nameBox({ title: getLang() === 'en' ? 'Give a name' : 'Ad ver', value: nameOf(id) || '', placeholder: it.emoji, onSave: (n) => { setName(id, n); close(); this.nameModal(id); } });
     }, 0x2ee06a, '#04220e', 18));
     if (!PETS[id]) c.add(button(this, width / 2 + 90, height / 2 + 50, 170, 50, 'Detay ▶', () => { close(); this.itemModal(id); }, 0x2a333a, '#fff', 18));
     c.add(button(this, width / 2, height / 2 + 115, 120, 42, '✕', close, 0x2a333a, '#fff', 18));
@@ -649,14 +655,14 @@ export class Farm extends Phaser.Scene {
   }
   placeStart(id, moving) {
     const w = this.w3; if (this.editBanner) { this.editBanner.destroy(); this.editBanner = null; } this.editing = false;
-    let p = w.where(id).map((v) => Math.round(v * 2) / 2);
+    let p = this.placeSnap(id, w.where(id));
     if (!this.placeValid(id, p)) search: for (let r = 1; r < 12; r++) for (let a = 0; a < 16; a++) {
       const q = [Math.round((p[0] + r * Math.cos(a * Math.PI / 8)) * 2) / 2, Math.round((p[1] + r * Math.sin(a * Math.PI / 8)) * 2) / 2];
       if (this.placeValid(id, q)) { p = q; break search; }
     }
     this.placing = { id, moving, p };
     if (this.nodes[id]) this.nodes[id].setVisible(false);
-    this.placeBanner = this.banner(`📍 ${t('placeHint')}`, [
+    this.placeBanner = this.banner(`📍 ${t('placeHint')} · ✋`, [
       [`✔ ${t('place')}`, () => this.placeOk()],
       [`✕`, () => { const d = this.placing; this.placing = null; w.tmpPos = null; this.scene.restart(d.moving ? {} : { dlg: d.id }); }, 0x2a333a],
     ]);
@@ -669,7 +675,22 @@ export class Farm extends Phaser.Scene {
   }
   placeTap(pt) {
     const g = this.w3.groundAt(pt.x, pt.y); if (!g) return;
-    this.placing.p = g.map((v) => Math.round(v * 2) / 2); this.placeShow();
+    this.placing.p = this.placeSnap(this.placing.id, g); this.placeShow();
+  }
+  // F22: tarlalar komşu tarlaya kenar kenara yapışır (boşluk kalmaz); diğerleri 0,5'lik ızgaraya
+  placeSnap(id, g) {
+    const p = g.map((v) => Math.round(v * 2) / 2);
+    if (!LAYOUT[id] || !LAYOUT[id].plot) return p;
+    let best = null, bd = 0.9;
+    for (const k of CATALOG.map((i) => i.id)) {
+      if (k === id || !LAYOUT[k] || !LAYOUT[k].plot || !owns(k)) continue;
+      const q = this.w3.where(k);
+      for (const [dx, dz] of [[PLOT_W, 0], [-PLOT_W, 0], [0, PLOT_D], [0, -PLOT_D]]) {
+        const c = [q[0] + dx, q[1] + dz], d = Math.hypot(c[0] - g[0], c[1] - g[1]);
+        if (d < bd && this.placeValid(id, c)) { bd = d; best = c; }
+      }
+    }
+    return best || p;
   }
   placeValid(id, [x, z]) {
     const rad = (k) => (LAYOUT[k].plot ? 1.5 : k === 'traktor' ? 1.1 : 2.1), r = rad(id) * 0.5;
@@ -680,7 +701,9 @@ export class Farm extends Phaser.Scene {
     if (x < -6.5 && x > -10.5 && Math.abs(z + 0.5) < 2.5) return false; // değirmen
     for (const k of [...CATALOG.map((i) => i.id), 'market']) {
       if (k === id || !LAYOUT[k] || !(k === 'market' || (owns(k) && MOVABLE(k)))) continue;
-      const q = this.w3.where(k); if (Math.hypot(q[0] - x, q[1] - z) < (rad(k) + rad(id)) * 0.8) return false;
+      const q = this.w3.where(k);
+      if (LAYOUT[k].plot && LAYOUT[id].plot) { if (Math.abs(q[0] - x) < PLOT_W - 0.05 && Math.abs(q[1] - z) < PLOT_D - 0.05) return false; continue; } // tarla-tarla: yalnız üst üste binmesin
+      if (Math.hypot(q[0] - x, q[1] - z) < (rad(k) + rad(id)) * 0.8) return false;
     }
     return true;
   }

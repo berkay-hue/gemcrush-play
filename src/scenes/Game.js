@@ -729,9 +729,11 @@ export class Game extends Phaser.Scene {
     const { width, height } = this.scale;
     this.busy = true;
     const m = modal(this, 560, 430); const cx = width / 2, top = height / 2 - 215;
-    const done = () => { if (!this.ended) this.busy = false; if (this.level.boss) this.time.delayedCall(250, () => this.bossIntro()); };
-    m.c.list[0].once('pointerup', () => { m.close(); done(); });
-    const origClose = m.close; m.close = () => { origClose(); done(); };
+    // F22: her kapanış yolu (✕, karartı, Oyna, reklam) konteyneri yok eder → kilit tek yerden açılır
+    let fin = false;
+    const done = () => { if (fin) return; fin = true; if (!this.ended) this.busy = false; if (this.level.boss) this.time.delayedCall(250, () => this.bossIntro()); };
+    m.c.once('destroy', done);
+    m.c.list[0].once('pointerup', () => m.close());
     m.c.add(txt(this, cx, top + 50, t('preTitle'), 28, '#ffe58a'));
     m.c.add(txt(this, cx, top + 90, t('preSub'), 16, '#d8e8d0'));
     const pick = { bomb: false, moves5: false };

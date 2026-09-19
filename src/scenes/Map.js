@@ -7,6 +7,7 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
+import { nameBox } from '../ui/farmTitle.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 
 export class Map extends Phaser.Scene {
@@ -310,7 +311,7 @@ export class Map extends Phaser.Scene {
         add(txt(this, width / 2, by, me ? `${t('rkYou')}: #${me.rank} / ${r.total}  ·  ${fmt(me.val)}` : t('rkNotYet'), 18, '#8fe3ff'));
       } else {
         add(txt(this, width / 2, by, t('rkGuest'), 15, '#cfe3d8', { wordWrap: { width: 400 }, align: 'center' }));
-        add(button(this, width / 2, by + 56, 300, 50, `☁️ ${t('saveCloud')}`, () => { close(); authForm((ok) => { if (ok) this.scene.restart(); }); }, 0x3f7bff, '#fff', 18));
+        add(button(this, width / 2, by + 56, 300, 50, `☁️ ${t('saveCloud')}`, () => { close(); authForm((ok) => { if (ok) this.scene.restart({}); }); }, 0x3f7bff, '#fff', 18));
       }
       track('leaderboard_view', { kind: k });
     };
@@ -330,7 +331,7 @@ export class Map extends Phaser.Scene {
     const pr = save.profile || {};
     const pb = button(this, width / 2, height / 2 - 80, 300, 56, `${pr.avatar || '👤'} ${pr.name || t('profile')}`, () => { close(); this.profile(); }, 0x2ee06a, '#04220e');
     const sb = button(this, width / 2, height / 2 - 10, 300, 56, `${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`, () => { save.sound = !save.sound; persist(); sb.label.setText(`${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`); }, 0x2a333a, '#ffffff');
-    const lb = button(this, width / 2, height / 2 + 60, 300, 56, `${t('lang')}: ${getLang().toUpperCase()}`, () => { const l = getLang() === 'tr' ? 'en' : 'tr'; setLang(l); save.lang = l; persist(); close(); this.scene.restart(); }, 0x2a333a, '#ffffff');
+    const lb = button(this, width / 2, height / 2 + 60, 300, 56, `${t('lang')}: ${getLang().toUpperCase()}`, () => { const l = getLang() === 'tr' ? 'en' : 'tr'; setLang(l); save.lang = l; persist(); close(); this.scene.restart({}); }, 0x2a333a, '#ffffff');
     const pp = txt(this, width / 2, height / 2 + 130, t('privacy'), 16, '#8fe3ff').setInteractive({ useHandCursor: true }).on('pointerup', () => window.open(CONFIG.privacyUrl, '_blank'));
     c.add([pb, sb, lb, pp]);
   }
@@ -346,16 +347,15 @@ export class Map extends Phaser.Scene {
     c.add(av);
     c.add(txt(this, width / 2, y0 + 130, t('tapAvatar'), 13, '#9fb3a8'));
     const nb = button(this, width / 2, y0 + 180, 320, 52, `✏️ ${pr.name || t('setName')}`, () => {
-      const n = (window.prompt(t('setName'), save.profile.name || '') || '').trim().slice(0, 16);
-      if (n) { setProfile({ name: n }); nb.label.setText(`✏️ ${n}`); }
+      nameBox({ title: t('setName'), value: save.profile.name || '', placeholder: t('setName'), onSave: (n) => { if (n) { setProfile({ name: n }); nb.label.setText(`✏️ ${n}`); } } });
     }, 0x2a333a, '#fff', 20);
     c.add(nb);
     c.add(txt(this, width / 2, y0 + 232, `${t('level')} ${save.level}  ·  ⭐ ${totalStars()}  ·  🪙 ${save.coins}`, 17, '#ffe58a'));
     const acc = account();
     c.add(txt(this, width / 2, y0 + 268, acc ? `☁️ ${t('loggedAs')} ${acc.user}` : t('accountHint'), 15, acc ? '#8fe3ff' : '#9fb3a8', { wordWrap: { width: 380 } }));
     c.add(button(this, width / 2, y0 + 318, 320, 52, acc ? `🚪 ${t('logout')}` : `☁️ ${t('saveCloud')}`, () => {
-      if (acc) { logout(); close(); this.scene.restart(); return; }
-      close(); authForm((ok) => { if (ok) { this.scene.restart(); } });
+      if (acc) { logout(); close(); this.scene.restart({}); return; }
+      close(); authForm((ok) => { if (ok) { this.scene.restart({}); } });
     }, acc ? 0x2a333a : 0x3f7bff, '#fff', 20));
     c.add(button(this, width / 2, y0 + 378, 320, 44, `📋 ${t('copyCode')}`, async () => {
       const code = exportCode();
@@ -364,11 +364,11 @@ export class Map extends Phaser.Scene {
     c.add(button(this, width / 2, y0 + 430, 320, 44, `📥 ${t('loadCode')}`, () => {
       const code = window.prompt(t('loadCode'));
       if (!code) return;
-      if (importCode(code)) { close(); this.scene.restart(); } else this.toastMsg(t('badCode'));
+      if (importCode(code)) { close(); this.scene.restart({}); } else this.toastMsg(t('badCode'));
     }, 0x2a333a, '#fff', 20));
     c.add(button(this, width / 2, y0 + 495, 320, 48, `🗑️ ${t('wipe')}`, async () => {
       if (!window.confirm(t('wipeConfirm'))) return;
-      await wipeAll(); close(); this.scene.restart();
+      await wipeAll(); close(); this.scene.restart({});
     }, 0xc0392b, '#fff', 20));
   }
   toastMsg(m) {

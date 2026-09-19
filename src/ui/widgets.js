@@ -122,9 +122,13 @@ export function modal(scene, w, h) {
   const pop = { s: 1 };
   const applyPop = () => { c.setScale(pop.s); c.x = cam.scrollX + (width / 2) * (1 - pop.s); c.y = cam.scrollY + (height / 2) * (1 - pop.s); };
   const closeFn = () => { if (!c.active) return; dim.disableInteractive(); scene.tweens.add({ targets: pop, s: 0.92, duration: 150, ease: 'Quad.In', onUpdate: applyPop }); scene.tweens.add({ targets: c, alpha: 0, duration: 150, onComplete: () => c.destroy() }); };
-  const x = scene.add.text(width / 2 + w / 2 - 26, height / 2 - h / 2 + 26, '✕', { fontFamily: 'system-ui, sans-serif', fontSize: '26px', color: '#fff', fontStyle: 'bold' })
-    .setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true }).on('pointerup', closeFn);
-  c.add(x);
+  // F22: büyük, görünür kapatma düğmesi (eski ✕ metni parmakla zor vuruluyordu)
+  const bx = width / 2 + w / 2 - 30, by = height / 2 - h / 2 + 30;
+  const xb = scene.add.circle(bx, by, 24, 0x7a1f1f, 1).setStrokeStyle(3, 0xffd9a0);
+  const x = scene.add.text(bx, by - 1, '✕', { fontFamily: 'system-ui, sans-serif', fontSize: '24px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+  const hit = scene.add.circle(bx, by, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+  hit.on('pointerdown', () => xb.setScale(0.9)).on('pointerout', () => xb.setScale(1)).on('pointerup', closeFn);
+  c.add([xb, x, hit]);
   c.setAlpha(0); scene.tweens.add({ targets: c, alpha: 1, duration: 180 });
   pop.s = 0.85; applyPop(); scene.tweens.add({ targets: pop, s: 1, duration: 280, ease: 'Back.Out', onUpdate: applyPop });
   return { c, close: closeFn };

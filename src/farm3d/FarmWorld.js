@@ -423,10 +423,20 @@ export class FarmWorld {
     }
   }
 
+  // F22: prosedürel çit — köşe/ara direkler + her kenarda iki düz, kesintisiz kalas (glb parçaları eğri/kırık duruyordu)
   fenceRect(x0, z0, x1, z1, parent = this.S) {
-    const nx = Math.round((x1 - x0) / 1.2), nz = Math.round((z1 - z0) / 1.2), kx = (x1 - x0) / nx, kz = (z1 - z0) / nz;
-    for (let i = 0; i < nx; i++) { const x = x0 + kx * (i + 0.5); this.put('fence_simple', x, z0, { s: kx, parent }); this.put('fence_simple', x, z1, { s: kx, parent }); }
-    for (let i = 0; i < nz; i++) { const z = z0 + kz * (i + 0.5); this.put('fence_simple', x0, z, { s: kz, ry: Math.PI / 2, parent }); this.put('fence_simple', x1, z, { s: kz, ry: Math.PI / 2, parent }); }
+    const wood = this._fenceMat || (this._fenceMat = new T.MeshStandardMaterial({ color: 0xa8743f, roughness: 0.9 }));
+    const dark = this._fenceMat2 || (this._fenceMat2 = new T.MeshStandardMaterial({ color: 0x7d5230, roughness: 0.95 }));
+    const g = new T.Group(); parent.add(g);
+    const box = (w, h, d, x, y, z, m) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; g.add(b); return b; };
+    const post = (x, z) => { box(0.16, 0.62, 0.16, x, 0.31, z, dark); const cap = new T.Mesh(new T.ConeGeometry(0.13, 0.12, 4), dark); cap.position.set(x, 0.68, z); cap.rotation.y = Math.PI / 4; g.add(cap); };
+    const side = (ax, az, bx, bz) => {
+      const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 1.1)), horiz = Math.abs(bz - az) < 1e-6;
+      for (let i = 0; i < n; i++) post(ax + (bx - ax) * i / n, az + (bz - az) * i / n);
+      for (const y of [0.22, 0.46]) box(horiz ? L : 0.07, 0.09, horiz ? 0.07 : L, (ax + bx) / 2, y, (az + bz) / 2, wood);
+    };
+    side(x0, z0, x1, z0); side(x1, z0, x1, z1); side(x1, z1, x0, z1); side(x0, z1, x0, z0);
+    return g;
   }
 
   // Fantasy Town parçalarından bina derle (put() h ile ölçekler)
