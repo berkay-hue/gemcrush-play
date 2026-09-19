@@ -53,14 +53,14 @@ export const HandsMixin = {
       this.tweens.add({ targets: sk, x: cx + 60, angle: 360, duration: 450, onComplete: () => sk.destroy() });
     }
     for (let i = 0; i < 5; i++) {
-      const f = txt(this, cx - 40 + i * 20, cy, it.emoji, 28).setDepth(901);
+      const f = txt(this, cx - 40 + i * 20, cy, r.emoji || it.emoji, 28).setDepth(901);
       this.tweens.add({ targets: f, y: cy - 30, duration: 160, delay: i * 30, ease: 'Quad.Out' });
       this.tweens.add({ targets: f, x: this.scale.width - 140, y: 40, scale: 0.4, delay: 200 + i * 80, duration: 650, ease: 'Cubic.In', onComplete: () => f.destroy() });
     }
     if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
-    if (!quiet) this.toast([r.n ? `+${r.n} ${it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
-    return { ...r, emoji: it.emoji };
+    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
+    return { ...r, emoji: r.emoji || it.emoji };
   },
   // pad pointerdown'dan: hazır tarlada başlarsa sürükleyerek hasat moduna gir
   harvestStart(p, down) {

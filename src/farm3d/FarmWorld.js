@@ -16,6 +16,19 @@ const RAD = 5;
 // Sanat: %100 Kenney (CC0) — Nature Kit (zemin/ağaç/ekin/çit), Fantasy Town Kit
 // (modüler duvar+çatıdan derlenen binalar), Cube Pets (hayvanlar).
 // 'b:<ad>' = Fantasy Town parçalarından derlenen bina (bkz. BUILD), 'p:sheep' = kutu koyun.
+// F23: tohum → [büyüme aşamaları [model,h]], olgun model + boy, renk/meyve
+const SEED3D = {
+  wheat: { grow: [['crops_leafsStageA', 0.18], ['crops_wheatStageA', 0.38], ['crops_wheatStageB', 0.55]], ripe: 'crops_wheatStageB', h: 0.72, tint: 0xe8b83a },
+  corn: { grow: [['crops_cornStageA', 0.25], ['crops_cornStageB', 0.55], ['crops_cornStageC', 0.85]], ripe: 'crops_cornStageD', h: 1.15 },
+  carrot: { grow: [['crops_leafsStageA', 0.15], ['crops_leafsStageA', 0.25], ['crops_leafsStageB', 0.32]], ripe: 'crop_carrot', h: 0.42 },
+  tomato: { grow: [['crops_leafsStageA', 0.18], ['crops_leafsStageB', 0.32], ['plant_bushSmall', 0.4]], ripe: 'plant_bushSmall', h: 0.55, fruit: 0xe0302a },
+  strawberry: { grow: [['crops_leafsStageA', 0.14], ['crops_leafsStageB', 0.22], ['plant_bushSmall', 0.28]], ripe: 'plant_bushSmall', h: 0.34, fruit: 0xff3b4e },
+  sunflower: { grow: [['crops_leafsStageA', 0.2], ['crops_leafsStageB', 0.4], ['crops_cornStageA', 0.55]], ripe: 'flower_yellowA', h: 0.85 },
+  pumpkin: { grow: [['crops_leafsStageA', 0.15], ['crops_leafsStageB', 0.25], ['plant_bushSmall', 0.3]], ripe: 'crop_pumpkin', h: 0.45 },
+  melon: { grow: [['crops_leafsStageA', 0.15], ['crops_leafsStageB', 0.25], ['plant_bushSmall', 0.3]], ripe: 'crop_melon', h: 0.42 },
+  turnip: { grow: [['crops_leafsStageA', 0.14], ['crops_leafsStageB', 0.24], ['crops_leafsStageB', 0.3]], ripe: 'crop_turnip', h: 0.38 },
+};
+
 export const LAYOUT = {
   ambar: { at: [1, -3], model: 'b:ambar', h: 2.4, ry: -0.3 },
   kumes: { at: [-2, -1], model: 'b:kumes', h: 1.5, ry: 0.5 },
@@ -27,6 +40,7 @@ export const LAYOUT = {
   at: { area: [3, -0.8, 6.5, 2.4], model: 'animal-deer', h: 0.95, n: 1 },
   tarla1: { at: [-2, 2], plot: 1 }, tarla2: { at: [-1, 2], plot: 1 }, tarla3: { at: [0, 2], plot: 1 },
   tarla4: { at: [-3, 3], plot: 1 }, tarla5: { at: [-2, 3], plot: 1 }, tarla6: { at: [-1, 3], plot: 1 },
+  tarla7: { at: [0, 3], plot: 1 }, tarla8: { at: [-4, 4], plot: 1 }, tarla9: { at: [-3, 4], plot: 1 }, tarla10: { at: [-2, 4], plot: 1 },
   market: { at: [-1, -3], model: 'b:pazar', h: 1.5, ry: 0.4 },
   traktor: { at: [1, 2], model: 'town/cart', h: 0.9, ry: 0.6 },
   // F7: evcil hayvanlar (sol bölge açılınca). köpek kamerayı izler, kedi güneşlenir
@@ -465,6 +479,20 @@ export class FarmWorld {
     return g;
   }
 
+  // F23: gerçekçi sürülmüş toprak — koyu taban + 4 kabarık sırt + ince kenar; kenarlar hücreye tam oturur (boşluk yok)
+  soil(x, z, g) {
+    const dark = new T.MeshStandardMaterial({ color: 0x4a2f1a, roughness: 1 }), ridge = new T.MeshStandardMaterial({ color: 0x6b4526, roughness: 1 });
+    const edge = new T.MeshStandardMaterial({ color: 0x3a2413, roughness: 1 });
+    const base = new T.Mesh(new T.BoxGeometry(1.96, 0.1, 1.72), dark); base.position.set(x, 0.03, z); base.receiveShadow = true; g.add(base);
+    for (const [w, d, px, pz] of [[2.02, 0.07, 0, -0.87], [2.02, 0.07, 0, 0.87], [0.07, 1.8, -1.0, 0], [0.07, 1.8, 1.0, 0]]) {
+      const e = new T.Mesh(new T.BoxGeometry(w, 0.13, d), edge); e.position.set(x + px, 0.05, z + pz); g.add(e);
+    }
+    for (const dz of [-0.6, -0.2, 0.2, 0.6]) {
+      const r = new T.Mesh(new T.CylinderGeometry(0.11, 0.11, 1.84, 8, 1), ridge); r.rotation.z = Math.PI / 2; r.scale.set(1, 1, 0.55);
+      r.position.set(x, 0.08, z + dz); r.castShadow = r.receiveShadow = true; g.add(r);
+    }
+  }
+
   // state: 'owned' | 'ghost' | 'hidden'. Rebuilds an item's models when state changes.
   async setItem(id, state, opts = {}) {
     const L = LAYOUT[id]; if (!L) return;
@@ -472,7 +500,7 @@ export class FarmWorld {
     if (id === 'ahir' && state !== 'owned') this._pen = null;
     const stage = opts.crop === 'growing' ? Math.min(2, Math.floor((opts.growth || 0) * 3)) : -1;
     const pos = state === 'hidden' ? '' : String(this.where(id));
-    const sig = state + '|' + (opts.crop || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '');
+    const sig = state + '|' + (opts.crop || '') + (opts.seed || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '');
     if (cur && cur.sig === sig) return;
     if (cur) { this.S.remove(cur.g); this.movers = this.movers.filter((m) => m.id !== id); }
     const g = new T.Group(); g.userData.id = id; this.S.add(g);
@@ -480,19 +508,27 @@ export class FarmWorld {
     if (state === 'hidden') return;
     if (L.plot) {
       const [x, z] = this.where(id);
-      for (const dz of [-0.45, 0.45]) await this.put('crops_dirtRow', x, z + dz, { s: 1.6, parent: g });
-      const cells = [[-0.9, -0.4], [0, -0.4], [0.9, -0.4], [-0.45, 0.4], [0.45, 0.4]];
+      this.soil(x, z, g);
+      // F23: 4 sıra × 3 hücre; her tohumun kendi büyüme ve olgun modeli
+      const cells = []; for (const dz of [-0.6, -0.2, 0.2, 0.6]) for (const dx of [-0.62, 0, 0.62]) cells.push([dx + (Math.random() - 0.5) * 0.08, dz]);
+      const P = SEED3D[opts.seed] || SEED3D.wheat, nb = g.children.length;
       if (opts.crop === 'growing') {
-        // F4: tohum → filiz → yeşeren; aşama değişince sig değişir, model yenilenir
-        const m = ['crops_leafsStageA', 'crops_wheatStageA', 'crops_wheatStageB'][stage], h = [0.2, 0.4, 0.6][stage];
-        for (const [dx, dz] of cells) await this.put(m, x + dx, z + dz, { h, ry: Math.random() * 6, parent: g });
+        const [m, h] = P.grow[stage];
+        for (const [dx, dz] of cells) await this.put(m, x + dx, z + dz, { h: h * (0.9 + Math.random() * 0.2), ry: Math.random() * 6, parent: g });
       } else if (opts.crop === 'ready') {
-        const ripe = { tarla2: 'crops_cornStageD', tarla4: 'crop_pumpkin', tarla5: 'plant_bushLarge' }[id];
-        if (ripe) for (const [dx, dz] of cells) await this.put(ripe, x + dx, z + dz, { h: ripe === 'crops_cornStageD' ? 0.9 : 0.45, ry: Math.random() * 6, parent: g });
-        else for (const [dx, dz] of cells) await this.put('crop_carrot', x + dx, z + dz, { h: 0.4, ry: Math.random() * 6, parent: g });
+        for (const [dx, dz] of cells) {
+          const o = await this.put(P.ripe, x + dx, z + dz, { h: P.h * (0.92 + Math.random() * 0.16), ry: Math.random() * 6, parent: g });
+          if (P.tint) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.lerp(new T.Color(P.tint), 0.55); } });
+          if (P.fruit) for (let k = 0; k < 4; k++) {
+            const f = new T.Mesh(new T.SphereGeometry(0.055, 8, 6), new T.MeshStandardMaterial({ color: P.fruit, roughness: 0.4 }));
+            const a = k * 1.7 + Math.random(); f.position.set(Math.cos(a) * 0.14, P.h * (0.35 + Math.random() * 0.4) / o.scale.y, Math.sin(a) * 0.14);
+            f.scale.setScalar(1 / o.scale.x); f.castShadow = true; o.add(f);
+          }
+        }
         // olgun ürün hafifçe zıplar: "hasat et" çağrısı
-        const kids = g.children.slice(2), ph = Math.random() * 6;
-        const tick = (t) => { if (!g.parent) { this.tickers = this.tickers.filter((f) => f !== tick); return; } kids.forEach((k, i) => { k.position.y = Math.max(0, Math.sin(t / 180 + ph + i)) * 0.08; }); };
+        const kids = g.children.slice(nb), ph = Math.random() * 6;
+        const base = kids.map((k) => k.position.y);
+        const tick = (t) => { if (!g.parent) { this.tickers = this.tickers.filter((f) => f !== tick); return; } kids.forEach((k, i) => { k.position.y = base[i] + Math.max(0, Math.sin(t / 180 + ph + i)) * 0.05; }); };
         this.tickers.push(tick);
       }
     } else if (L.area) {

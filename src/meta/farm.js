@@ -15,10 +15,11 @@ export const CATALOG = [
   { id: 'inek', lvl: 14,   kind: 'animal', emoji: '🐄', price: 12, needs: 'ahir',  x: 470, y: 450, name: { tr: 'İnek', en: 'Cow' } },
   { id: 'at', lvl: 30,     kind: 'animal', emoji: '🐎', price: 18, needs: 'ahir',  x: 420, y: 540, name: { tr: 'At', en: 'Horse' } },
   // crop plots
-  ...[0, 1, 2, 3, 4, 5].map((i) => ({
-    id: `tarla${i + 1}`, kind: 'plot', emoji: ['🌾', '🌽', '🥕', '🍅', '🌻', '🍓'][i], price: i ? 2 + i * 2 : 0, lvl: [2, 5, 10, 18, 26, 35][i],
+  // F23: 10 tarla; isim yalnız başlangıç tohumu, her tarlaya istenen tohum ekilir
+  ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => ({
+    id: `tarla${i + 1}`, kind: 'plot', emoji: ['🌾', '🌽', '🥕', '🍅', '🌻', '🍓', '🎃', '🍈', '🧅', '🌾'][i], price: i ? 2 + i * 2 : 0, lvl: [2, 5, 10, 18, 26, 35, 42, 50, 60, 70][i],
     needs: i ? `tarla${i}` : null, x: 110 + (i % 3) * 160, y: 650 + Math.floor(i / 3) * 110,
-    name: { tr: ['Buğday', 'Mısır', 'Havuç', 'Domates', 'Ayçiçeği', 'Çilek'][i] + ' tarlası', en: ['Wheat', 'Corn', 'Carrot', 'Tomato', 'Sunflower', 'Strawberry'][i] + ' field' },
+    name: { tr: `Tarla ${i + 1}`, en: `Field ${i + 1}` },
   })),
   // F17: araçlar
   { id: 'traktor', kind: 'vehicle', emoji: '🚜', price: 20, lvl: 20, x: 270, y: 560, name: { tr: 'Traktör', en: 'Tractor' } },

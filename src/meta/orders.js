@@ -14,7 +14,9 @@ const O = () => {
   if (typeof f.xp !== 'number' || !(f.xp >= 0)) f.xp = 0;
   return f.orders;
 };
-export const available = () => { const g = Object.keys(SRC).filter((k) => owns(SRC[k])); return g.length ? g : ['wheat']; };
+// F23: her tarlaya her tohum ekilebilir — buğday/mısır herhangi bir tarla varsa istenebilir
+const anyPlot = () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].some((i) => owns('tarla' + i));
+export const available = () => { const g = Object.keys(SRC).filter((k) => (k === 'wheat' || k === 'corn' ? anyPlot() : owns(SRC[k]))); return g.length ? g : ['wheat']; };
 
 export function makeOrder(rnd = Math.random) {
   const pool = available(), kinds = Math.min(pool.length, 1 + Math.floor(rnd() * 2) + (farmLevel() >= 5 ? 1 : 0));

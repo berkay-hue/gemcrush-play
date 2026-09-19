@@ -25,7 +25,7 @@ import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
-import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
+import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
@@ -185,10 +185,10 @@ export class Farm extends Phaser.Scene {
     const st = cropState(it.id);
     if (st === 'empty') { g.add(txt(this, 0, 4, `＋ ${t('plant')}`, 18, '#fff2d6')); return; }
     const stage = st === 'ready' ? 3 : Math.min(2, Math.floor(growth(it.id) * 3));
-    const ripeEmoji = CROPS[it.id].key !== 'corn' && stage === 3;
+    const ripeEmoji = seedOf(it.id) !== 'corn' && stage === 3;
     for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) {
       const x = -48 + k * 32 + (r ? 12 : 0), y = -8 + r * 26;
-      const p = ripeEmoji ? txt(this, x, y + 12, it.emoji, 26) : this.add.image(x, y, `corn${stage}`).setOrigin(0.5, 0.85).setScale(0.8);
+      const p = ripeEmoji ? txt(this, x, y + 12, cropInfo(it.id).emoji, 26) : this.add.image(x, y, `corn${stage}`).setOrigin(0.5, 0.85).setScale(0.8);
       g.add(p);
       this.tweens.add({ targets: p, angle: { from: -3, to: 3 }, yoyo: true, repeat: -1, duration: 1100 + ((k + r) % 3) * 200, ease: 'Sine.InOut' });
     }
@@ -267,7 +267,7 @@ export class Farm extends Phaser.Scene {
     // F12: boş başlangıç — sahip olunmayan hiçbir şey dünyada görünmez, Mağaza'dan alınır
     if (st !== 'owned') { this.w3.setItem(it.id, 'hidden'); this.nodes[it.id] = c; return; }
     const sick = st === 'owned' && it.kind === 'animal' && LIVESTOCK.includes(it.id) && isSick(it.id);
-    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', growth: st === 'owned' ? growth(it.id) : 0 } : { sick });
+    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0 } : { sick });
     this.nodes[it.id] = c;
     if (sick) {
       const b = txt(this, 0, -34, '🤒', 30);
@@ -292,14 +292,14 @@ export class Farm extends Phaser.Scene {
     if (c.crop) c.crop.destroy();
     const g = this.add.container(0, 0); c.crop = g; c.add(g);
     const st = cropState(it.id);
-    this.w3.setItem(it.id, 'owned', { crop: st, growth: st === 'growing' ? growth(it.id) : 0 });
+    this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0 });
     if (st === 'empty') g.add(txt(this, 0, 0, `＋ ${t('plant')}`, 16, '#fff2d6').setStroke('#3a2a10', 4));
     else if (st === 'growing') {
       g.add(this.add.rectangle(0, 0, 84, 12, 0x0a0f0d, 0.8).setStrokeStyle(2, 0xffffff, 0.6));
       c.bar = this.add.rectangle(-40, 0, 80 * growth(it.id), 8, 0x2ee06a).setOrigin(0, 0.5); g.add(c.bar);
       c.left = txt(this, 0, 16, fmtMs(msLeft(it.id)), 13, '#ffffff').setStroke('#000', 3); g.add(c.left);
     } else {
-      const b = txt(this, 0, -6, `✨${it.emoji}`, 26); g.add(b);
+      const b = txt(this, 0, -6, `✨${cropInfo(it.id).emoji}`, 26); g.add(b);
       this.tweens.add({ targets: b, scale: 1.25, yoyo: true, repeat: -1, duration: 500 });
     }
     c.cropState = st; c.cropStage = st === 'ready' ? 3 : Math.min(2, Math.floor(growth(it.id) * 3));
@@ -307,20 +307,15 @@ export class Farm extends Phaser.Scene {
 
   plotTap(id) {
     const it = item(id); const c = this.nodes[id]; const st = cropState(id);
-    if (st === 'empty') {
-      plant(id); if (ftueDone('plant')) this.drawHint(); sfx.coin && sfx.coin(); track('crop_plant', { plot: id });
-      this.drawCrop(c, it); this.tweens.add({ targets: c.crop, scaleY: { from: 0.2, to: 1 }, duration: 400, ease: 'Back.Out' });
-      this.toast(`${it.emoji} ${t('planted')} · ${fmtMs(cropMs(id))}`);
-      return;
-    }
+    if (st === 'empty') return this.seedPicker(id);
     if (st === 'ready') {
       this.harvestPlot(id);
       return;
     }
     // growing: info + rush + go play to speed up
     const { width, height } = this.scale; const { c: m, close } = modal(this, 440, 360);
-    m.add(txt(this, width / 2, height / 2 - 125, it.emoji, 60));
-    m.add(txt(this, width / 2, height / 2 - 70, this.itemName(it), 28, '#ffb71b'));
+    m.add(txt(this, width / 2, height / 2 - 125, cropInfo(id).emoji, 60));
+    m.add(txt(this, width / 2, height / 2 - 70, `${this.itemName(it)} · ${cropInfo(id).name[getLang()] || cropInfo(id).name.tr}`, 26, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
     const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
     m.add(txt(this, width / 2, height / 2 + 8, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
@@ -329,6 +324,39 @@ export class Farm extends Phaser.Scene {
     const done = () => { sfx.coin(); close(); this.drawCrop(c, it); };
     m.add(button(this, width / 2 - 100, height / 2 + 125, 180, 48, `💎 ${cost} ${t('rush')}`, () => { if (cropRush(id)) { track('crop_rush', { plot: id, via: 'gems' }); done(); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 17));
     m.add(button(this, width / 2 + 100, height / 2 + 125, 180, 48, `📺 ${t('rush')}`, async () => { if (await showRewarded('crop_rush') && cropRush(id, true)) { track('crop_rush', { plot: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 17));
+  }
+  // F23: boş tarlaya dokununca tohum seç — 3×3 kart; kilitli tohum seviyesini, fiyatlı tohum parasını gösterir
+  seedPicker(id) {
+    const it = item(id), c = this.nodes[id], en = getLang() === 'en';
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 560);
+    m.add(txt(this, width / 2, height / 2 - 235, en ? '🌱 Choose a seed' : '🌱 Tohum seç', 30, '#ffb71b'));
+    m.add(txt(this, width / 2, height / 2 - 200, this.itemName(it), 17, '#cfe8d8'));
+    const keys = Object.keys(SEEDS).sort((a, b) => SEEDS[a].lvl - SEEDS[b].lvl || SEEDS[a].ms - SEEDS[b].ms), last = seedOf(id);
+    const go = (k) => {
+      if (!plant(id, Date.now(), k)) { this.toast(en ? 'Not enough coins' : 'Yeterli para yok 🪙'); return; }
+      close(); if (ftueDone('plant')) this.drawHint(); sfx.coin && sfx.coin(); track('crop_plant', { plot: id, seed: k });
+      this.drawCrop(c, it); this.tweens.add({ targets: c.crop, scaleY: { from: 0.2, to: 1 }, duration: 400, ease: 'Back.Out' });
+      this.toast(`${SEEDS[k].emoji} ${t('planted')} · ${fmtMs(cropMs(id))}`);
+    };
+    keys.forEach((k, i) => {
+      const S = SEEDS[k], open = seedOpen(k), x = width / 2 + ((i % 3) - 1) * 150, y = height / 2 - 110 + Math.floor(i / 3) * 128;
+      const sel = k === last && open;
+      const cg = this.add.graphics();
+      cg.fillStyle(0x000000, 0.3); cg.fillRoundedRect(x - 66, y - 52, 132, 116, 18);
+      cg.fillGradientStyle(open ? 0x3d7a58 : 0x3a4146, open ? 0x3d7a58 : 0x3a4146, open ? 0x1b4230 : 0x22282c, open ? 0x1b4230 : 0x22282c, 1);
+      cg.fillRoundedRect(x - 66, y - 56, 132, 112, 18);
+      cg.lineStyle(sel ? 4 : 2, sel ? 0xffd45a : 0xffffff, sel ? 1 : 0.25); cg.strokeRoundedRect(x - 66, y - 56, 132, 112, 18);
+      m.add(cg);
+      m.add(txt(this, x, y - 22, S.emoji, 40).setAlpha(open ? 1 : 0.4));
+      m.add(txt(this, x, y + 14, S.name[getLang()] || S.name.tr, 16, open ? '#ffffff' : '#9aa'));
+      m.add(txt(this, x, y + 36, open ? `⏳${Math.round(S.ms / 3600000)}${t('hShort')} · 🪙${S.price}` : `🔒 ${t('level')} ${S.lvl}`, 12, open ? '#ffe58a' : '#ff9a9a'));
+      if (open && S.cost) m.add(txt(this, x + 50, y - 44, `-${S.cost}🪙`, 12, '#ffd9a0'));
+      if (S.good && open) m.add(txt(this, x - 50, y - 44, '🏚️', 14));
+      const z = this.add.zone(x, y, 132, 112).setInteractive({ useHandCursor: open });
+      z.on('pointerup', () => { if (open) go(k); else this.toast(`🔒 ${t('level')} ${S.lvl}`); });
+      m.add(z);
+    });
+    m.add(txt(this, width / 2, height / 2 + 262, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 14, '#cfe8d8'));
   }
   tickCrops() {
     for (const it of CATALOG) {

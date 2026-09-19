@@ -2,7 +2,7 @@
 // plan() saf: test edilebilir; DOM/Capacitor bağımlılığı yok.
 import { CONFIG } from '../config.js';
 import { save } from './save.js';
-import { CROPS } from './crops.js';
+import { CROPS, SEEDS } from './crops.js';
 import { festActive, festMsLeft } from '../engine/festival.js';
 import { t } from '../i18n.js';
 
@@ -22,7 +22,7 @@ export function plan(s = save, now = Date.now()) {
     out.push({ id: 1, key: 'lives', at: now + first + (max - s.lives - 1) * regen });
   }
   const grow = Object.entries(s.farm?.crops || {}).filter(([id, c]) => CROPS[id] && c.readyAt > now).sort((a, b) => a[1].readyAt - b[1].readyAt);
-  if (grow.length) out.push({ id: 2, key: 'crops', at: grow[0][1].readyAt, emoji: CROPS[grow[0][0]].emoji });
+  if (grow.length) out.push({ id: 2, key: 'crops', at: grow[0][1].readyAt, emoji: (SEEDS[grow[0][1].seed] || CROPS[grow[0][0]]).emoji });
   const left = festMsLeft(now);
   if (festActive(now)) { if (left > DAY + 3600000) out.push({ id: 3, key: 'festEnd', at: now + left - DAY }); }
   else out.push({ id: 3, key: 'festStart', at: now + left + 60000 });

@@ -1,6 +1,6 @@
 // F8: first-time guide (5 steps), farm-side daily streak, "while you were away" summary.
 import { save, persist, dailyStatus, claimDaily, addGems } from './save.js';
-import { CROPS } from './crops.js';
+import { CROPS, SEEDS } from './crops.js';
 import { PRODUCTS, isReady } from './produce.js';
 import { owns } from './farm.js';
 
@@ -39,7 +39,7 @@ export function awaySummary(now = Date.now()) {
   save.lastSeen = now; persist();
   if (!last || now - last < 10 * 60000) return null;
   const crops = save.farm.crops || {}; const lines = [];
-  for (const [id, c] of Object.entries(crops)) if (c.readyAt > last && c.readyAt <= now) lines.push(`${CROPS[id].emoji} hasat hazır`);
+  for (const [id, c] of Object.entries(crops)) if (c.readyAt > last && c.readyAt <= now) CROPS[id] && lines.push(`${(SEEDS[c.seed] || CROPS[id]).emoji} hasat hazır`);
   const prod = (save.farm.prod || {});
   for (const id in PRODUCTS) if (prod[id] > last && isReady(id, now)) lines.push(`${PRODUCTS[id].emoji || '📦'} ürün toplanmayı bekliyor`);
   const h = Math.floor((now - last) / 3600000), m = Math.floor((now - last) / 60000) % 60;
