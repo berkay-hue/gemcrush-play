@@ -97,7 +97,7 @@ export class Game extends Phaser.Scene {
 
     if (this.level.id === 1 && !save.tutorialDone) this.tutorial();
     // level intro toast
-    this.toast(this.level.name || `${t('level')} ${this.level.id}`, 30);
+    this.toast(this.level.boss ? `💀 ${t('hardLevel')} 💀` : (this.level.name || `${t('level')} ${this.level.id}`), this.level.boss ? 36 : 30);
     const q = currentQuest(); if (q) this.time.delayedCall(1400, () => { if (!this.ended) this.toast(`📜 ${t('questNext')}: ${q.text[getLang()] || q.text.tr}`, 20); });
   }
 
@@ -205,15 +205,18 @@ export class Game extends Phaser.Scene {
   refreshHud() {
     const b = this.board;
     this.movesTxt.setText(String(b.moves));
+    this.movesTxt.setColor(b.moves <= 5 ? '#e0203c' : '#3a2412');
+    if (b.moves <= 5 && b.moves > 0 && !this.movesPulse) this.movesPulse = this.tweens.add({ targets: this.movesTxt, scale: 1.18, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    if ((b.moves > 5 || b.moves === 0) && this.movesPulse) { this.movesPulse.stop(); this.movesPulse = null; this.movesTxt.setScale(1); }
     this.scoreTxt.setText(String(b.score));
     this.tweens.add({ targets: this.bar, width: 400 * b.objFrac(), duration: 250, ease: 'Cubic.Out' });
     const st = b.stars();
     this.starMarks.forEach((m, i) => {
       const on = st >= i + 1;
-      if (on && m.texture.key !== 'star') { m.setTexture('star'); this.tweens.add({ targets: m, scale: 0.75, yoyo: true, duration: 180, ease: 'Back.Out' }); sfx.special && sfx.special(); }
+      if (on && m.texture.key !== 'star') { m.setTexture('star'); this.tweens.add({ targets: m, scale: 0.75, yoyo: true, duration: 180, ease: 'Back.Out' }); sfx.special && sfx.special(); this.starEarnFx(m.x, m.y); }
     });
     const prog = b.progress();
-    prog.forEach((p, i) => { const o = this.objIcons[i]; if (o) { o.lbl.setText(`${Math.min(p.current, p.target)}/${p.target}`); if (p.current >= p.target) o.check.setVisible(true); } });
+    prog.forEach((p, i) => { const o = this.objIcons[i]; if (o) { o.lbl.setText(`${Math.min(p.current, p.target)}/${p.target}`); if (p.current >= p.target && !o.check.visible) { o.check.setVisible(true).setScale(0); this.tweens.add({ targets: o.check, scale: 1, duration: 300, ease: 'Back.Out' }); this.ringAt(this.objTxt.x + o.x, this.objTxt.y + o.y, 0x2ee06a); } } });
   }
   buildObjectives() {
     const prog = this.board.progress();
@@ -323,6 +326,7 @@ export class Game extends Phaser.Scene {
           maxCascade = Math.max(maxCascade, e.cascade);
           sfx.match(e.cascade);
           this.floatScore(e.cells, e.score);
+          if (e.cascade >= 2) this.cascadeFx(e.cells, e.cascade);
           break;
         }
         case 'spawn_special': {
@@ -333,6 +337,7 @@ export class Game extends Phaser.Scene {
           const n = this.mkGem(e.at[0], e.at[1], g); n.setScale(0.2);
           this.sprites[e.at[0] * 100 + e.at[1]] = n;
           sfx.special(); this.tweens.add({ targets: n, scale: 1, duration: 200, ease: 'Back.Out' });
+          this.specialBirth(n.x, n.y, e.gemType);
           break;
         }
         case 'specials_fire': {
@@ -346,12 +351,13 @@ export class Game extends Phaser.Scene {
         case 'unlock': { const l = this.overlays[e.at[0] * 100 + e.at[1] + 10000]; if (l) { this.tweens.add({ targets: l, alpha: 0, scale: 1.5, duration: 200, onComplete: () => l.destroy() }); delete this.overlays[e.at[0] * 100 + e.at[1] + 10000]; }
           const s = this.sprites[e.at[0] * 100 + e.at[1]]; const g = this.board.cells[e.at[0]][e.at[1]]; if (s && g) s.setTexture(gemKey(g)); break; }
         case 'clear': {
-          const tws = [];
+          const tws = []; let flyN = 0;
           for (const [r, c] of e.cells) {
             const s = this.sprites[r * 100 + c];
             if (!s) continue;
             delete this.sprites[r * 100 + c];
             this.burst(s.x, s.y, s.gemType, e.reason);
+            if (flyN < 8 && this.flyToGoal(s.x, s.y, s.gemType)) flyN++;
             tws.push({ targets: s, scale: 1.3, alpha: 0, duration: DUR.clear, ease: 'Quad.Out', onComplete: () => s.destroy() });
           }
           if (tws.length) await this.tw(tws);
@@ -502,6 +508,75 @@ export class Game extends Phaser.Scene {
     this.tweens.add({ targets: tx, scale: 1, duration: 160, ease: 'Back.Out' });
     this.tweens.add({ targets: tx, y: py(r) - 64, alpha: 0, delay: 200, duration: 550, ease: 'Quad.In', onComplete: () => tx.destroy() });
   }
+  // F3: çağlayan sayacı — her zincirde büyüyen "Zincir xN"
+  cascadeFx(cells, n) {
+    const [r, c] = cells[Math.floor(cells.length / 2)];
+    const cols = ['#9dffb8', '#7fe0ff', '#ffd23f', '#ff9a3c', '#ff4d9a'];
+    const tx = txt(this, px(c), py(r) - 30, `${t('chain')} x${n}`, 20 + Math.min(n, 6) * 3, cols[Math.min(n - 2, cols.length - 1)]).setDepth(61).setStroke('#1a0a00', 6).setScale(0.2);
+    this.tweens.add({ targets: tx, scale: 1, duration: 180, ease: 'Back.Out' });
+    this.tweens.add({ targets: tx, y: tx.y - 50, alpha: 0, delay: 380, duration: 420, onComplete: () => tx.destroy() });
+    if (n >= 4) { const cam = this.cameras.main; cam.shake(120 + n * 20, 0.003 * Math.min(n, 7)); this.tweens.add({ targets: cam, zoom: 1.03, duration: 90, yoyo: true }); }
+  }
+  // F3: toplanan taş hedef sayacına uçar
+  flyToGoal(x, y, type) {
+    const i = this.board.progress().findIndex((p) => p.kind === 'collect' && p.gemType === type && p.current < p.target);
+    const o = i >= 0 && this.objIcons[i]; if (!o) return false;
+    const tx = this.objTxt.x + o.x, ty = this.objTxt.y + o.y;
+    const g = this.add.image(x, y, `gem${type}`).setScale(0.55).setDepth(80);
+    const tr = this.add.image(x, y, 'glow').setTint(CONFIG.gemColors[type] ?? 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.5).setAlpha(0.7).setDepth(79);
+    const mx = (x + tx) / 2 + (Math.random() - 0.5) * 160, my = Math.min(y, ty) - 60;
+    const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(x, y), new Phaser.Math.Vector2(mx, my), new Phaser.Math.Vector2(tx, ty));
+    const st = { t: 0 };
+    this.tweens.add({ targets: st, t: 1, duration: 520 + Math.random() * 120, ease: 'Quad.In',
+      onUpdate: () => { const pt = curve.getPoint(st.t); g.setPosition(pt.x, pt.y).setScale(0.55 - st.t * 0.2); tr.setPosition(pt.x, pt.y); },
+      onComplete: () => { g.destroy(); tr.destroy(); this.tweens.add({ targets: o, scale: 1.25, duration: 70, yoyo: true }); this.ringAt(tx, ty, CONFIG.gemColors[type], 0.4); } });
+    return true;
+  }
+  ringAt(x, y, col = 0xffffff, k = 0.6, parent) {
+    const ring = this.add.image(x, y, 'ring').setTint(col).setBlendMode(Phaser.BlendModes.ADD).setScale(0.1).setAlpha(0.95).setDepth(81);
+    if (parent) parent.add(ring);
+    this.tweens.add({ targets: ring, scale: 1.4 * k, alpha: 0, duration: 360, ease: 'Cubic.Out', onComplete: () => ring.destroy() });
+  }
+  specialBirth(x, y, type) {
+    const col = CONFIG.gemColors[type] ?? 0xffffff;
+    this.ringAt(x, y, col, 0.9); this.ringAt(x, y, 0xffffff, 0.6);
+    const f = this.spawnFx(x, y, 'flare', { tint: col, add: true, scale: 0.2 });
+    this.tweens.add({ targets: f, scale: 1.2, angle: 90, alpha: 0, duration: 380, ease: 'Quad.Out', onComplete: () => f.destroy() });
+  }
+  starEarnFx(x, y, parent) {
+    const add = (o) => { if (parent) parent.add(o); else o.setDepth(82); return o; };
+    const g = add(this.add.image(x, y, 'glow').setTint(0xffd23f).setBlendMode(Phaser.BlendModes.ADD).setScale(0.2).setAlpha(1));
+    this.tweens.add({ targets: g, scale: parent ? 2.4 : 1.4, alpha: 0, duration: 520, ease: 'Quad.Out', onComplete: () => g.destroy() });
+    for (let i = 0; i < 10; i++) {
+      const p = add(this.add.image(x, y, 'spark').setTint(i % 2 ? 0xffd23f : 0xffffff).setBlendMode(Phaser.BlendModes.ADD).setScale(0.3 + Math.random() * 0.3));
+      const a = (Math.PI * 2 / 10) * i, d = (parent ? 70 : 36) + Math.random() * 30;
+      this.tweens.add({ targets: p, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, angle: 180, duration: 420 + Math.random() * 200, ease: 'Quad.Out', onComplete: () => p.destroy() });
+    }
+  }
+  // F3: kalan hamleler hamle sayacından tahtaya roket olarak uçar, patlar (bonus skor)
+  async victoryFx(left) {
+    this.toast(t('win'), 44);
+    const n = Math.min(left, 12); if (!n) { await this.wait(500); return; }
+    await this.wait(450);
+    const sx = this.movesTxt.x, sy = this.movesTxt.y;
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(Math.random() * this.board.H), c = Math.floor(Math.random() * this.board.W);
+      const x = px(c), y = py(r), col = CONFIG.gemColors[i % 6];
+      const rk = this.spawnFx(sx, sy, 'flare', { tint: col, add: true, scale: 0.5 });
+      this.tweens.add({ targets: rk, x, y, angle: 360, duration: 300, ease: 'Quad.In', onComplete: () => { rk.destroy(); this.shockwave(x, y, col, 0.45); sfx.match(Math.min(i + 1, 6)); this.floatScore([[r, c]], 200); } });
+      this.movesTxt.setText(String(left - i - 1));
+      await this.wait(110);
+    }
+    await this.wait(550);
+  }
+  confetti(parent) {
+    const { width, height } = this.scale;
+    for (let i = 0; i < 40; i++) {
+      const p = this.add.rectangle(width / 2 + (Math.random() - 0.5) * 120, height / 2 - 200, 8 + Math.random() * 6, 12 + Math.random() * 8, CONFIG.gemColors[i % 6]).setAngle(Math.random() * 360);
+      parent.add(p);
+      this.tweens.add({ targets: p, x: p.x + (Math.random() - 0.5) * 560, y: height / 2 + 150 + Math.random() * 250, angle: p.angle + 540 + Math.random() * 360, alpha: { from: 1, to: 0 }, delay: Math.random() * 300, duration: 1300 + Math.random() * 900, ease: 'Cubic.Out', onComplete: () => p.destroy() });
+    }
+  }
   shake(at) { const o = this.overlays[at[0] * 100 + at[1]]; if (o) this.tweens.add({ targets: o, x: o.x + 4, duration: 40, yoyo: true, repeat: 3 }); }
   updOverlay(at) {
     const k = at[0] * 100 + at[1]; const o = this.overlays[k]; if (o) { o.destroy(); delete this.overlays[k]; }
@@ -552,6 +627,7 @@ export class Game extends Phaser.Scene {
   async win() {
     this.ended = true; sfx.win(); endLevel(true);
     const left = this.board.moves;
+    await this.victoryFx(left);
     const bonus = this.board.cashOutMoves();
     const stars = this.board.stars(); const score = this.board.score;
     const coins = CONFIG.coins.winReward + CONFIG.coins.threeStar + left * CONFIG.coins.perMoveLeft;
@@ -564,7 +640,12 @@ export class Game extends Phaser.Scene {
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
-    for (let i = 0; i < 3; i++) { const s = this.add.image(width / 2 - 80 + i * 80, height / 2 - 90, i < stars ? 'star' : 'stargray').setScale(0); c.add(s); this.tweens.add({ targets: s, scale: 1, delay: 200 + i * 200, duration: 250, ease: 'Back.Out' }); }
+    for (let i = 0; i < 3; i++) {
+      const sx = width / 2 - 80 + i * 80, sy = height / 2 - 90;
+      const s = this.add.image(sx, sy, i < stars ? 'star' : 'stargray').setScale(0); c.add(s);
+      this.tweens.add({ targets: s, scale: 1, delay: 200 + i * 220, duration: 280, ease: 'Back.Out', onStart: () => { if (i < stars) { sfx.special && sfx.special(); this.starEarnFx(sx, sy, c); } } });
+    }
+    this.confetti(c);
     c.add(txt(this, width / 2, height / 2 - 20, `${t('score')}: ${score}`, 26, '#fff'));
     if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); c.add(txt(this, width / 2 + 10, height / 2 + 60, `+${coins}`, 26, '#ffe58a'));

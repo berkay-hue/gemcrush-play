@@ -48,11 +48,19 @@ export class Map extends Phaser.Scene {
       const c = this.add.container(x, y);
       c.add(this.add.circle(0, 5, 31, 0x000000, 0.4));
       if (current) { const gl = this.add.image(0, 0, 'glow').setTint(0xffb71b).setBlendMode(Phaser.BlendModes.ADD).setScale(0.9); c.add(gl); this.tweens.add({ targets: gl, alpha: 0.4, scale: 1.1, yoyo: true, repeat: -1, duration: 700 }); }
-      const circ = this.add.circle(0, 0, 30, unlocked ? (lv.wall ? 0xff3b5c : 0xffb71b) : 0x2a333a);
+      if (lv.chapter && (i === 0 || this.levels[i - 1].chapter !== lv.chapter)) { // bölüm tabelası
+        const sx = xFor(i) > width / 2 ? x - 150 : x + 150, sy = y - 10;
+        const sg = this.add.graphics(); sg.fillStyle(0x000000, 0.35); sg.fillRoundedRect(sx - 88, sy - 26 + 4, 176, 52, 14);
+        sg.fillStyle(0x6b4423, 1); sg.fillRoundedRect(sx - 88, sy - 26, 176, 52, 14); sg.lineStyle(3, 0xffb71b, 0.9); sg.strokeRoundedRect(sx - 88, sy - 26, 176, 52, 14);
+        this.path.add(sg); this.path.add(txt(this, sx, sy - 8, `${t('chapter')} ${Math.floor((lv.id - 101) / 10) + 2}`, 13, '#ffe58a'));
+        this.path.add(txt(this, sx, sy + 10, lv.chapter, 18, '#ffffff'));
+      }
+      const circ = this.add.circle(0, 0, 30, unlocked ? (lv.boss ? 0x9b4dff : lv.wall ? 0xff3b5c : 0xffb71b) : 0x2a333a);
       circ.setStrokeStyle(4, current ? 0xffffff : 0x000000, current ? 1 : 0.4);
       c.add(circ); c.add(this.add.circle(0, -9, 18, 0xffffff, unlocked ? 0.22 : 0.06));
       const n = txt(this, 0, 0, String(lv.id), 22, unlocked ? '#1a1200' : '#7a8590');
       c.add(n);
+      if (lv.boss) { c.add(txt(this, 0, 42, `💀 ${t('hard')}`, 14, '#e6d1ff').setShadow(0, 2, '#000', 3, true, true)); }
       const st = save.stars[lv.id] || 0;
       for (let k = 0; k < 3; k++) c.add(this.add.image(-22 + k * 22, -40, k < st ? 'star' : 'stargray').setScale(0.35));
       if (unlocked) {
