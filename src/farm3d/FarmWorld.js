@@ -205,20 +205,52 @@ export class FarmWorld {
     for (const fx of [-0.1, 0, 0.1]) add(new T.CylinderGeometry(0.014, 0.01, 0.26, 5), steel, fx, 1.8, 0, fork);
     g.add(body); g.scale.setScalar(1.25); g.position.set(x, 0, z); g.rotation.y = 0.35;
     this.S.add(g);
-    let hop = 0;
-    this.mascotHop = () => { hop = 1; };
-    this.tickers.push((t, dt) => {
-      if (!g.parent) return;
-      if (hop > 0) hop = Math.max(0, hop - (dt || 0.016) / 0.7);
-      const zz = this.mascotSleep = this.nightK > 0.6 && hop === 0; // F19: gece uyur
-      if (zz) { body.position.y = -0.08 + Math.sin(t / 1100) * 0.02; head.rotation.x = 0.42 + Math.sin(t / 1100) * 0.06; head.rotation.y = 0; body.rotation.z = 0.06; fork.rotation.z = 0.35; return; }
-      head.rotation.x = 0;
-      body.position.y = Math.abs(Math.sin(t / 420)) * 0.05 + Math.sin(hop * Math.PI) * 0.6;
-      body.rotation.z = Math.sin(t / 700) * 0.04;
-      head.rotation.y = Math.sin(t / 1300) * 0.25 + (hop > 0 ? Math.sin(hop * 20) * 0.2 : 0);
-      fork.rotation.z = -0.12 + Math.sin(t / 900) * 0.05;
-    });
+    // F20: tepkiler (sevinç/üzgün/el sallama/dans) + değirmen önünde dolaşma
+    const armR = body.children.find((m) => m.position.x > 0.4 && m.position.y > 0.8), smile = head.children.find((m) => m.geometry.type === 'TorusGeometry');
+    const HOMEP = [x, z], WPS = [[0, 0], [1.0, 0.3], [0.5, -1.2], [-0.4, 1.1], [1.3, 1.4], [0.9, -0.4]];
+    const M8 = { mood: '', k: 0, dur: 0, look: null, walk: null, rest: 3 };
     this.mascotPos = [x, z];
+    this.mascotReact = (mood) => { M8.mood = mood; M8.k = 0; M8.dur = { joy: 1.1, sad: 1.8, wave: 1.6, dance: 2.4 }[mood] || 1; M8.walk = null; M8.rest = 3 + Math.random() * 3; };
+    this.mascotHop = () => this.mascotReact('joy');
+    this.mascotLook = (px, pz) => { M8.look = [px, pz, 2]; };
+    const free = (px, pz) => {
+      for (const id in this.items) {
+        if (this.items[id].state === 'hidden') continue;
+        const p = this.where(id); if (p && (p[0] - px) ** 2 + (p[1] - pz) ** 2 < 2.4) return false;
+      }
+      return true;
+    };
+    const turn = (to, dt) => { let d = to - g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); g.rotation.y += d * Math.min(1, dt * 6); };
+    this.tickers.push((t, dt0) => {
+      if (!g.parent) return;
+      const dt = Math.min(0.05, (dt0 || 16) > 1 ? (dt0 || 16) / 1000 : dt0);
+      const zz = this.mascotSleep = this.nightK > 0.6 && !M8.mood; // F19: gece uyur
+      if (smile) smile.rotation.z = M8.mood === 'sad' ? 0 : Math.PI;
+      if (smile) smile.position.y = M8.mood === 'sad' ? -0.17 : -0.13;
+      if (zz) { M8.walk = null; body.position.y = -0.08 + Math.sin(t / 1100) * 0.02; head.rotation.x = 0.42 + Math.sin(t / 1100) * 0.06; head.rotation.y = 0; body.rotation.z = 0.06; fork.rotation.z = 0.35; this.mascotPos = [g.position.x, g.position.z]; return; }
+      head.rotation.x = 0; body.rotation.y = 0; if (armR) { armR.rotation.z = 0; armR.position.y = 0.86; }
+      let bob = Math.abs(Math.sin(t / 420)) * 0.05, sway = Math.sin(t / 700) * 0.04, hy = Math.sin(t / 1300) * 0.25;
+      if (M8.mood) {
+        M8.k += dt / M8.dur; const k = Math.min(1, M8.k);
+        if (M8.mood === 'joy') { bob = Math.sin(k * Math.PI) * 0.6; body.rotation.y = k * Math.PI * 2; hy = Math.sin(k * 20) * 0.2; }
+        else if (M8.mood === 'sad') { bob = -0.05; head.rotation.x = 0.35; hy = Math.sin(k * 14) * 0.3 * (1 - k); sway = -0.08; }
+        else if (M8.mood === 'wave') { if (armR) { armR.position.y = 1.2; armR.rotation.z = 2.4 + Math.sin(k * 30) * 0.4; } hy = 0.2; }
+        else if (M8.mood === 'dance') { bob = Math.abs(Math.sin(k * Math.PI * 6)) * 0.35; sway = Math.sin(k * Math.PI * 6) * 0.25; body.rotation.y = Math.sin(k * Math.PI * 3) * 0.8; }
+        if (M8.k >= 1) M8.mood = '';
+      } else if (M8.walk) {
+        const [tx, tz] = M8.walk, dx = tx - g.position.x, dz = tz - g.position.z, d = Math.hypot(dx, dz);
+        if (d < 0.05) { M8.walk = null; M8.rest = 4 + Math.random() * 6; }
+        else { const st = Math.min(d, dt * 0.9); g.position.x += dx / d * st; g.position.z += dz / d * st; turn(Math.atan2(dx, dz), dt); bob = Math.abs(Math.sin(t / 150)) * 0.09; sway = Math.sin(t / 150) * 0.07; }
+      } else if (M8.look) {
+        turn(Math.atan2(M8.look[0] - g.position.x, M8.look[1] - g.position.z), dt); if ((M8.look[2] -= dt) <= 0) M8.look = null;
+      } else if ((M8.rest -= dt) <= 0) {
+        const o = WPS[Math.floor(Math.random() * WPS.length)], p = [HOMEP[0] + o[0], HOMEP[1] + o[1]];
+        if (free(p[0], p[1])) M8.walk = p; else M8.rest = 3;
+      } else turn(0.35, dt * 0.3);
+      body.position.y = bob; body.rotation.z = sway; head.rotation.y = hy;
+      fork.rotation.z = -0.12 + Math.sin(t / 900) * 0.05;
+      this.mascotPos = [g.position.x, g.position.z];
+    });
   }
 
 

@@ -31,6 +31,7 @@ import { RegionMixin } from './farmRegions.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 import { BridgeMixin, isSickAnimal } from './farmBridge.js';
 import { HandsMixin } from './farmHands.js';
+import { LambMixin } from './farmLamb.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
@@ -41,6 +42,7 @@ export class Farm extends Phaser.Scene {
   constructor() { super('Farm'); }
 
   create(data = {}) {
+    this._data = data;
     const { width, height } = this.scale;
     this.levels = this.cache.json.get('levels');
     tickLives();
@@ -239,18 +241,8 @@ export class Farm extends Phaser.Scene {
     this.input.on('wheel', (_p, _o, _dx, dy) => w.zoomBy(dy > 0 ? 1.08 : 0.93));
     this.input.on('pointerupoutside', () => { if (down && down.harvest) this.harvestEnd(down); down = null; });
     this.setupHands();
-    // F16c: maskot kuzu artık 3D (FarmWorld.mascot); burada yalnız görünmez dokunma alanı
-    const [LX, LZ] = w.mascotPos || [-7.3, 1.1];
-    const lamb = this.add.zone(0, 0, 60, 90).setOrigin(0.5, 1).setDepth(1).setInteractive({ useHandCursor: true });
-    let mood = 0;
-    lamb.on('pointerup', () => { if (mood) return; mood = 1; sfx.click(); w.mascotHop && w.mascotHop(); this.time.delayedCall(800, () => { mood = 0; }); });
-    this.events.on('update', () => {
-      const a = w.project(LX, 0, LZ), b = w.project(LX, 2.6, LZ);
-      const h = Math.max(24, Math.min(260, a.y - b.y));
-      lamb.setSize(h * 0.7, h).setPosition(a.x, a.y);
-      if (lamb.input) lamb.input.hitArea.setSize(h * 0.7, h);
-      lamb.setVisible(a.vis && a.y > 90 && a.y < 900);
-    });
+    // F16c/F20: maskot kuzu 3D (FarmWorld.mascot); dokunma + konuşma balonu farmLamb.js'de
+    this.setupLamb(this._data || {});
 
     // overlays follow their 3D anchors
     this.events.on('update', () => {
@@ -437,6 +429,7 @@ export class Farm extends Phaser.Scene {
   // F2: petting -> jump + heart burst + small status card; second tap opens the modal
   petAnimal(id) {
     const w = this.w3, a = w.anchor(id, 0.3); w.poke(id); sfx.pet(); w.burst(id, 0xff7aa8, 10);
+    { const p = w.where && w.where(id); if (p && w.mascotLook) w.mascotLook(p[0], p[1]); } // F20: kuzu da bakar
     if (a) for (let i = 0; i < 6; i++) {
       const h = txt(this, a.x, a.y, i % 3 ? '❤️' : '💕', 22 + (i % 3) * 4).setDepth(950);
       this.tweens.add({ targets: h, x: a.x + (Math.random() - 0.5) * 110, y: a.y - 60 - Math.random() * 70, alpha: 0, scale: 1.4, duration: 900 + i * 60, ease: 'Cubic.Out', onComplete: () => h.destroy() });
@@ -968,4 +961,4 @@ export class Farm extends Phaser.Scene {
     this.preLevel(lv);
   }
 }
-Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin);
+Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin);

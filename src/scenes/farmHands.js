@@ -85,6 +85,7 @@ export const HandsMixin = {
     const H = down.harvest; if (!H) return;
     if (this.sickle) { const s = this.sickle; this.sickle = null; this.tweens.add({ targets: s, alpha: 0, scale: 0.6, duration: 180, onComplete: () => s.destroy() }); }
     const k = H.done.size; if (!k) return;
+    this.lambReact && this.time.delayedCall(500, () => this.lambReact('joy', k > 2 ? '✋ ×' + k + ' — süper hasat! 🌾' : 'Mis gibi ürün! 🌾'));
     this.toast([k > 1 ? `✋ ×${k}` : '', H.n ? `+${H.n} ${H.em.join('')} → 🏚️` : '', H.coins ? `+🪙${H.coins}` : ''].filter(Boolean).join('  ·  '));
     const f = save.farm; if (k === 1 && !f.dragTip) { f.dragTip = 1; persist(); this.time.delayedCall(1300, () => this.toast('✋ Parmağını tarlaların üstünde sürükle, hepsini topla!')); }
   },
@@ -165,8 +166,8 @@ export const HandsMixin = {
     const before = hunger(id), r = feed(id), it = item(id);
     if (r === 'cd') return this.toast(`${it.emoji} tok · ⏳ ${hhmm(feedLeft(id))}`);
     if (r === 'sick') return this.toast(`${it.emoji} hasta — veteriner lazım 🩺`);
-    if (r === 'coins') return this.toast(`🪙 yetersiz (${FEED_COINS} gerekli)`);
-    if (r === 'energy') return this.toast('⚡ enerji yok');
+    if (r === 'coins') { this.lambReact && this.lambReact('sad', 'Yem parası yetmedi 😢'); return this.toast(`🪙 yetersiz (${FEED_COINS} gerekli)`); }
+    if (r === 'energy') { this.lambReact && this.lambReact('sad', 'Enerjimiz bitti 😴'); return this.toast('⚡ enerji yok'); }
     sfx.coin && sfx.coin(); track('animal_feed', { id, before });
     this.w3.poke && this.w3.poke(id); this.w3.burst && this.w3.burst(id, 0x9ccc3a, 14);
     const a = this.w3.anchor(id, 0.5), bx = this.bucket ? this.bucket.x : 50, by = this.bucket ? this.bucket.y : 440;
@@ -176,6 +177,7 @@ export const HandsMixin = {
     }
     if (navigator.vibrate) try { navigator.vibrate([10, 30, 10]); } catch (e) { /* yok */ }
     this.toast(`${it.emoji} doydu 💚  −🪙${FEED_COINS}  −⚡1`);
+    if (this.lambReact) { const p = this.w3.where && this.w3.where(id); if (p && this.w3.mascotLook) this.w3.mascotLook(p[0], p[1]); this.lambReact('joy', 'Afiyet olsun ' + it.emoji + ' 💚'); }
     if (this.energyTxt) this.energyTxt.setText(`⚡${energy()}/${E_MAX}`);
     if (this.bucket) this.bucket.dot.setVisible(this.ownedLivestock().some((k) => !isSick(k) && feedLeft(k) === 0 && hunger(k) < 70));
     this.refreshHud();
