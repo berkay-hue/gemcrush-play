@@ -33,6 +33,7 @@ import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/the
 import { BridgeMixin, isSickAnimal } from './farmBridge.js';
 import { HandsMixin } from './farmHands.js';
 import { LambMixin } from './farmLamb.js';
+import { GuideMixin, guideSeen } from './farmGuide.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
@@ -127,6 +128,7 @@ export class Farm extends Phaser.Scene {
     this.inboxBadge(width - 16, 264);
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 380, 80, 40, '📸', () => this.snap(), 0x2a333a, '#fff', 20);
+    button(this, width - 50, 430, 80, 40, '❓', () => this.guide(0), 0x2a333a, '#fff', 20); // F25: kuzu rehberi
     this.taskBadge(width - 16, 314);
     this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
     button(this, 50, 330, 80, 40, '🌾', () => this.festival(), festActive() ? 0xc9761b : 0x2a333a, '#fff', 20);
@@ -142,6 +144,7 @@ export class Farm extends Phaser.Scene {
       }
     }
     if (data.dlg) { const d = takeDialog(data.dlg); if (d) this.dialog(d); }
+    else if (!guideSeen()) this.time.delayedCall(900, () => this.guide(0)); // F25: ilk girişte rehber
 
     this.refreshHud();
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.refreshHud() });
@@ -1036,4 +1039,4 @@ export class Farm extends Phaser.Scene {
     this.preLevel(lv);
   }
 }
-Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin, CineMixin);
+Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin, GuideMixin, CineMixin);
