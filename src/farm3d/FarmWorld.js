@@ -156,6 +156,59 @@ export class FarmWorld {
     fl.rotation.x = -Math.PI / 2; fl.position.y = -0.06; fl.receiveShadow = true; this.S.add(fl);
     this.island(0, ...ISL, POND);
     for (const [n, [x, z], h, ry, s] of DECOR) this.put(n, x, z, h ? { h, ry } : { s, ry });
+    this.mascot(-7.3, 1.1);
+  }
+
+  // F16c: maskot Kuzi 3D — çiftçi tulumlu, hasır şapkalı, yabalı kuzu (prosedürel)
+  mascot(x, z) {
+    const g = new T.Group(), body = new T.Group(), M = (c, r = 0.85) => new T.MeshStandardMaterial({ color: c, roughness: r });
+    const add = (geo, m, px, py, pz, par = body) => { const o = new T.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; par.add(o); return o; };
+    const S = (r) => new T.SphereGeometry(r, 14, 10);
+    const wool = M(0xfbf8f0, 1), skin = M(0xf2dcc4), dark = M(0x3a2e2a), denim = M(0x3f78c9), straw = M(0xe8c066), band = M(0xd9453b), wood = M(0x8a5a32), steel = M(0xb8c0c8, 0.4), pink = M(0xf29aa6);
+    // bacaklar + toynaklar
+    for (const sx of [-0.2, 0.2]) { add(new T.CylinderGeometry(0.09, 0.09, 0.4, 8), denim, sx, 0.25, 0); add(new T.CylinderGeometry(0.1, 0.11, 0.1, 8), dark, sx, 0.05, 0.02); }
+    // gövde: tulum + yün tüyleri
+    add(new T.CylinderGeometry(0.34, 0.38, 0.5, 14), denim, 0, 0.66, 0);
+    for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; add(S(0.2), wool, Math.cos(a) * 0.3, 0.98 + (i % 2) * 0.05, Math.sin(a) * 0.26); }
+    add(S(0.3), wool, 0, 1.02, 0);
+    add(new T.BoxGeometry(0.34, 0.24, 0.06), denim, 0, 0.84, 0.33); // göğüs cebi
+    add(new T.BoxGeometry(0.12, 0.08, 0.02), M(0xffc640, 0.4), 0, 0.88, 0.37);
+    for (const sx of [-0.14, 0.14]) add(new T.BoxGeometry(0.07, 0.42, 0.05), denim, sx, 1.02, 0.28); // askılar
+    // kollar
+    for (const sx of [-1, 1]) { const arm = add(S(0.12), wool, sx * 0.42, 0.86, 0.06); arm.scale.set(1, 1.5, 1); add(S(0.07), dark, sx * 0.46, 0.7, 0.1); }
+    // kafa
+    const head = new T.Group(); head.position.set(0, 1.42, 0.05); body.add(head);
+    add(S(0.3), skin, 0, 0, 0, head).scale.set(1, 0.95, 0.9);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(S(0.11), wool, Math.cos(a) * 0.14, 0.26, Math.sin(a) * 0.1, head); } // perçem
+    for (const sx of [-1, 1]) {
+      const ear = add(S(0.1), skin, sx * 0.33, 0.04, -0.02, head); ear.scale.set(1.7, 0.6, 0.8); ear.rotation.z = sx * -0.4;
+      add(S(0.055), dark, sx * 0.11, 0.04, 0.25, head); add(S(0.018), M(0xffffff, 0.3), sx * 0.11 + 0.02, 0.07, 0.3, head);
+      add(S(0.05), pink, sx * 0.19, -0.08, 0.21, head).scale.set(1, 0.6, 0.4); // yanak
+    }
+    add(S(0.05), pink, 0, -0.06, 0.28, head).scale.set(1.2, 0.8, 0.8); // burun
+    add(new T.TorusGeometry(0.05, 0.012, 6, 12, Math.PI), dark, 0, -0.13, 0.25, head).rotation.z = Math.PI; // gülümseme
+    // hasır şapka
+    add(new T.CylinderGeometry(0.5, 0.52, 0.04, 20), straw, 0, 0.3, 0, head);
+    add(new T.CylinderGeometry(0.22, 0.26, 0.24, 16), straw, 0, 0.43, 0, head);
+    add(new T.CylinderGeometry(0.265, 0.265, 0.07, 16), band, 0, 0.36, 0, head);
+    // yaba (sağ elde)
+    const fork = new T.Group(); fork.position.set(0.48, 0.2, 0.12); body.add(fork);
+    add(new T.CylinderGeometry(0.025, 0.025, 1.7, 6), wood, 0, 0.8, 0, fork);
+    add(new T.BoxGeometry(0.24, 0.035, 0.035), steel, 0, 1.66, 0, fork);
+    for (const fx of [-0.1, 0, 0.1]) add(new T.CylinderGeometry(0.014, 0.01, 0.26, 5), steel, fx, 1.8, 0, fork);
+    g.add(body); g.scale.setScalar(1.25); g.position.set(x, 0, z); g.rotation.y = 0.35;
+    this.S.add(g);
+    let hop = 0;
+    this.mascotHop = () => { hop = 1; };
+    this.tickers.push((t, dt) => {
+      if (!g.parent) return;
+      if (hop > 0) hop = Math.max(0, hop - (dt || 0.016) / 0.7);
+      body.position.y = Math.abs(Math.sin(t / 420)) * 0.05 + Math.sin(hop * Math.PI) * 0.6;
+      body.rotation.z = Math.sin(t / 700) * 0.04;
+      head.rotation.y = Math.sin(t / 1300) * 0.25 + (hop > 0 ? Math.sin(hop * 20) * 0.2 : 0);
+      fork.rotation.z = -0.12 + Math.sin(t / 900) * 0.05;
+    });
+    this.mascotPos = [x, z];
   }
 
   // F13: live position of an item (save override via this.posOf, else layout)
