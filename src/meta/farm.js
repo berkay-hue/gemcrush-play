@@ -46,6 +46,23 @@ export function buyItem(id) {
   persist();
   return true;
 }
+// F24: hayvanlar tek tek alınır (her alımda 1), her türden en fazla 4
+export const ANIMAL_MAX = 4;
+export const animalCount = (id) => (owns(id) ? Math.max(1, Math.min(ANIMAL_MAX, ((save.farm.cnt || {})[id]) || 1)) : 0);
+// 'max' | 'buyable' | 'expensive' (yalnız sahip olunan hayvan için)
+export function moreStatus(id) {
+  const it = item(id);
+  if (!it || it.kind !== 'animal' || !owns(id)) return 'max';
+  if (animalCount(id) >= ANIMAL_MAX) return 'max';
+  return starBalance() >= it.price ? 'buyable' : 'expensive';
+}
+export function buyMore(id) {
+  if (moreStatus(id) !== 'buyable') return false;
+  if (!spendStars(item(id).price)) return false;
+  (save.farm.cnt || (save.farm.cnt = {}))[id] = animalCount(id) + 1;
+  persist();
+  return true;
+}
 // items whose level just became reachable and were never announced (🔓 Yeni)
 export function newUnlocks() {
   const seen = save.farm.seen || (save.farm.seen = []);

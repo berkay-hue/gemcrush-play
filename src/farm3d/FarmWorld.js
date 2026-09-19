@@ -500,7 +500,7 @@ export class FarmWorld {
     if (id === 'ahir' && state !== 'owned') this._pen = null;
     const stage = opts.crop === 'growing' ? Math.min(2, Math.floor((opts.growth || 0) * 3)) : -1;
     const pos = state === 'hidden' ? '' : String(this.where(id));
-    const sig = state + '|' + (opts.crop || '') + (opts.seed || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '');
+    const sig = state + '|' + (opts.crop || '') + (opts.seed || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '') + (opts.n ? '|n' + opts.n : '');
     if (cur && cur.sig === sig) return;
     if (cur) { this.S.remove(cur.g); this.movers = this.movers.filter((m) => m.id !== id); }
     const g = new T.Group(); g.userData.id = id; this.S.add(g);
@@ -532,7 +532,7 @@ export class FarmWorld {
         this.tickers.push(tick);
       }
     } else if (L.area) {
-      const n = state === 'owned' ? L.n : 1, area = this.areaOf(id);
+      const n = state === 'owned' ? (opts.n || L.n) : 1, area = this.areaOf(id);
       for (let i = 0; i < n; i++) {
         this._col = this.colliders();
         const [x, z] = this.freeIn(area, HOME[id] !== 'ahir');

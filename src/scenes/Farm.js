@@ -6,7 +6,7 @@ import { SEASONS, currentSeason, decor, buySeasonal } from '../meta/season.js';
 import { showRewarded } from '../monetize/ads.js';
 import { Visitors, KINDS } from '../farm3d/visitors.js';
 import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
-import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, ARSA, arsa, ownsPlot, plotStatus, buyPlot, inPlot, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
+import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, ARSA, arsa, ownsPlot, plotStatus, buyPlot, inPlot, ANIMAL_MAX, animalCount, moreStatus, buyMore, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
 import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
 import { t, getLang } from '../i18n.js';
@@ -267,7 +267,7 @@ export class Farm extends Phaser.Scene {
     // F12: boş başlangıç — sahip olunmayan hiçbir şey dünyada görünmez, Mağaza'dan alınır
     if (st !== 'owned') { this.w3.setItem(it.id, 'hidden'); this.nodes[it.id] = c; return; }
     const sick = st === 'owned' && it.kind === 'animal' && LIVESTOCK.includes(it.id) && isSick(it.id);
-    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0 } : { sick });
+    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0 } : { sick, n: it.kind === 'animal' ? animalCount(it.id) : 0 });
     this.nodes[it.id] = c;
     if (sick) {
       const b = txt(this, 0, -34, '🤒', 30);
@@ -508,7 +508,7 @@ export class Farm extends Phaser.Scene {
     if (isSickAnimal(id)) return this.vetModal(id);
     const it = item(id); const st = status(id);
     const { width, height } = this.scale;
-    const { c, close } = modal(this, 420, 320);
+    const { c, close } = modal(this, 420, st === 'owned' && it.kind === 'animal' ? 410 : 320);
     c.add(txt(this, width / 2, height / 2 - 110, it.emoji, 64));
     c.add(txt(this, width / 2, height / 2 - 55, this.itemName(it), 28, '#ffb71b'));
     let msg = '';
@@ -517,6 +517,7 @@ export class Farm extends Phaser.Scene {
     else msg = `⭐ ${it.price}  ·  ${t('farmHave')} ${starBalance()}`;
     c.add(txt(this, width / 2, height / 2 + 5, msg, 20, '#fff'));
     if (PERK_TEXT[id]) c.add(txt(this, width / 2, height / 2 - 18, `✨ ${PERK_TEXT[id][getLang()] || PERK_TEXT[id].tr}`, 16, '#9dffb8'));
+    if (st === 'owned' && it.kind === 'animal') this.moreRow(c, id, close);
     if (st === 'owned' && PRODUCTS[id]) {
       const pr = PRODUCTS[id];
       c.add(txt(this, width / 2, height / 2 + 140, `🏚️ ${ambarUsed()}/${ambarCap()}`, 15, ambarFull() ? '#ff9a9a' : '#9fb3a8'));
@@ -553,6 +554,18 @@ export class Farm extends Phaser.Scene {
       c.add(txt(this, width / 2, height / 2 + 45, t('farmEarn'), 17, '#9fb3a8'));
       c.add(button(this, width / 2, height / 2 + 100, 260, 56, `${t('play')} ▶`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 22));
     } else c.add(button(this, width / 2, height / 2 + 90, 200, 50, 'OK', close, 0x2a333a, '#fff', 20));
+  }
+
+  // F24: "Sende 2/4 · +1 al ⭐" satırı (hayvan kartı üstünde)
+  moreRow(c, id, close) {
+    const { width, height } = this.scale, it = item(id), n = animalCount(id), ms = moreStatus(id);
+    c.add(txt(this, width / 2 - (ms === 'max' ? 0 : 70), height / 2 + 160, `${it.emoji.repeat(n)}  ${n}/${ANIMAL_MAX}${ms === 'max' ? ' ✅' : ''}`, 20, '#ffe58a'));
+    if (ms === 'max') return;
+    const ok = ms === 'buyable';
+    c.add(button(this, width / 2 + 120, height / 2 + 160, 130, 44, `+1 ⭐${it.price}`, () => {
+      if (!buyMore(id)) { this.toast(t('farmEarn')); return; }
+      sfx.build(); track('farm_buy_more', { item: id, n: n + 1 }); close(); this.scene.restart();
+    }, ok ? 0x2ee06a : 0x2a333a, ok ? '#04220e' : '#888', 16));
   }
 
   // ---- F7: satılık arsalar (sağ/sol) + tema önizleme ----
@@ -657,6 +670,14 @@ export class Farm extends Phaser.Scene {
             sfx.build(); track('plot_upgrade', { plot: it.id, lv: lv + 1 }); close(); this.shop(tab); this.refreshHud();
           }, ok ? 0x2ee06a : 0x2a333a, ok ? '#04220e' : '#888', 16));
         }
+      } else if (st === 'owned' && it.kind === 'animal') {
+        const n = animalCount(it.id), ms = moreStatus(it.id);
+        c.add(txt(this, width / 2 + 88, y, `${n}/${ANIMAL_MAX}`, 18, '#ffe58a'));
+        if (ms === 'max') c.add(txt(this, width / 2 + 170, y, '✅', 30));
+        else c.add(button(this, width / 2 + 170, y, 96, 50, `+1 ⭐${it.price}`, () => {
+          if (!buyMore(it.id)) { this.toast(t('farmEarn')); return; }
+          sfx.build(); track('farm_buy_more', { item: it.id, n: n + 1 }); close(); this.scene.restart();
+        }, ms === 'buyable' ? 0x2ee06a : 0x2a333a, ms === 'buyable' ? '#04220e' : '#888', 17));
       } else if (st === 'owned') c.add(txt(this, width / 2 + 170, y, '✅', 30));
       else if (st !== 'locked') c.add(button(this, width / 2 + 160, y, 110, 50, it.price ? `⭐ ${it.price}` : t('free'), () => {
         if (st !== 'buyable') { this.toast(t('farmEarn')); return; }
