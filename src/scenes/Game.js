@@ -15,7 +15,9 @@ import { showRewarded, maybeInterstitial } from '../monetize/ads.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, FONT } from '../ui/widgets.js';
-import { currentTheme } from '../meta/themes.js';
+import { currentTheme, themeById } from '../meta/themes.js';
+import { festWin, festNext, festivalLevels } from '../meta/event.js';
+import { addXp, winXp } from '../meta/pass.js';
 
 let OX = 14, OY = 210; // board origin (create() ortalar)
 const px = (c) => OX + c * CELL + CELL / 2;
@@ -60,7 +62,7 @@ export class Game extends Phaser.Scene {
     }
     hud.fillStyle(0x3a2412, 0.55); hud.fillRoundedRect(width / 2 - 90, 8, 180, 30, 15);
     button(this, 40, 40, 60, 44, '✕', () => this.quit(), 0x2a333a, '#fff', 20);
-    this.add.text(width / 2, 22, `${t('level')} ${this.level.id}`, { fontFamily: FONT, fontSize: '20px', color: '#ffe8b0', fontStyle: 'bold' }).setOrigin(0.5);
+    this.add.text(width / 2, 22, this.level.festival ? this.level.name : `${t('level')} ${this.level.id}`, { fontFamily: FONT, fontSize: '20px', color: '#ffe8b0', fontStyle: 'bold' }).setOrigin(0.5);
     txt(this, 130, 90, t('moves'), 16, '#8a5a2b'); this.movesTxt = txt(this, 130, 125, '', 40, '#3a2412');
     txt(this, width - 130, 90, t('score'), 16, '#8a5a2b'); this.scoreTxt = txt(this, width - 130, 125, '0', 34, '#c0620a');
     this.objTxt = this.add.container(width / 2, 108);
@@ -120,7 +122,7 @@ export class Game extends Phaser.Scene {
   drawScenery() {
     const { width, height } = this.scale;
     const g = this.add.graphics();
-    const th = currentTheme();
+    const th = this.level.festival ? themeById('sunset') : currentTheme(); // F14: festival = hasat tonları
     g.fillGradientStyle(th.sky[0], th.sky[0], th.sky[1], th.sky[1], 1); g.fillRect(0, 0, width, height * 0.55);
     const sun = this.add.circle(width - 90, 250, 46, th.sun).setAlpha(0.9);
     const halo = this.add.circle(width - 90, 250, 90, th.halo, 0.35);
@@ -728,12 +730,15 @@ export class Game extends Phaser.Scene {
     const bonus = this.board.cashOutMoves();
     const stars = this.board.stars(); const score = this.board.score;
     const coins = CONFIG.coins.winReward + CONFIG.coins.threeStar + left * CONFIG.coins.perMoveLeft;
-    const newStars = recordWin(this.level.id, score, stars); addCoins(coins);
+    const fest = this.level.festival; const fr = fest ? festWin(fest) : null;
+    const newStars = fest ? 0 : recordWin(this.level.id, score, stars); addCoins(coins);
+    const xp = winXp(stars, !!fest), tierUp = addXp(xp);
     const cut = winCut(); this.cropCut = cut.length + zoneCut(); const en = stars === 3 ? 3 : 2; addEnergy(en);
     if (stars === 3) startBereket();
     if (this.vetFor) cure(this.vetFor);
     this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor };
     track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
+    if (fr) track('event_win', { n: fest, all: !!fr.all });
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
@@ -746,12 +751,14 @@ export class Game extends Phaser.Scene {
     c.add(txt(this, width / 2, height / 2 - 20, `${t('score')}: ${score}`, 26, '#fff'));
     if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); c.add(txt(this, width / 2 + 10, height / 2 + 60, `+${coins}`, 26, '#ffe58a'));
-    if (newStars) c.add(txt(this, width / 2, height / 2 + 95, `⭐ +${newStars} ${t('farmStars')}`, 20, '#ffb71b'));
+    const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : ''].filter(Boolean).join('  ·  ');
+    c.add(txt(this, width / 2, height / 2 + 95, extra, 19, '#ffb71b'));
     if (cut.length) c.add(txt(this, width / 2, height / 2 - 140, `🌽 ${t('cropFaster')} −${WIN_CUT / 60000} ${t('minShort')}`, 18, '#9dffb8'));
-    const last = this.level.id >= this.cache.json.get('levels').length;
+    const nf = fest ? festNext() : 0;
+    const last = fest ? !nf : this.level.id >= this.cache.json.get('levels').length;
     c.add(button(this, width / 2, height / 2 + 140, 300, 64, last ? t('map') : t('next'), async () => {
       await maybeInterstitial('level_end');
-      if (last || this.vetFor) this.scene.start('Farm', this.farmData); else this.scene.start('Game', { level: this.cache.json.get('levels')[this.level.id] });
+      if (last || this.vetFor) this.scene.start('Farm', this.farmData); else this.scene.start('Game', { level: fest ? festivalLevels(this.cache.json.get('levels'))[nf - 1] : this.cache.json.get('levels')[this.level.id] });
     }, 0x2ee06a, '#04220e'));
     c.add(button(this, width / 2, height / 2 + 205, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm', this.farmData); }, 0x2a333a, '#fff', 18));
   }

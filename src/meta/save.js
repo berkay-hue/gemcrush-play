@@ -24,6 +24,8 @@ const def = () => ({
   gems: 5,                        // Faz 5: hard currency (diamonds)                  // farm wallet: balance = totalStars() - starsSpent
   theme: 'meadow', themes: [],   // F4: satın alınan temalar
   farm: { owned: [], perks: {} }, // farm purchases (Faz 1) + derived perks (Faz 2)
+  event: { week: -1, done: 0 },   // F14: hasat festivali ilerlemesi
+  pass: { season: '', xp: 0, claimed: [] }, // F14: sezon yolu
 });
 
 export const save = load();
@@ -46,6 +48,8 @@ function migrate(s) {
   if (typeof s.starsSpent !== 'number' || s.starsSpent < 0) s.starsSpent = 0;
   s.themes = Array.isArray(s.themes) ? s.themes.filter((x) => typeof x === 'string').slice(0, 20) : [];
   if (typeof s.theme !== 'string' || (s.theme !== 'meadow' && !s.themes.includes(s.theme))) s.theme = 'meadow';
+  const e = s.event || {}; s.event = { week: Number.isInteger(e.week) ? e.week : -1, done: Number.isInteger(e.done) && e.done >= 0 && e.done <= 10 ? e.done : 0 };
+  const p = s.pass || {}; s.pass = { season: typeof p.season === 'string' ? p.season : '', xp: typeof p.xp === 'number' && p.xp >= 0 ? Math.min(p.xp, 750) : 0, claimed: Array.isArray(p.claimed) ? p.claimed.filter((x) => Number.isInteger(x) && x >= 1 && x <= 30) : [] };
   s.v = 2;
   return s;
 }

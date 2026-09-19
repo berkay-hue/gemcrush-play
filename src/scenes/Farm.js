@@ -19,6 +19,8 @@ import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
 import { tasksBadge } from '../meta/tasks.js';
+import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
+import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
@@ -117,6 +119,10 @@ export class Farm extends Phaser.Scene {
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
     this.taskBadge(width - 16, 314);
     this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
+    button(this, 50, 330, 80, 40, '🌾', () => this.festival(), festActive() ? 0xc9761b : 0x2a333a, '#fff', 20);
+    this.festBadge(86, 314);
+    button(this, 50, 380, 80, 40, '🎟️', () => this.seasonPass(), 0x2a333a, '#fff', 20);
+    this.passBadge(86, 364);
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
       const n = this.nodes[data.harvest];
@@ -844,6 +850,76 @@ export class Farm extends Phaser.Scene {
   }
   tasks() {
     tasksPanel(() => { this.refreshHud(); this.taskBadge(this.scale.width - 16, 314); });
+  }
+
+  // F14: hasat festivali — 2 haftada bir 1 hafta, 10 sınırlı bölüm, sırayla
+  festBadge(x, y) {
+    if (this.fBadge) { this.fBadge.destroy(); this.fBadge = null; }
+    if (!festNext()) return;
+    const c = this.fBadge = this.add.container(x, y).setDepth(50);
+    c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
+    c.add(txt(this, 0, 0, '!', 14, '#fff'));
+  }
+  festival() {
+    const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
+    const { c, close } = modal(this, 460, 470);
+    const on = festActive(), left = festMsLeft(), d = Math.floor(left / 86400000), h = Math.floor(left / 3600000) % 24;
+    c.add(txt(this, cx, cy - 200, `🌾 ${t('festTitle')}`, 30, '#ffb71b'));
+    c.add(txt(this, cx, cy - 162, `${on ? t('festEnds') : t('festNextIn')} ${d}${t('dayShort')} ${h}${t('hourShort')}`, 18, on ? '#9dffb8' : '#9fb3a8'));
+    const done = on ? festDone() : 0, nx = festNext();
+    for (let i = 0; i < FEST_N; i++) {
+      const x = cx - 168 + (i % 5) * 84, y = cy - 95 + Math.floor(i / 5) * 100, n = i + 1;
+      const st = n <= done ? 'done' : n === nx ? 'next' : 'lock';
+      const col = st === 'done' ? 0x2ee06a : st === 'next' ? 0xffb71b : 0x2a333a;
+      const b = this.add.circle(x, y, 32, col).setStrokeStyle(3, 0xffffff, st === 'next' ? 1 : 0.3); c.add(b);
+      c.add(txt(this, x, y, st === 'done' ? '✓' : st === 'lock' ? '🔒' : String(n), st === 'next' ? 26 : 20, st === 'next' ? '#04220e' : '#fff'));
+      if (n === 5 || n === FEST_N) c.add(txt(this, x, y + 42, n === 5 ? '🔨' : `💎${FEST_ALL_GEMS}`, 14, '#ffe58a'));
+      if (st === 'next') { b.setInteractive({ useHandCursor: true }); b.on('pointerup', () => this.festPlay(close, n)); }
+    }
+    c.add(txt(this, cx, cy + 80, `${t('festReward')} 🪙${FEST_COINS} · XP ×2`, 17, '#fff'));
+    if (nx) c.add(button(this, cx, cy + 140, 280, 60, `▶ ${t('play')} ${nx}/${FEST_N}`, () => this.festPlay(close, nx), 0x2ee06a, '#04220e', 22));
+    else c.add(txt(this, cx, cy + 140, on ? `🏆 ${t('festAllDone')}` : t('festClosed'), 20, '#ffb71b'));
+    c.add(button(this, cx, cy + 205, 160, 40, t('close'), () => close(), 0x2a333a, '#fff', 16));
+  }
+  festPlay(close, n) {
+    close(); track('event_start', { n });
+    this.tryStart(festivalLevels(this.levels || this.cache.json.get('levels'))[n - 1]);
+  }
+  // F14: ücretsiz sezon yolu — bölüm kazandıkça XP, 30 basamak
+  passBadge(x, y) {
+    if (this.pBadge) { this.pBadge.destroy(); this.pBadge = null; }
+    const n = claimable();
+    if (!n) return;
+    const c = this.pBadge = this.add.container(x, y).setDepth(50);
+    c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
+    c.add(txt(this, 0, 0, String(Math.min(n, 9)), 14, '#fff'));
+  }
+  seasonPass() {
+    const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
+    const { c, close } = modal(this, 480, 560);
+    const p = pass(), tier = tierOf(), left = seasonMsLeft(), d = Math.floor(left / 86400000);
+    c.add(txt(this, cx, cy - 245, `🎟️ ${t('passTitle')}`, 30, '#ffb71b'));
+    c.add(txt(this, cx, cy - 210, `${t('passTier')} ${tier}/${TIERS}  ·  ${t('festEnds')} ${d}${t('dayShort')}`, 17, '#9fb3a8'));
+    const into = tier >= TIERS ? XP_TIER : p.xp % XP_TIER;
+    c.add(this.add.rectangle(cx, cy - 182, 360, 14, 0x2a333a));
+    c.add(this.add.rectangle(cx - 180, cy - 182, 360 * into / XP_TIER, 14, 0xffb71b).setOrigin(0, 0.5));
+    c.add(txt(this, cx, cy - 162, tier >= TIERS ? t('passMax') : `${into}/${XP_TIER} XP`, 14, '#fff'));
+    for (let i = 1; i <= TIERS; i++) {
+      const x = cx - 180 + ((i - 1) % 5) * 90, y = cy - 118 + Math.floor((i - 1) / 5) * 64;
+      const got = p.claimed.includes(i), open = i <= tier && !got;
+      const b = this.add.rectangle(x, y, 80, 54, got ? 0x1d5c34 : open ? 0xffb71b : 0x2a333a).setStrokeStyle(2, 0xffffff, open ? 1 : 0.25); c.add(b);
+      c.add(txt(this, x, y - 14, String(i), 12, open ? '#04220e' : '#9fb3a8'));
+      c.add(txt(this, x, y + 8, got ? '✓' : rewardIcon(reward(i)), 17, open ? '#04220e' : '#fff'));
+      if (open) {
+        b.setInteractive({ useHandCursor: true });
+        b.on('pointerup', () => {
+          const r = claim(i); if (!r) return;
+          sfx.coin && sfx.coin(); track('pass_claim', { tier: i });
+          close(); this.refreshHud(); this.passBadge(86, 364); this.toast(`🎟️ ${rewardIcon(r)}`); this.seasonPass();
+        });
+      }
+    }
+    c.add(txt(this, cx, cy + 272 - 40, t('passHint'), 15, '#9fb3a8'));
   }
 
   drawTitle() {

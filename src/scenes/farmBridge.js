@@ -65,7 +65,7 @@ export const BridgeMixin = {
     if (save.lives <= 0) { this.scene.start('Map', { livesModal: true }); return; }
     const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
     const { c, close } = modal(this, 440, 400);
-    c.add(txt(this, cx, cy - 160, vetFor ? '🩺 Veteriner bölümü' : `🪧 Bölüm ${lv.id}`, 28, '#ffb71b'));
+    c.add(txt(this, cx, cy - 160, vetFor ? '🩺 Veteriner bölümü' : lv.festival ? lv.name : `🪧 Bölüm ${lv.id}`, 28, '#ffb71b'));
     c.add(txt(this, cx, cy - 118, 'Bu bölüm çiftliğine ne kazandırır?', 17, '#fff'));
     const growing = CATALOG.filter((i) => i.kind === 'plot' && owns(i.id) && cropState(i.id) === 'growing').length;
     const rows = [];
