@@ -1,5 +1,6 @@
 // Small shared UI helpers for Phaser scenes.
 import { sfx } from '../sound.js';
+import { buildIcons, splitIcon, iconKey } from './icons.js';
 
 export const FONT = '"Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
@@ -7,36 +8,105 @@ export function txt(scene, x, y, s, size = 22, color = '#ffffff', extra = {}) {
   return scene.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, fontStyle: 'bold', align: 'center', ...extra }).setOrigin(0.5);
 }
 
-export function button(scene, x, y, w, h, label, onClick, color = 0xffb71b, textColor = '#1a1200', size = 24) {
+// F17: altın rakam — dikey degradeli dolgu + koyu kahve kontur
+export function goldText(scene, x, y, s, size = 20, extra = {}) {
+  const t = txt(scene, x, y, s, size, '#ffd23f', { stroke: '#5a3500', strokeThickness: Math.max(3, Math.round(size / 5)), ...extra });
+  const paint = () => { const g = t.context.createLinearGradient(0, 0, 0, t.height); g.addColorStop(0.1, '#fff6c2'); g.addColorStop(0.5, '#ffd23f'); g.addColorStop(0.9, '#e88a00'); t.setFill(g); };
+  const raw = t.setText.bind(t);
+  t.setText = (v) => { raw(v); paint(); return t; };
+  paint();
+  return t.setShadow(0, 2, 'rgba(40,20,0,.45)', 2, true, false);
+}
+
+// F17: ikon + metin (setText başındaki emojiyi ikona çevirir, yeniden hizalar). align: 'left' | 'right' | 'center'
+export function iconLabel(scene, x, y, s, size = 16, { align = 'left', gold = true, color = '#ffffff', icon } = {}) {
+  buildIcons(scene);
   const c = scene.add.container(x, y);
-  const g = scene.add.graphics();
-  const dark = Phaser.Display.Color.IntegerToColor(color).darken(28).color;
-  const light = Phaser.Display.Color.IntegerToColor(color).lighten(18).color;
-  g.fillStyle(0x000000, 0.4); g.fillRoundedRect(-w / 2, -h / 2 + 5, w, h, 16);
-  g.fillStyle(dark, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
-  g.fillGradientStyle(light, light, color, color, 1); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 7, 14);
-  g.fillStyle(0xffffff, 0.28); g.fillRoundedRect(-w / 2 + 5, -h / 2 + 4, w - 10, h / 2 - 5, { tl: 11, tr: 11, bl: 4, br: 4 });
-  g.lineStyle(2, 0xffffff, 0.25); g.strokeRoundedRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, 15);
-  const t = txt(scene, 0, -1, label, size, textColor).setShadow(0, 2, 'rgba(0,0,0,0.35)', 2, true, true);
-  c.add([g, t]);
-  c.setSize(w, h).setInteractive({ useHandCursor: true });
-  const to = (scale, duration) => { scene.tweens.killTweensOf(c); scene.tweens.add({ targets: c, scale, duration, ease: 'Quad.Out' }); };
-  c.on('pointerover', () => to(1.04, 110));
-  let pressed = false; // F16: yalnız bu düğmede başlayan dokunuş tıklar (DOM paneli üstünden sızan bırakma tetiklemez)
-  c.on('pointerout', () => { pressed = false; to(1, 110); });
-  c.on('pointerdown', () => { pressed = true; sfx.click(); to(0.93, 60); });
-  c.on('pointerup', () => { if (!pressed) return; pressed = false; scene.tweens.killTweensOf(c); c.setScale(0.93); scene.tweens.add({ targets: c, scale: 1, duration: 220, ease: 'Back.Out' }); onClick && onClick(); });
-  c.label = t;
+  const img = scene.add.image(0, 0, 'ic-coin').setDisplaySize(size * 1.35, size * 1.35);
+  const t = gold ? goldText(scene, 0, 0, '', size) : txt(scene, 0, 0, '', size, color);
+  t.setOrigin(0, 0.5); c.add([img, t]);
+  const lay = (v) => {
+    const sp = splitIcon(v); const key = icon ? `ic-${icon}` : sp?.key;
+    img.setVisible(!!key); if (key) img.setTexture(key).setDisplaySize(size * 1.35, size * 1.35);
+    t.setText(sp ? sp.rest : String(v));
+    const iw = key ? size * 1.35 + 3 : 0, W = iw + t.width;
+    const x0 = align === 'left' ? 0 : align === 'right' ? -W : -W / 2;
+    img.x = x0 + iw / 2 - 1; t.x = x0 + iw;
+    c.w = W;
+  };
+  c.setText = (v) => { lay(v); return c; };
+  c.text = t;
+  lay(s);
   return c;
 }
 
+export function button(scene, x, y, w, h, label, onClick, color = 0xffb71b, textColor = '#1a1200', size = 24) {
+  buildIcons(scene);
+  const c = scene.add.container(x, y);
+  const base = scene.add.graphics(); // F17: sabit dudak — yüz basınca içine gömülür
+  const dark = Phaser.Display.Color.IntegerToColor(color).darken(34).color;
+  const light = Phaser.Display.Color.IntegerToColor(color).lighten(18).color;
+  const LIP = 5;
+  base.fillStyle(0x000000, 0.4); base.fillRoundedRect(-w / 2, -h / 2 + LIP + 3, w, h, 16);
+  base.fillStyle(dark, 1); base.fillRoundedRect(-w / 2, -h / 2 + LIP, w, h, 16);
+  const face = scene.add.container(0, 0);
+  const g = scene.add.graphics();
+  g.fillStyle(Phaser.Display.Color.IntegerToColor(color).darken(12).color, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
+  g.fillGradientStyle(light, light, color, color, 1); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 5, 14);
+  g.fillStyle(0xffffff, 0.28); g.fillRoundedRect(-w / 2 + 5, -h / 2 + 4, w - 10, h / 2 - 5, { tl: 11, tr: 11, bl: 4, br: 4 });
+  g.lineStyle(2, 0xffffff, 0.25); g.strokeRoundedRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2, 15);
+  const t = txt(scene, 0, -1, '', size, textColor).setShadow(0, 2, 'rgba(0,0,0,0.35)', 2, true, true);
+  const ic = scene.add.image(0, -1, 'ic-coin').setVisible(false);
+  face.add([g, ic, t]);
+  const raw = t.setText.bind(t);
+  const lay = (v) => {
+    const sp = splitIcon(v);
+    raw(sp ? sp.rest : String(v));
+    if (!sp) { ic.setVisible(false); t.x = 0; return; }
+    const is = Math.min(h * 0.74, size * 1.45);
+    ic.setTexture(sp.key).setDisplaySize(is, is).setVisible(true);
+    const gap = sp.rest ? 5 : 0, W = is + gap + (sp.rest ? t.width : 0);
+    ic.x = -W / 2 + is / 2; t.x = -W / 2 + is + gap + (sp.rest ? t.width / 2 : 0);
+    if (!sp.rest) ic.x = 0;
+  };
+  t.setText = (v) => { lay(v); return t; };
+  lay(label);
+  c.add([base, face]);
+  c.setSize(w, h + LIP).setInteractive({ useHandCursor: true });
+  const to = (scale, duration) => { scene.tweens.killTweensOf(c); scene.tweens.add({ targets: c, scale, duration, ease: 'Quad.Out' }); };
+  const push = (down) => { scene.tweens.killTweensOf(face); scene.tweens.add({ targets: face, y: down ? LIP - 1 : 0, duration: down ? 50 : 160, ease: down ? 'Quad.Out' : 'Back.Out' }); };
+  c.on('pointerover', () => to(1.04, 110));
+  let pressed = false; // F16: yalnız bu düğmede başlayan dokunuş tıklar (DOM paneli üstünden sızan bırakma tetiklemez)
+  c.on('pointerout', () => { pressed = false; to(1, 110); push(false); });
+  c.on('pointerdown', () => { pressed = true; sfx.click(); to(0.97, 60); push(true); });
+  c.on('pointerup', () => { if (!pressed) return; pressed = false; push(false); scene.tweens.killTweensOf(c); c.setScale(0.97); scene.tweens.add({ targets: c, scale: 1, duration: 220, ease: 'Back.Out' }); onClick && onClick(); });
+  c.label = t;
+  c.face = face;
+  return c;
+}
+
+// F17: ahşap çerçeveli panel — kalas kenar, damar, köşe çivileri; içi koyu yeşil (beyaz yazı okunur kalsın)
 export function panel(scene, x, y, w, h, alpha = 0.96) {
   const g = scene.add.graphics();
-  g.fillStyle(0x000000, 0.5); g.fillRoundedRect(x - w / 2, y - h / 2 + 10, w, h, 26);
-  g.fillGradientStyle(0x1e3a31, 0x1e3a31, 0x0c1a15, 0x0c1a15, alpha); g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 26);
-  g.fillStyle(0xffffff, 0.06); g.fillRoundedRect(x - w / 2 + 6, y - h / 2 + 6, w - 12, 44, { tl: 20, tr: 20, bl: 0, br: 0 });
-  g.lineStyle(4, 0xffb71b, 0.95); g.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 26);
-  g.lineStyle(2, 0xfff0b8, 0.35); g.strokeRoundedRect(x - w / 2 + 6, y - h / 2 + 6, w - 12, h - 12, 21);
+  const L = x - w / 2, T = y - h / 2, B = 14;
+  g.fillStyle(0x000000, 0.5); g.fillRoundedRect(L, T + 10, w, h, 26);
+  g.fillGradientStyle(0xb8773a, 0xb8773a, 0x6e3f18, 0x6e3f18, 1); g.fillRoundedRect(L, T, w, h, 26);
+  // damarlar (kalas dokusu, tohumlu → her açılışta aynı)
+  let sd = Math.round(w * 7 + h * 13);
+  const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  g.lineStyle(1.5, 0x4a2508, 0.35);
+  for (let i = 0; i < 10; i++) { const yy = T + 4 + rnd() * (h - 8), x0 = L + 6 + rnd() * w * 0.5; g.lineBetween(x0, yy, Math.min(L + w - 6, x0 + 30 + rnd() * w * 0.4), yy + (rnd() - 0.5) * 3); }
+  g.fillStyle(0xffe2b0, 0.22); g.fillRoundedRect(L + 4, T + 3, w - 8, 6, 3);
+  // iç alan
+  g.fillStyle(0x3a1e08, 1); g.fillRoundedRect(L + B - 3, T + B - 3, w - 2 * B + 6, h - 2 * B + 6, 18);
+  g.fillGradientStyle(0x1e3a31, 0x1e3a31, 0x0c1a15, 0x0c1a15, alpha); g.fillRoundedRect(L + B, T + B, w - 2 * B, h - 2 * B, 16);
+  g.fillStyle(0xffffff, 0.05); g.fillRoundedRect(L + B + 4, T + B + 4, w - 2 * B - 8, 40, { tl: 12, tr: 12, bl: 0, br: 0 });
+  g.lineStyle(2, 0xffb71b, 0.55); g.strokeRoundedRect(L + B + 3, T + B + 3, w - 2 * B - 6, h - 2 * B - 6, 13);
+  g.lineStyle(3, 0x3a1e08, 0.9); g.strokeRoundedRect(L, T, w, h, 26);
+  // çiviler
+  for (const [nx, ny] of [[L + 9, T + 9], [L + w - 9, T + 9], [L + 9, T + h - 9], [L + w - 9, T + h - 9]]) {
+    g.fillStyle(0x2a1a0a, 1); g.fillCircle(nx, ny + 1, 4.2); g.fillStyle(0xc9ced2, 1); g.fillCircle(nx, ny, 3.6); g.fillStyle(0xffffff, 0.8); g.fillCircle(nx - 1.1, ny - 1.1, 1.2);
+  }
   return g;
 }
 
@@ -97,7 +167,8 @@ export function iconSlot(scene, x, y, s, icon, color = 0xffb71b, size) {
   g.fillGradientStyle(shade(color, 25), shade(color, 25), shade(color, -30), shade(color, -30), 1); g.fillCircle(0, 0, s / 2);
   g.fillStyle(0xffffff, 0.3); g.fillEllipse(-s * 0.12, -s * 0.2, s * 0.55, s * 0.28);
   g.lineStyle(3, 0xffffff, 0.55); g.strokeCircle(0, 0, s / 2 - 1);
-  c.add([g, txt(scene, 0, 2, icon, size || Math.round(s * 0.52))]);
+  const k = iconKey(icon); if (k) buildIcons(scene);
+  c.add([g, k ? scene.add.image(0, 1, k).setDisplaySize(s * 0.66, s * 0.66) : txt(scene, 0, 2, icon, size || Math.round(s * 0.52))]);
   return c;
 }
 
@@ -118,7 +189,7 @@ export function ribbon(scene, x, y, label, color = 0xff3b5c) {
 // Başlıkta para birimi çipi
 export function chip(scene, x, y, icon, value, color = 0xffb71b) {
   const c = scene.add.container(x, y);
-  const t = txt(scene, 24, 0, String(value), 18, '#ffffff').setOrigin(0, 0.5);
+  const t = goldText(scene, 24, 0, String(value), 18).setOrigin(0, 0.5);
   const w = t.width + 56;
   const g = scene.add.graphics();
   g.fillStyle(0x000000, 0.45); g.fillRoundedRect(-17, -16, w, 32, 16);

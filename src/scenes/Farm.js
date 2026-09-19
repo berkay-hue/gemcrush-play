@@ -14,7 +14,8 @@ import { SLOTS, refreshOrders, canDeliver, deliver, skip, readyCount, xpProgress
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
-import { txt, button, modal, fmtMs, card, iconSlot, chip } from '../ui/widgets.js';
+import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel } from '../ui/widgets.js';
+import { buildIcons } from '../ui/icons.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
@@ -67,19 +68,20 @@ export class Farm extends Phaser.Scene {
 
     // HUD
     // F8: sade üst bar — koyu şerit yok; sahneye yedirilmiş yarı saydam haplar + "<isim>'ın Çiftliği"
+    buildIcons(this);
     this.hud = this.add.container(0, 0).setDepth(5);
     const chip = (x, y, w, h) => { const g = this.add.graphics(); g.fillStyle(0x0f1f17, 0.38).fillRoundedRect(x, y, w, h, h / 2); g.lineStyle(1, 0xf5f4eb, 0.18).strokeRoundedRect(x + 0.5, y + 0.5, w - 1, h - 1, h / 2); this.hud.add(g); };
     const soft = (o) => o.setShadow(0, 1, 'rgba(10,15,13,0.55)', 3, false, true);
     chip(12, 14, 132, 40); chip(width - 144, 14, 132, 40); chip(width - 144, 58, 132, 30);
-    const heart = this.add.image(36, 34, 'heart').setScale(0.46);
+    const heart = this.add.image(36, 34, 'ic-heart').setDisplaySize(28, 28);
     this.livesTxt = soft(txt(this, 58, 34, '', 19, '#f5f4eb').setOrigin(0, 0.5));
     this.lifeTimer = soft(txt(this, 134, 35, '', 13, '#f5f4eb').setOrigin(1, 0.5).setAlpha(0.75));
-    const coin = this.add.image(width - 120, 34, 'coin').setScale(0.4);
-    this.coinsTxt = soft(txt(this, width - 100, 34, '', 19, '#ffe7a3').setOrigin(0, 0.5));
-    this.gemsTxt = soft(txt(this, width - 128, 73, '', 15, '#cdefff').setOrigin(0, 0.5));
+    const coin = this.add.image(width - 120, 34, 'ic-coin').setDisplaySize(28, 28);
+    this.coinsTxt = goldText(this, width - 100, 34, '', 20).setOrigin(0, 0.5);
+    this.gemsTxt = iconLabel(this, width - 134, 73, '💎 0', 15, { gold: false, color: '#dff6ff' });
     this.titleTxt = txt(this, width / 2, 28, '', 21, '#f5f4eb').setAlpha(0.92).setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
     this.titleTxt.setInteractive({ useHandCursor: true }).on('pointerup', () => renameBox((ok) => { if (ok) { this.drawTitle(); this.w3 && this.w3.setSignText && this.w3.setSignText(farmTitle()); this.toast(`✏️ ${this.titleTxt.text}`); } }));
-    this.starsTxt = soft(txt(this, width / 2 - 8, 54, '', 15, '#ffe7a3').setOrigin(1, 0.5).setAlpha(0.9));
+    this.starsTxt = iconLabel(this, width / 2 - 8, 55, '⭐ 0', 15, { align: 'right' });
     this.hud.add([heart, this.livesTxt, this.lifeTimer, coin, this.coinsTxt, this.gemsTxt, this.titleTxt, this.starsTxt]);
     this.drawTitle();
     button(this, width - 50, 180, 80, 40, `🧺 ${t('market')}`, () => this.market(), 0xffb71b, '#1a1200', 16);
@@ -94,7 +96,7 @@ export class Farm extends Phaser.Scene {
     if (!decor().includes(se.id)) button(this, 50, 180, 80, 40, `${se.emoji} 💎${se.price}`, () => this.seasonal(), 0x8fe3ff, '#06222e', 16);
     button(this, width - 50, 130, 80, 40, `🗺 ${t('map')}`, () => this.scene.start('Map'), 0x2a333a, '#fff', 16);
 
-    this.energyTxt = txt(this, width / 2 + 8, 54, `⚡${energy()}/${E_MAX}`, 15, '#ffe7a3').setOrigin(0, 0.5).setAlpha(0.9).setShadow(0, 1, 'rgba(10,15,13,0.55)', 3, false, true);
+    this.energyTxt = iconLabel(this, width / 2 + 8, 55, `⚡${energy()}/${E_MAX}`, 15);
     this.hud.add(this.energyTxt);
     this.drawBereket();
     // OYNA sign
@@ -948,7 +950,7 @@ export class Farm extends Phaser.Scene {
     this.gemsTxt.setText(`💎 ${save.gems}`);
     this.starsTxt.setText(`⭐ ${starBalance()}`);
     if (this.nodes) this.tickCrops();
-    if (this.ordBtn) { const n = readyCount(); this.ordBtn.list[1]?.setText(n ? `📋 ✓${n}` : '📋'); }
+    if (this.ordBtn) { const n = readyCount(); this.ordBtn.label.setText(n ? `📋 ✓${n}` : '📋'); }
   }
 
   tryStart(lv) {
