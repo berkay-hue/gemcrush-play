@@ -15,6 +15,7 @@ import { showRewarded, maybeInterstitial } from '../monetize/ads.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal } from '../ui/widgets.js';
+import { currentTheme } from '../meta/themes.js';
 
 let OX = 14, OY = 210; // board origin (create() ortalar)
 const px = (c) => OX + c * CELL + CELL / 2;
@@ -117,20 +118,21 @@ export class Game extends Phaser.Scene {
   drawScenery() {
     const { width, height } = this.scale;
     const g = this.add.graphics();
-    g.fillGradientStyle(0x6ec6f0, 0x6ec6f0, 0xc8ecff, 0xc8ecff, 1); g.fillRect(0, 0, width, height * 0.55);
-    const sun = this.add.circle(width - 90, 250, 46, 0xfff1a8).setAlpha(0.9);
-    const halo = this.add.circle(width - 90, 250, 90, 0xfff6c8, 0.35);
+    const th = currentTheme();
+    g.fillGradientStyle(th.sky[0], th.sky[0], th.sky[1], th.sky[1], 1); g.fillRect(0, 0, width, height * 0.55);
+    const sun = this.add.circle(width - 90, 250, 46, th.sun).setAlpha(0.9);
+    const halo = this.add.circle(width - 90, 250, 90, th.halo, 0.35);
     this.tweens.add({ targets: halo, scale: 1.15, alpha: 0.2, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     const hills = this.add.graphics();
     const hill = (baseY, amp, col, ph) => { hills.fillStyle(col, 1); hills.beginPath(); hills.moveTo(0, height); for (let xx = 0; xx <= width; xx += 10) hills.lineTo(xx, baseY + Math.sin(xx / 90 + ph) * amp); hills.lineTo(width, height); hills.closePath(); hills.fillPath(); };
-    hill(height * 0.40, 26, 0x8fd16a, 0.4);
+    hill(height * 0.40, 26, th.hills[0], 0.4);
     // uzak ambar
     hills.fillStyle(0xb8402f, 1); hills.fillRect(60, height * 0.40 - 58, 70, 50); hills.fillTriangle(52, height * 0.40 - 56, 138, height * 0.40 - 56, 95, height * 0.40 - 92);
     hills.fillStyle(0xffffff, 1); hills.fillRect(84, height * 0.40 - 36, 22, 28);
-    hill(height * 0.46, 20, 0x6dbb4f, 2.1);
-    hill(height * 0.55, 14, 0x55a23e, 4.0);
-    hills.fillStyle(0x4a9135, 1); hills.fillRect(0, height * 0.6, width, height);
-    for (let i = 0; i < 70; i++) { const gx = (i * 67) % width, gy = height * 0.6 + ((i * 131) % (height * 0.4)); hills.fillStyle(i % 2 ? 0x3f822c : 0x5cae43, 1); hills.fillTriangle(gx, gy, gx + 4, gy - 12, gx + 8, gy); }
+    hill(height * 0.46, 20, th.hills[1], 2.1);
+    hill(height * 0.55, 14, th.hills[2], 4.0);
+    hills.fillStyle(th.hills[3], 1); hills.fillRect(0, height * 0.6, width, height);
+    for (let i = 0; i < 70; i++) { const gx = (i * 67) % width, gy = height * 0.6 + ((i * 131) % (height * 0.4)); hills.fillStyle(i % 2 ? th.grass[0] : th.grass[1], 1); hills.fillTriangle(gx, gy, gx + 4, gy - 12, gx + 8, gy); }
     // çit
     const fy = height * 0.56; hills.fillStyle(0xf1e3c6, 1);
     hills.fillRect(0, fy + 6, width, 5); hills.fillRect(0, fy + 20, width, 5);
@@ -143,7 +145,7 @@ export class Game extends Phaser.Scene {
     }
     // uçuşan polen
     for (let i = 0; i < 14; i++) {
-      const d = this.add.circle(Math.random() * width, height * (0.3 + Math.random() * 0.6), 2 + Math.random() * 2, 0xfff6b0, 0.8);
+      const d = this.add.circle(Math.random() * width, height * (0.3 + Math.random() * 0.6), 2 + Math.random() * 2, th.mote, 0.8);
       this.tweens.add({ targets: d, y: d.y - 40 - Math.random() * 60, x: d.x + (Math.random() - 0.5) * 60, alpha: 0, duration: 3000 + Math.random() * 3000, repeat: -1, delay: Math.random() * 3000 });
     }
     void sun;

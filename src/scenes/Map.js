@@ -7,6 +7,7 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
+import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 
 export class Map extends Phaser.Scene {
   constructor() { super('Map'); }
@@ -17,7 +18,7 @@ export class Map extends Phaser.Scene {
     const { width, height } = this.scale;
     this.levels = this.cache.json.get('levels');
     this.cameras.main.setBackgroundColor('#0d1512');
-    this.add.image(width / 2, height / 2, 'bgGrad').setDisplaySize(width, height).setScrollFactor(0);
+    this.bg = this.add.image(width / 2, height / 2, this.themeBg()).setDisplaySize(width, height).setScrollFactor(0);
     tickLives();
 
     // --- scrolling level path ---
@@ -92,6 +93,7 @@ export class Map extends Phaser.Scene {
     this.hud.add(this.coinsTxt);
     const shopBtn = button(this, width - 40, 50, 56, 44, '+', () => this.shop(), 0xffb71b, '#1a1200', 30); this.hud.add(shopBtn);
     const setBtn = button(this, width - 40, 110, 56, 40, '⚙', () => this.settings(), 0x2a333a, '#ffffff', 22); this.hud.add(setBtn);
+    const themeBtn = button(this, width - 40, 162, 56, 40, '🎨', () => this.themes(), 0x7a4dff, '#ffffff', 20); this.hud.add(themeBtn);
     this.hud.add(txt(this, width / 2, 36, 'GEM CRUSH', 26, '#ffb71b'));
     this.starsTxt = txt(this, width / 2, 72, '', 20, '#ffe58a'); this.hud.add(this.starsTxt);
 
@@ -181,6 +183,57 @@ export class Map extends Phaser.Scene {
     }
     c.add(button(this, width / 2, y + 10, 260, 44, t('restore'), () => restore(), 0x2a333a, '#ffffff', 16));
     c.add(button(this, width / 2, height / 2 + 270, 160, 50, '✕', close, 0x2a333a, '#ffffff'));
+  }
+
+  // harita arka planı temaya göre (her tema için bir kez üretilir)
+  themeBg() {
+    const th = currentTheme(), key = `bgGrad_${th.id}`;
+    if (!this.textures.exists(key)) {
+      const ct = this.textures.createCanvas(key, 270, 480), ctx = ct.getContext(), w = 270, h = 480;
+      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, th.map[0]); g.addColorStop(0.5, th.map[1]); g.addColorStop(1, th.map[2]);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      const v = ctx.createRadialGradient(w / 2, h * 0.45, w * 0.2, w / 2, h * 0.5, w * 0.9); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+      ctx.fillStyle = v; ctx.fillRect(0, 0, w, h); ct.refresh();
+    }
+    return key;
+  }
+
+  themes() {
+    const { width, height } = this.scale;
+    const { c, close } = modal(this, 480, 700);
+    const lang = getLang() === 'en' ? 'en' : 'tr';
+    c.add(txt(this, width / 2, height / 2 - 310, `🎨 ${t('themes')}`, 32, '#ffb71b'));
+    c.add(txt(this, width / 2, height / 2 - 272, t('themeHint'), 15, '#cfe3d8'));
+    const draw = () => {
+      (this._thRows || []).forEach((o) => o.destroy()); this._thRows = [];
+      let y = height / 2 - 200;
+      for (const th of THEMES) {
+        const g = this.add.graphics();
+        g.fillGradientStyle(th.sky[0], th.sky[0], th.hills[1], th.hills[1], 1); g.fillRoundedRect(width / 2 - 210, y - 42, 84, 84, 14);
+        g.fillStyle(th.hills[0], 1); g.fillRoundedRect(width / 2 - 210, y + 8, 84, 34, { tl: 0, tr: 0, bl: 14, br: 14 });
+        g.fillStyle(th.sun, 1); g.fillCircle(width / 2 - 146, y - 22, 9);
+        const cur = save.theme === th.id, own = ownsTheme(th.id);
+        if (cur) { g.lineStyle(4, 0x2ee06a, 1); g.strokeRoundedRect(width / 2 - 214, y - 46, 92, 92, 16); }
+        const nm = txt(this, width / 2 - 108, y - 14, `${th.icon} ${th[lang]}`, 20, '#ffffff').setOrigin(0, 0.5);
+        const pr = txt(this, width / 2 - 108, y + 16, own ? t('owned') : th.gems ? `💎 ${th.gems}` : `🪙 ${th.price}`, 16, own ? '#8ff0b0' : '#ffe58a').setOrigin(0, 0.5);
+        const label = cur ? '✓' : own ? t('use') : t('buy');
+        const b = button(this, width / 2 + 150, y, 110, 50, label, () => {
+          if (cur) return;
+          if (!own) { if (!buyTheme(th.id)) { sfx.error && sfx.error(); this.toast(th.gems ? t('needGems') : t('needCoins')); return; } sfx.coin(); track('theme_buy', { id: th.id }); }
+          setTheme(th.id); track('theme_set', { id: th.id }); this.bg.setTexture(this.themeBg()); this.refreshHud(); draw();
+        }, cur ? 0x2a333a : own ? 0x2ee06a : 0xffb71b, cur ? '#8ff0b0' : '#1a1200', 18);
+        this._thRows.push(g, nm, pr, b); c.add([g, nm, pr, b]);
+        y += 104;
+      }
+    };
+    draw();
+    c.add(button(this, width / 2, height / 2 + 310, 160, 50, '✕', close, 0x2a333a, '#ffffff'));
+  }
+
+  toast(msg) {
+    const { width, height } = this.scale;
+    const tt = txt(this, width / 2, height / 2 + 250, msg, 20, '#ffffff').setDepth(2000).setScrollFactor(0).setBackgroundColor('#000000aa').setPadding(12, 6);
+    this.tweens.add({ targets: tt, alpha: 0, y: tt.y - 30, delay: 1200, duration: 500, onComplete: () => tt.destroy() });
   }
 
   settings() {

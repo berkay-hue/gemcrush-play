@@ -7,14 +7,14 @@ import { showRewarded } from '../monetize/ads.js';
 import { Visitors, KINDS } from '../farm3d/visitors.js';
 import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
 import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, land, LAND_MAX, landCost, landLvl, landStatus, buyLand, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
-import { PRODUCTS, TRADES, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
+import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
 import { t, getLang } from '../i18n.js';
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
-import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest } from '../meta/crops.js';
+import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
@@ -262,12 +262,13 @@ export class Farm extends Phaser.Scene {
     if (st === 'empty') {
       plant(id); if (ftueDone('plant')) this.drawHint(); sfx.coin && sfx.coin(); track('crop_plant', { plot: id });
       this.drawCrop(c, it); this.tweens.add({ targets: c.crop, scaleY: { from: 0.2, to: 1 }, duration: 400, ease: 'Back.Out' });
-      this.toast(`${it.emoji} ${t('planted')} · ${fmtMs(CROPS[id].ms)}`);
+      this.toast(`${it.emoji} ${t('planted')} · ${fmtMs(cropMs(id))}`);
       return;
     }
     if (st === 'ready') {
-      const coins = harvest(id); if (!coins) return;
-      sfx.harvest(); this.w3.burst(id); track('crop_harvest', { plot: id, coins });
+      const r = harvest(id); if (!r) return;
+      const coins = r.coins;
+      sfx.harvest(); this.w3.burst(id); track('crop_harvest', { plot: id, coins, good: r.good, n: r.n });
       const sk = this.add.image(c.x - 60, c.y - 10, 'sickle').setDepth(900);
       this.tweens.add({ targets: sk, x: c.x + 60, angle: 360, duration: 450, onComplete: () => sk.destroy() });
       for (let i = 0; i < 5; i++) {
@@ -275,7 +276,7 @@ export class Farm extends Phaser.Scene {
         this.tweens.add({ targets: f, x: this.scale.width - 140, y: 40, scale: 0.4, delay: 200 + i * 80, duration: 650, ease: 'Cubic.In', onComplete: () => f.destroy() });
       }
       this.time.delayedCall(260, () => { this.drawCrop(c, it); this.refreshHud(); });
-      this.toast(`+🪙${coins}`);
+      this.toast([r.n ? `+${r.n} ${it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
       return;
     }
     // growing: info + rush + go play to speed up
@@ -284,7 +285,7 @@ export class Farm extends Phaser.Scene {
     m.add(txt(this, width / 2, height / 2 - 70, this.itemName(it), 28, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
     const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
-    m.add(txt(this, width / 2, height / 2 + 8, t('cropTip'), 17, '#9dffb8'));
+    m.add(txt(this, width / 2, height / 2 + 8, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
     m.add(button(this, width / 2, height / 2 + 60, 300, 56, `▶ ${t('play')} (−5 ${t('minShort')})`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 20));
     const cost = cropRushCost(id), ok = save.gems >= cost;
     const done = () => { sfx.coin(); close(); this.drawCrop(c, it); };
@@ -335,19 +336,37 @@ export class Farm extends Phaser.Scene {
     hit.on('pointerup', () => { c.destroy(); hit.destroy(); this.dialog(lines, i + 1); });
   }
 
-  market() {
+  market(tab = 'sell') {
     const { width, height } = this.scale;
-    const { c, close } = modal(this, 460, 470);
-    c.add(txt(this, width / 2, height / 2 - 195, `🧺 ${t('market')}`, 30, '#ffb71b'));
+    const { c, close } = modal(this, 480, 700);
+    const top = height / 2 - 350;
+    c.add(txt(this, width / 2, top + 42, `🧺 ${t('market')}  ·  🏚️ ${ambarUsed()}/${ambarCap()}`, 26, '#ffb71b'));
+    [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 105 + i * 210, top + 100, 196, 50, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 19)));
     const inv = inventory();
-    const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5' };
-    Object.values(PRODUCTS).forEach((p, i) => {
-      const y = height / 2 - 120 + i * 105; const n = inv[p.good] || 0;
-      c.add(txt(this, width / 2 - 170, y, `${p.emoji} ×${n}`, 26, '#fff').setOrigin(0, 0.5));
-      c.add(button(this, width / 2 + 20, y, 110, 46, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); close(); this.market(); this.refreshHud(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));
-      c.add(button(this, width / 2 + 150, y, 120, 46, `3→${icons[TRADES[p.good]]}`, () => { if (trade(p.good)) { sfx.coin(); track('market_trade', { good: p.good }); close(); this.market(); } }, n >= 3 ? 0x3f7bff : 0x2a333a, n >= 3 ? '#fff' : '#777', 18));
+    const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
+    const again = () => { close(); this.market(tab); this.refreshHud(); };
+    if (tab === 'sell') {
+      Object.values(GOODS).forEach((p, i) => {
+        const y = top + 180 + i * 88; const n = inv[p.good] || 0;
+        c.add(this.add.rectangle(width / 2, y, 440, 76, 0x000000, 0.25).setStrokeStyle(2, 0xffffff, 0.12));
+        c.add(txt(this, width / 2 - 195, y, `${p.emoji} ×${n}`, 26, '#fff').setOrigin(0, 0.5));
+        c.add(button(this, width / 2 + 40, y, 110, 46, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); again(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));
+        if (TRADES[p.good]) c.add(button(this, width / 2 + 160, y, 110, 46, `3→${icons[TRADES[p.good]]}`, () => { if (trade(p.good)) { sfx.coin(); track('market_trade', { good: p.good }); again(); } }, n >= 3 ? 0x3f7bff : 0x2a333a, n >= 3 ? '#fff' : '#777', 18));
+      });
+      c.add(txt(this, width / 2, top + 650, `🐥 ×${save.farm.chicks || 0}`, 20, '#ffe58a'));
+      return;
+    }
+    c.add(txt(this, width / 2, top + 150, t('tradeHint'), 15, '#9fb3a8'));
+    RECIPES.forEach((r, i) => {
+      const y = top + 220 + i * 100, ok = canCraft(i);
+      c.add(this.add.rectangle(width / 2, y, 440, 86, 0x000000, 0.25).setStrokeStyle(2, ok ? 0x2ee06a : 0xffffff, ok ? 0.6 : 0.12));
+      const need = Object.entries(r.need).map(([g, n]) => `${GOODS[g].emoji}${Math.min(inv[g] || 0, n)}/${n}`).join('  ');
+      c.add(txt(this, width / 2 - 200, y, need, 20, '#fff').setOrigin(0, 0.5));
+      c.add(button(this, width / 2 + 160, y, 110, 50, `→ ${icons[r.give]}`, () => {
+        const b = craft(i); if (!b) { this.toast(t('tradeNeed')); return; }
+        sfx.coin(); track('market_craft', { recipe: i, give: b }); this.toast(`+1 ${icons[b]}`); again();
+      }, ok ? 0x3f7bff : 0x2a333a, ok ? '#fff' : '#777', 22));
     });
-    c.add(txt(this, width / 2, height / 2 + 190, `🐥 ×${save.farm.chicks || 0}`, 20, '#ffe58a'));
   }
 
   nest() {
@@ -497,7 +516,18 @@ export class Farm extends Phaser.Scene {
       if (st === 'locked') sub = (save.level || 1) < (it.lvl || 1) ? `🔒 ${t('level')} ${it.lvl}` : `🔒 ${t('farmNeeds')}: ${this.itemName(item(it.needs))}`;
       else if (PERK_TEXT[it.id]) sub = PERK_TEXT[it.id][getLang()] || PERK_TEXT[it.id].tr;
       c.add(txt(this, width / 2 - 145, y + 14, sub, 13, st === 'locked' ? '#ff9a9a' : '#9dffb8').setOrigin(0, 0.5));
-      if (st === 'owned') c.add(txt(this, width / 2 + 170, y, '✅', 30));
+      if (st === 'owned' && it.kind === 'plot') {
+        const lv = plotLvl(it.id);
+        c.add(txt(this, width / 2 - 145, y + 14, `${t('level')} ${lv}/${BLD_MAX} · ⏱ ${fmtMs(cropMs(it.id))} · ×${cropYield(it.id)}`, 13, '#ffe58a').setOrigin(0, 0.5).setDepth(1));
+        if (lv >= BLD_MAX) c.add(txt(this, width / 2 + 170, y, '✅', 30));
+        else {
+          const ok = (save.coins || 0) >= plotUpgradeCost(it.id);
+          c.add(button(this, width / 2 + 160, y, 110, 50, `⬆🪙${plotUpgradeCost(it.id)}`, () => {
+            if (!upgradePlot(it.id)) { this.toast(t('needCoins')); return; }
+            sfx.build(); track('plot_upgrade', { plot: it.id, lv: lv + 1 }); close(); this.shop(tab); this.refreshHud();
+          }, ok ? 0x2ee06a : 0x2a333a, ok ? '#04220e' : '#888', 16));
+        }
+      } else if (st === 'owned') c.add(txt(this, width / 2 + 170, y, '✅', 30));
       else if (st !== 'locked') c.add(button(this, width / 2 + 160, y, 110, 50, it.price ? `⭐ ${it.price}` : t('free'), () => {
         if (st !== 'buyable') { this.toast(t('farmEarn')); return; }
         if (!buyItem(it.id)) return;

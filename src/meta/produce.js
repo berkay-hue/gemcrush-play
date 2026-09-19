@@ -10,6 +10,28 @@ export const PRODUCTS = {
 };
 // 3 of a good can be swapped for a booster instead of coins
 export const TRADES = { egg: 'shuffle', milk: 'hammer', wool: 'moves5' };
+// F4: tarladan gelen ürünler de ambara girer ve satılır/takaslanır
+export const CROP_ITEMS = { wheat: { good: 'wheat', emoji: '🌾', price: 12 }, corn: { good: 'corn', emoji: '🌽', price: 60 } };
+export const GOODS = { ...Object.fromEntries(Object.values(PRODUCTS).map((p) => [p.good, p])), ...CROP_ITEMS };
+// F4: takas tarifleri (ürün karışımı -> güçlendirici)
+export const RECIPES = [
+  { need: { wheat: 3 }, give: 'shuffle' },
+  { need: { wheat: 2, corn: 1 }, give: 'hammer' },
+  { need: { corn: 2, egg: 1 }, give: 'moves5' },
+  { need: { wheat: 3, corn: 2, milk: 1 }, give: 'prism' },
+];
+export const canCraft = (i) => Object.entries(RECIPES[i].need).every(([g, n]) => (P().inv[g] || 0) >= n);
+export function craft(i) {
+  if (!RECIPES[i] || !canCraft(i)) return null;
+  const f = P(); for (const [g, n] of Object.entries(RECIPES[i].need)) f.inv[g] -= n;
+  const b = RECIPES[i].give; save.boosters[b] = (save.boosters[b] || 0) + 1; persist(); return b;
+}
+// adds up to n goods while the ambar has room; returns how many were stored
+export function stash(good, n) {
+  const room = Math.max(0, ambarCap() - ambarUsed()), k = Math.min(n, room);
+  if (k) { const f = P(); f.inv[good] = (f.inv[good] || 0) + k; persist(); }
+  return k;
+}
 export const HATCH_WINS = 5;
 
 const P = () => {
@@ -34,7 +56,7 @@ export function inventory() { return P().inv; }
 // F16: ambar capacity
 export const ambarUsed = () => Object.values(P().inv || {}).reduce((a, n) => a + (n || 0), 0);
 export const ambarFull = () => ambarUsed() >= ambarCap();
-const byGood = (g) => Object.values(PRODUCTS).find((p) => p.good === g);
+const byGood = (g) => GOODS[g];
 export function sell(good) {
   const f = P(); if (!f.inv[good]) return 0;
   f.inv[good]--; const c = byGood(good).price; addCoins(c); return c;

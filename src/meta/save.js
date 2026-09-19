@@ -22,6 +22,7 @@ const def = () => ({
   starsSpent: 0,
   profile: { name: '', avatar: '🧑‍🌾' },
   gems: 5,                        // Faz 5: hard currency (diamonds)                  // farm wallet: balance = totalStars() - starsSpent
+  theme: 'meadow', themes: [],   // F4: satın alınan temalar
   farm: { owned: [], perks: {} }, // farm purchases (Faz 1) + derived perks (Faz 2)
 });
 
@@ -43,6 +44,8 @@ function migrate(s) {
   s.profile = { ...d.profile, ...(s.profile || {}) };
   if (typeof s.gems !== 'number' || s.gems < 0) s.gems = d.gems;
   if (typeof s.starsSpent !== 'number' || s.starsSpent < 0) s.starsSpent = 0;
+  s.themes = Array.isArray(s.themes) ? s.themes.filter((x) => typeof x === 'string').slice(0, 20) : [];
+  if (typeof s.theme !== 'string' || (s.theme !== 'meadow' && !s.themes.includes(s.theme))) s.theme = 'meadow';
   s.v = 2;
   return s;
 }
