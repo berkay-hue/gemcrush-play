@@ -5,6 +5,7 @@ import { save, addCoins, addGems, persist } from '../meta/save.js';
 import { track } from '../analytics.js';
 
 let store = null;
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 
 export async function initIap() {
   const CdvPurchase = window.CdvPurchase;
@@ -43,6 +44,8 @@ export async function buy(p) {
     await prod.getOffer().order();
     return true; // grant happens via verified() callback
   }
+  // F43: mobil uygulamada asla bedava/test satın alma yok — mağaza yüklenemediyse satın alma olmaz
+  if (isNative()) return false;
   // web: simulate
   const ok = window.confirm(`[TEST] Buy ${p.id} for ${p.priceLabel}?`);
   if (ok) grant(p.id);
@@ -50,5 +53,6 @@ export async function buy(p) {
 }
 
 export async function restore() {
-  if (store) await store.restorePurchases();
+  if (store) { await store.restorePurchases(); return true; }
+  return false;
 }

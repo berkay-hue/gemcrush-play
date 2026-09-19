@@ -223,7 +223,7 @@ export class Map extends Phaser.Scene {
       if (p.badge) c.add(ribbon(this, x + cw / 2 - 30, yy - chh / 2 + 4, best ? (en ? 'BEST' : 'EN İYİ') : (en ? 'POPULAR' : 'POPÜLER'), best ? 0x22b85a : 0xff3b5c));
     });
     y += Math.ceil(packs.length / 2) * (chh + 14);
-    c.add(txt(this, cx, Math.min(y + 14, top + 836), `↺ ${t('restore')}`, 15, '#9fb3a8').setInteractive({ useHandCursor: true }).on('pointerup', () => restore()));
+    c.add(txt(this, cx, Math.min(y + 14, top + 836), `↺ ${t('restore')}`, 15, '#9fb3a8').setInteractive({ useHandCursor: true }).on('pointerup', async () => { const ok = await restore().catch(() => false); this.toast(ok ? (en ? 'Purchases restored ✓' : 'Satın alımlar geri yüklendi ✓') : (en ? 'Store not available' : 'Mağaza şu an kullanılamıyor')); this.refreshHud(); }));
   }
 
   // harita arka planı temaya göre (her tema için bir kez üretilir)
