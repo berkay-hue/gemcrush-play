@@ -8,12 +8,14 @@ import { Zone } from './scenes/Zone.js';
 import { initAds } from './monetize/ads.js';
 import { initIap } from './monetize/iap.js';
 import { flush } from './analytics.js';
+import { initNotify } from './meta/notify.js';
 import { sfx } from './sound.js';
 import { fadeIn } from './ui/widgets.js';
 
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 initAds().catch(() => {});
 initIap().catch(() => {});
+try { initNotify(); } catch {}
 document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
 window.__game = new Phaser.Game({
