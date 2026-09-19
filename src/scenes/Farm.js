@@ -27,6 +27,7 @@ import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FES
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
+import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
@@ -43,7 +44,7 @@ import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage,
 
 const PLOT_W = 2.1, PLOT_D = 1.9; // F22: tarla ayak izi (2 sıra toprak) — komşu tarla bu kadar ötede
 const ISL_HW = 11, ISL_HD = 9; // ana ada (FarmWorld ISL 12×10, kenar payı)
-const MOVABLE = (id) => ['building', 'plot', 'vehicle'].includes((item(id) || {}).kind);
+const MOVABLE = (id) => id !== 'degirmen' && ['building', 'plot', 'vehicle'].includes((item(id) || {}).kind);
 
 export class Farm extends Phaser.Scene {
   constructor() { super('Farm'); }
@@ -216,7 +217,7 @@ export class Farm extends Phaser.Scene {
     this.cameras.main.transparent = true;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
     { const ah = autoHarvest(); if (ah) this.time.delayedCall(600, () => this.toast(`🚜 +${ah} 🪙`)); }
-    w.show(); w.posOf = posOf; w.tmpPos = null; w.setPlots(ARSA.map((a) => ({ ...a, owned: ownsPlot(a.id) }))); w.setTheme(currentTheme());
+    w.show(); w.posOf = posOf; w.tmpPos = null; if (w.chainBelt) w.chainBelt(owns('degirmen') && owns('firin')); w.setPlots(ARSA.map((a) => ({ ...a, owned: ownsPlot(a.id) }))); w.setTheme(currentTheme());
     if (!w.visitors) w.visitors = new Visitors(w);
     this.events.once('shutdown', () => w.hide());
     // drag = pan, pinch/wheel = zoom, short tap = raycast pick
@@ -287,6 +288,12 @@ export class Farm extends Phaser.Scene {
       if (PRODUCTS[it.id] && isReady(it.id)) {
         const b = txt(this, 0, -30, PRODUCTS[it.id].emoji, 30);
         c.add(b); this.tweens.add({ targets: b, y: -40, yoyo: true, repeat: -1, duration: 450 });
+      }
+      // F30: değirmen/fırın rozeti — hazırsa çıktı zıplar, çalışıyorsa ⏳
+      if (CHAIN[it.id]) {
+        const cs = chainState(it.id);
+        if (cs === 'ready') { const b = txt(this, 0, -34, GOODS[CHAIN[it.id].out].emoji, 30); c.add(b); this.tweens.add({ targets: b, y: -46, yoyo: true, repeat: -1, duration: 450 }); }
+        else if (cs === 'busy') { const b = txt(this, 0, -30, '⏳', 22); c.add(b); this.tweens.add({ targets: b, angle: 180, repeat: -1, duration: 1400, repeatDelay: 400 }); }
       }
     } else {
       const tag = st === 'locked' ? `🔒 ${it.emoji}` : `${it.emoji} ⭐ ${it.price}`;
@@ -455,14 +462,14 @@ export class Farm extends Phaser.Scene {
     const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
     const again = () => { close(); this.market(tab); this.refreshHud(); };
     if (tab === 'sell') {
-      const step = Object.keys(GOODS).length > 5 ? 76 : 88;
+      const step = Object.keys(GOODS).length > 7 ? 58 : Object.keys(GOODS).length > 5 ? 76 : 88, bh = Math.min(46, step - 12);
       Object.values(GOODS).forEach((p, i) => {
         const y = top + 192 + i * step; const n = inv[p.good] || 0;
         c.add(card(this, width / 2, y, 440, step - 12, n ? { top: 0x7a5420, bottom: 0x3e2a0e, accent: 0xffe58a, accentA: 0.45 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
-        c.add(iconSlot(this, width / 2 - 178, y, 54, p.emoji, n ? 0xffb71b : 0x5b646a, 28));
+        c.add(iconSlot(this, width / 2 - 178, y, Math.min(54, step - 10), p.emoji, n ? 0xffb71b : 0x5b646a, 28));
         c.add(txt(this, width / 2 - 140, y, `×${n}`, 26, n ? '#fff' : '#8a949a').setOrigin(0, 0.5));
-        c.add(button(this, width / 2 + 40, y, 110, 46, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); again(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));
-        if (TRADES[p.good]) c.add(button(this, width / 2 + 160, y, 110, 46, `3→${icons[TRADES[p.good]]}`, () => { if (trade(p.good)) { sfx.coin(); track('market_trade', { good: p.good }); again(); } }, n >= 3 ? 0x3f7bff : 0x2a333a, n >= 3 ? '#fff' : '#777', 18));
+        c.add(button(this, width / 2 + 40, y, 110, bh, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); again(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));
+        if (TRADES[p.good]) c.add(button(this, width / 2 + 160, y, 110, bh, `3→${icons[TRADES[p.good]]}`, () => { if (trade(p.good)) { sfx.coin(); track('market_trade', { good: p.good }); again(); } }, n >= 3 ? 0x3f7bff : 0x2a333a, n >= 3 ? '#fff' : '#777', 18));
       });
       c.add(txt(this, width / 2, top + 650, `🐥 ×${save.farm.chicks || 0}`, 20, '#ffe58a'));
       return;
@@ -547,8 +554,56 @@ export class Farm extends Phaser.Scene {
     c.add(button(this, width / 2, height / 2 + 115, 120, 42, '✕', close, 0x2a333a, '#fff', 18));
   }
 
+  // F30: üretim zinciri penceresi (değirmen: 🌾×2 → 🥣, fırın: 🥣+🥚 → 🍞)
+  chainModal(id) {
+    const { width, height } = this.scale, en = getLang() === 'en';
+    const it = item(id), R = CHAIN[id], out = GOODS[R.out], inv = inventory(), cs = chainState(id);
+    const { c, close } = modal(this, 440, 470);
+    const cy = height / 2, again = () => { close(); this.chainModal(id); };
+    c.add(txt(this, width / 2, cy - 185, it.emoji, 56));
+    c.add(txt(this, width / 2, cy - 130, this.itemName(it), 28, '#ffb71b'));
+    // tarif satırı: girdiler → çıktı
+    const ins = Object.entries(R.in);
+    const row = [...ins.map(([g, n]) => ({ e: GOODS[g].emoji, s: `${Math.min(inv[g] || 0, n)}/${n}`, ok: (inv[g] || 0) >= n })), { arrow: true }, { e: out.emoji, s: `×1`, ok: true }];
+    const gap = 92, x0 = width / 2 - ((row.length - 1) * gap) / 2;
+    row.forEach((r, i) => {
+      const x = x0 + i * gap;
+      if (r.arrow) { c.add(txt(this, x, cy - 60, '➜', 34, '#ffe58a')); return; }
+      c.add(iconSlot(this, x, cy - 66, 62, r.e, r.ok ? 0x2ee06a : 0xff5a5a, 32));
+      c.add(txt(this, x, cy - 20, r.s, 17, r.ok ? '#9dffb8' : '#ff9a9a'));
+    });
+    c.add(txt(this, width / 2, cy + 12, `⏱ ${fmtMs(R.ms)}  ·  🏚️ ${ambarUsed()}/${ambarCap()}`, 16, '#9fb3a8'));
+    if (cs === 'ready') {
+      c.add(txt(this, width / 2, cy + 58, en ? `${out.emoji} ready!` : `${out.emoji} hazır!`, 24, '#9dffb8'));
+      c.add(button(this, width / 2, cy + 130, 280, 60, `${t('collect')} ${out.emoji}`, () => {
+        const g = collectChain(id); if (!g) { this.toast(t('ambarFull')); return; }
+        sfx.coin(); haptic(); track('chain_collect', { item: id, good: g }); this.toast(`+1 ${out.emoji}`); close(); this.scene.restart();
+      }, 0x2ee06a, '#04220e', 22));
+    } else if (cs === 'busy') {
+      const bw = 320, bx = width / 2 - bw / 2, by = cy + 62;
+      c.add(this.add.rectangle(width / 2, by, bw, 22, 0x1d2226).setStrokeStyle(2, 0x000000, 0.4));
+      const bar = this.add.rectangle(bx, by, Math.max(4, bw * chainProg(id)), 18, 0xffb71b).setOrigin(0, 0.5); c.add(bar);
+      const left = txt(this, width / 2, cy + 98, `⏳ ${fmtMs(chainLeft(id))}`, 20, '#ffe58a'); c.add(left);
+      const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => {
+        if (!c.active) return tk.remove();
+        if (chainState(id) === 'ready') { tk.remove(); again(); return; }
+        bar.width = Math.max(4, bw * chainProg(id)); left.setText(`⏳ ${fmtMs(chainLeft(id))}`);
+      } });
+      c.add(button(this, width / 2, cy + 160, 220, 50, 'OK', close, 0x2a333a, '#fff', 20));
+    } else {
+      const miss = chainMissing(id), ok = chainCan(id);
+      c.add(txt(this, width / 2, cy + 58, ok ? (en ? 'Ready to produce' : 'Üretime hazır') : `${en ? 'Missing' : 'Eksik'}: ${miss.map((g) => GOODS[g].emoji).join(' ')}`, 19, ok ? '#9dffb8' : '#ff9a9a'));
+      c.add(button(this, width / 2, cy + 130, 280, 60, `▶ ${en ? 'Start' : 'Başlat'} ${out.emoji}`, () => {
+        if (!chainStart(id)) { this.toast(en ? 'Not enough ingredients' : 'Malzeme yetmiyor'); return; }
+        sfx.build(); track('chain_start', { item: id }); this.toast(en ? `${it.emoji} working…` : `${it.emoji} çalışıyor…`); close(); this.scene.restart();
+      }, ok ? 0x2ee06a : 0x2a333a, ok ? '#04220e' : '#888', 22));
+    }
+    c.add(txt(this, width / 2, cy + 200, en ? '🌾 → 🌬️ → 🥣 → 🍞 → 📋 orders' : '🌾 → 🌬️ → 🥣 → 🍞 → 📋 siparişler', 14, '#9fb3a8'));
+  }
+
   itemModal(id) {
     if (isSickAnimal(id)) return this.vetModal(id);
+    if (CHAIN[id] && status(id) === 'owned') return this.chainModal(id);
     const it = item(id); const st = status(id);
     const { width, height } = this.scale;
     const { c, close } = modal(this, 420, st === 'owned' && it.kind === 'animal' ? 410 : 320);

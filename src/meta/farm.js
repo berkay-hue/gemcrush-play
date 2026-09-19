@@ -8,6 +8,9 @@ export const CATALOG = [
   { id: 'kumes',  kind: 'building', emoji: '🛖', price: 4,  lvl: 3,  x: 110, y: 330, name: { tr: 'Kümes', en: 'Coop' } },
   { id: 'ahir',   kind: 'building', emoji: '🏚️', price: 10, lvl: 8, x: 430, y: 330, name: { tr: 'Ahır', en: 'Barn' } },
   { id: 'ambar',  kind: 'building', emoji: '🏠', price: 6,  lvl: 4, x: 270, y: 250, name: { tr: 'Ambar', en: 'Storehouse' } },
+  // F30: üretim zinciri — değirmen buğdayı una, fırın unu (+yumurta) ekmeğe çevirir
+  { id: 'degirmen', kind: 'building', emoji: '🌬️', price: 5, lvl: 4, x: 60, y: 250, name: { tr: 'Değirmen', en: 'Mill' } },
+  { id: 'firin',  kind: 'building', emoji: '🍞', price: 8,  lvl: 6, needs: 'degirmen', x: 150, y: 250, name: { tr: 'Fırın', en: 'Bakery' } },
   // animals (need their building)
   { id: 'tavuk', lvl: 3,  kind: 'animal', emoji: '🐔', price: 3,  needs: 'kumes', x: 70,  y: 440, name: { tr: 'Tavuk', en: 'Hen' } },
   { id: 'horoz', lvl: 6,  kind: 'animal', emoji: '🐓', price: 6,  needs: 'kumes', x: 160, y: 450, name: { tr: 'Horoz', en: 'Rooster' } },

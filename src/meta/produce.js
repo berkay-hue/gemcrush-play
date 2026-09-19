@@ -13,7 +13,9 @@ export const PRODUCTS = {
 export const TRADES = { egg: 'shuffle', milk: 'hammer', wool: 'moves5', honey: 'prism' };
 // F4: tarladan gelen ürünler de ambara girer ve satılır/takaslanır
 export const CROP_ITEMS = { wheat: { good: 'wheat', emoji: '🌾', price: 12 }, corn: { good: 'corn', emoji: '🌽', price: 60 } };
-export const GOODS = { ...Object.fromEntries(Object.values(PRODUCTS).map((p) => [p.good, p])), ...CROP_ITEMS };
+// F30: üretim zincirinin mamulleri (değirmen → un, fırın → ekmek)
+export const MADE_ITEMS = { flour: { good: 'flour', emoji: '🥣', price: 40 }, bread: { good: 'bread', emoji: '🍞', price: 110 } };
+export const GOODS = { ...Object.fromEntries(Object.values(PRODUCTS).map((p) => [p.good, p])), ...CROP_ITEMS, ...MADE_ITEMS };
 // F4: takas tarifleri (ürün karışımı -> güçlendirici)
 export const RECIPES = [
   { need: { wheat: 3 }, give: 'shuffle' },

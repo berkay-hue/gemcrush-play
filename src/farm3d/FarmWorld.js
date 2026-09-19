@@ -44,6 +44,9 @@ export const LAYOUT = {
   tarla4: { at: [-3, 3], plot: 1 }, tarla5: { at: [-2, 3], plot: 1 }, tarla6: { at: [-1, 3], plot: 1 },
   tarla7: { at: [0, 3], plot: 1 }, tarla8: { at: [-4, 4], plot: 1 }, tarla9: { at: [-3, 4], plot: 1 }, tarla10: { at: [-2, 4], plot: 1 },
   market: { at: [-1, -3], model: 'b:pazar', h: 1.5, ry: 0.4 },
+  // F30: üretim zinciri — değirmen soldaki dekor yel değirmenidir (yalnız görünmez tıklama gövdesi), fırın yanında
+  degirmen: { wp: [-8.5, -0.5], hit: 1.4, h: 4.2 },
+  firin: { at: [-3, -2], model: 'b:firin', h: 1.8, ry: 0.4 },
   traktor: { at: [1, 2], model: 'town/cart', h: 0.9, ry: 0.6 },
   // F7: evcil hayvanlar (sol bölge açılınca). köpek kamerayı izler, kedi güneşlenir
   kopek: { area: [-4, 0.5, 4, 5], model: 'animal-dog', h: 0.5, n: 1, pet: 'follow' },
@@ -67,7 +70,7 @@ const DECOR = [
 const LAMPS = [[1.5, 1.25, 1.2], [2.9, 1.25, 6.3], [-6.2, 1.25, 2.3], [-2.8, 0.5, -5.6, 1]];
 // F9: dekorun çarpışma yarıçapı (hayvanlar içinden geçmesin)
 const DECOR_R = (n) => n === 'b:degirmen' ? 1.5 : n === 'town/fountain-round' ? 1.25 : n.startsWith('tree_') ? 0.6 : n === 'town/cart' ? 0.75 : n === 'log_stack' ? 0.5 : n === 'campfire_logs' ? 0.45 : n === 'town/lantern' ? 0.25 : n.startsWith('rock_') || n.startsWith('stump') ? 0.35 : 0;
-const ITEM_R = { ambar: 1.8, ahir: 1.6, kumes: 1.05, market: 1.3, traktor: 0.85 };
+const ITEM_R = { ambar: 1.8, ahir: 1.6, kumes: 1.05, market: 1.3, traktor: 0.85, degirmen: 1.5, firin: 1.1 };
 // F9: çiftliğin dışı sık orman — harita sınırı. Oynanan alan: x ±22 (arsalar dahil), z -10..10
 function forestPts() {
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -112,6 +115,7 @@ const BUILD = {
   kumes: recipe(1, 1, { wall: 'town/wall-wood', door: 'town/wall-wood-doorway-round', roof: 'town/roof-gable' }),
   degirmen: recipe(1, 1, { wall: 'town/wall', door: 'town/wall-doorway-round', win: 'town/wall-window-small', roof: 'town/roof-high-point', floors: 2 })
     .concat([['town/windmill', 0, 1.6, 0.62, -Math.PI / 2, 'blade']]),
+  firin: recipe(1, 1, { wall: 'town/wall', door: 'town/wall-doorway-square', roof: 'town/roof-gable' }).concat([['town/chimney', 0.3, 1, 0.3, 0]]),
   pazar: [['town/stall-red', -0.6, 0, 0, 0], ['town/stall-green', 0.6, 0, 0, 0], ['town/stall-bench', 0, 0, 0.9, 0]],
 };
 
@@ -375,6 +379,7 @@ export class FarmWorld {
   where(id) {
     const L = LAYOUT[id]; if (!L) return null;
     if (this.tmpPos && this.tmpPos.id === id) return this.tmpPos.p;
+    if (L.wp) return L.wp;
     const p = this.posOf && this.posOf(id);
     if (p) return p;
     if (L.at) return hex(...L.at);
@@ -675,6 +680,10 @@ export class FarmWorld {
         const o = await this.put(L.model, x, z, { h: L.h, ry: Math.random() * 6, parent: g });
         if (state === 'owned' && !L.still) this.movers.push({ id, o, area, st: 'idle', until: 0, tx: x, tz: z, ph: Math.random() * 9, v: (L.h < 0.5 ? 0.8 : 0.45) * (opts.sick ? 0.35 : 1), sick: !!opts.sick, ry0: 0, jump: 0, pet: L.pet, pen: HOME[id] !== 'ahir', stk: 0 });
       }
+    } else if (L.hit) {
+      // F30: dekor modelin üstüne görünmez tıklama gövdesi (raycaster visible'a bakmaz)
+      const [x, z] = this.where(id), m = new T.Mesh(new T.CylinderGeometry(L.hit, L.hit, L.h, 10), new T.MeshBasicMaterial());
+      m.visible = false; m.position.set(x, L.h / 2, z); g.add(m);
     } else {
       const [x, z] = this.where(id);
       await this.put(L.model, x, z, { h: L.h, ry: L.ry || 0, parent: g });
@@ -684,6 +693,40 @@ export class FarmWorld {
     if (state === 'place') g.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.6; m.material.color.lerp(new T.Color(opts.bad ? 0xff4040 : 0x40ff70), 0.5); } });
     if (opts.sick) g.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.lerp(new T.Color(0x7fbf4a), 0.45); } });
     if (state === 'ghost') g.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.38; m.castShadow = false; } });
+  }
+
+  // F30: değirmen → fırın konveyör bandı; üstünde un çuvalları kayar. on=false → kaldır
+  chainBelt(on) {
+    const a = on && this.where('degirmen'), b = on && this.where('firin');
+    const sig = on ? String(a) + '|' + String(b) : '';
+    if (this._belt && this._belt.sig === sig) return;
+    if (this._belt) { this.S.remove(this._belt.g); this._belt = null; }
+    if (!on) return;
+    const g = new T.Group(); this.S.add(g);
+    const dx = b[0] - a[0], dz = b[1] - a[1], L0 = Math.hypot(dx, dz), ux = dx / L0, uz = dz / L0;
+    const s0 = 1.3, s1 = L0 - 1.0, len = Math.max(0.5, s1 - s0), ang = Math.atan2(dx, dz);
+    const mx = a[0] + ux * (s0 + len / 2), mz = a[1] + uz * (s0 + len / 2);
+    const body = new T.Mesh(new T.BoxGeometry(0.46, 0.12, len), new T.MeshStandardMaterial({ color: 0x3b3f44, roughness: 0.8 }));
+    body.position.set(mx, 0.34, mz); body.rotation.y = ang; body.castShadow = body.receiveShadow = true; g.add(body);
+    const rail = new T.MeshStandardMaterial({ color: 0xb07a3c, roughness: 0.7 });
+    for (const side of [-1, 1]) {
+      const r = new T.Mesh(new T.BoxGeometry(0.06, 0.1, len), rail);
+      r.position.set(mx + uz * 0.26 * side, 0.4, mz - ux * 0.26 * side); r.rotation.y = ang; g.add(r);
+    }
+    for (let k = 0; k <= Math.floor(len / 0.9); k++) {
+      const t = s0 + Math.min(len, k * 0.9), leg = new T.Mesh(new T.BoxGeometry(0.08, 0.3, 0.08), rail);
+      leg.position.set(a[0] + ux * t, 0.14, a[1] + uz * t); g.add(leg);
+    }
+    const sackM = new T.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.9 }), sacks = [];
+    for (let k = 0; k < 3; k++) {
+      const o = new T.Mesh(new T.SphereGeometry(0.15, 10, 8), sackM); o.scale.set(1, 0.8, 1.2); o.castShadow = true; g.add(o); sacks.push(o);
+    }
+    const tick = (t) => {
+      if (!g.parent) { this.tickers = this.tickers.filter((f) => f !== tick); return; }
+      sacks.forEach((o, k) => { const f = ((t / 4200) + k / 3) % 1, d = s0 + f * len; o.position.set(a[0] + ux * d, 0.5 + Math.sin(f * Math.PI) * 0.02, a[1] + uz * d); o.rotation.y = ang; });
+    };
+    this.tickers.push(tick);
+    this._belt = { g, sig };
   }
 
   // tap reaction: the animal jumps and faces the camera

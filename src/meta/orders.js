@@ -6,7 +6,7 @@ import { GOODS } from './produce.js';
 export const SLOTS = 3;
 export const SKIP_MS = 15 * 60000;
 export const NPCS = [['👩‍🌾', 'Ayşe'], ['👨‍🍳', 'Mehmet'], ['👵', 'Fatma Nine'], ['🧑‍🎨', 'Can'], ['👮', 'Ali'], ['👧', 'Elif'], ['🧔', 'Osman'], ['👩‍🏫', 'Zeynep']];
-const SRC = { wheat: 'tarla1', corn: 'tarla2', egg: 'tavuk', milk: 'inek', wool: 'koyun' };
+const SRC = { wheat: 'tarla1', corn: 'tarla2', egg: 'tavuk', milk: 'inek', wool: 'koyun', flour: 'degirmen', bread: 'firin' };
 
 const O = () => {
   const f = save.farm;
