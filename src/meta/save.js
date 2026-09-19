@@ -107,6 +107,12 @@ export async function login(user, pass) {
   if (r.save && typeof r.save.level === 'number' && progressScore(r.save) >= progressScore(save)) adopt(r.save);
   else await pushCloud();
 }
+// F5: sıralama — önce güncel ilerlemeyi it ki kendi sıran taze olsun
+export async function leaderboard(kind) {
+  const a = account();
+  if (a) { clearTimeout(syncTimer); await pushCloud(); }
+  return rpc('gc_leaderboard', { p_kind: kind, p_token: a ? a.token : null, p_limit: 50 });
+}
 export function logout() { clearTimeout(syncTimer); setAccount(null); }
 // açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
 export async function syncOnBoot() {

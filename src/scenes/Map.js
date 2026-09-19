@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout } from '../meta/save.js';
+import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout, leaderboard } from '../meta/save.js';
 import { t, setLang, getLang } from '../i18n.js';
 import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
@@ -94,6 +94,7 @@ export class Map extends Phaser.Scene {
     const shopBtn = button(this, width - 40, 50, 56, 44, '+', () => this.shop(), 0xffb71b, '#1a1200', 30); this.hud.add(shopBtn);
     const setBtn = button(this, width - 40, 110, 56, 40, '⚙', () => this.settings(), 0x2a333a, '#ffffff', 22); this.hud.add(setBtn);
     const themeBtn = button(this, width - 40, 162, 56, 40, '🎨', () => this.themes(), 0x7a4dff, '#ffffff', 20); this.hud.add(themeBtn);
+    const lbBtn = button(this, width - 40, 214, 56, 40, '🏆', () => this.ranks(), 0xffb71b, '#1a1200', 20); this.hud.add(lbBtn);
     this.hud.add(txt(this, width / 2, 36, 'GEM CRUSH', 26, '#ffb71b'));
     this.starsTxt = txt(this, width / 2, 72, '', 20, '#ffe58a'); this.hud.add(this.starsTxt);
 
@@ -228,6 +229,55 @@ export class Map extends Phaser.Scene {
     };
     draw();
     c.add(button(this, width / 2, height / 2 + 310, 160, 50, '✕', close, 0x2a333a, '#ffffff'));
+  }
+
+  // F5: sıralama tabloları (bulut hesabı gerekir; misafir görür ama listede yer almaz)
+  ranks(kind = 'level') {
+    const { width, height } = this.scale;
+    const { c, close } = modal(this, 480, 740);
+    const top = height / 2 - 340;
+    c.add(txt(this, width / 2, top + 20, `🏆 ${t('ranks')}`, 30, '#ffb71b'));
+    const KINDS = [['level', '🗺️', 'rkLevel'], ['stars', '⭐', 'rkStars'], ['spent', '🌾', 'rkSpent'], ['week', '📅', 'rkWeek']];
+    let rows = [];
+    const clear = () => { rows.forEach((o) => o.destroy()); rows = []; };
+    const add = (o) => { rows.push(o); c.add(o); return o; };
+    const tabs = KINDS.map(([k, ic, lb], i) => {
+      const b = button(this, width / 2 - 171 + i * 114, top + 72, 108, 44, `${ic} ${t(lb)}`, () => load(k), 0x2a333a, '#ffffff', 14);
+      c.add(b); return [k, b];
+    });
+    const acc = account();
+    const load = async (k) => {
+      kind = k; clear();
+      tabs.forEach(([kk, b]) => { const on = kk === k; b.setAlpha(on ? 1 : 0.55).setScale(on ? 1.05 : 1); b.label.setColor(on ? '#ffe58a' : '#ffffff'); });
+      add(txt(this, width / 2, top + 120, t(k === 'week' ? 'rkWeekHint' : k === 'spent' ? 'rkSpentHint' : 'rkHint'), 14, '#9fb3a8'));
+      const wait = add(txt(this, width / 2, height / 2, '…', 28, '#ffffff'));
+      let r;
+      try { r = await leaderboard(k); } catch { if (kind === k && c.active) wait.setText(t('rkOffline')); return; }
+      if (kind !== k || !c.active) return;
+      wait.destroy();
+      const list = (r && r.top) || [];
+      if (!list.length) add(txt(this, width / 2, height / 2 - 40, t('rkEmpty'), 18, '#cfe3d8'));
+      const fmt = (v) => (k === 'level' ? `${t('level')} ${Math.min(v, 200)}` : k === 'week' ? `+${v} ⭐` : k === 'spent' ? `${v} 🌾` : `${v} ⭐`);
+      const medal = ['🥇', '🥈', '🥉'];
+      list.slice(0, 10).forEach((e, i) => {
+        const y = top + 160 + i * 42;
+        const g = add(this.add.graphics());
+        g.fillStyle(e.me ? 0x2ee06a : i % 2 ? 0x1b2420 : 0x222d28, e.me ? 0.35 : 1); g.fillRoundedRect(width / 2 - 210, y - 18, 420, 38, 10);
+        add(txt(this, width / 2 - 182, y, medal[e.rank - 1] || `${e.rank}.`, e.rank <= 3 ? 22 : 17, '#ffe58a'));
+        add(txt(this, width / 2 - 150, y, `${e.avatar || '🧑‍🌾'} ${e.name}`, 18, e.me ? '#8ff0b0' : '#ffffff').setOrigin(0, 0.5));
+        add(txt(this, width / 2 + 196, y, fmt(e.val), 17, '#ffe58a').setOrigin(1, 0.5));
+      });
+      const by = top + 160 + 10 * 42 + 20;
+      if (acc) {
+        const me = r && r.me;
+        add(txt(this, width / 2, by, me ? `${t('rkYou')}: #${me.rank} / ${r.total}  ·  ${fmt(me.val)}` : t('rkNotYet'), 18, '#8fe3ff'));
+      } else {
+        add(txt(this, width / 2, by, t('rkGuest'), 15, '#cfe3d8', { wordWrap: { width: 400 }, align: 'center' }));
+        add(button(this, width / 2, by + 56, 300, 50, `☁️ ${t('saveCloud')}`, () => { close(); authForm((ok) => { if (ok) this.scene.restart(); }); }, 0x3f7bff, '#fff', 18));
+      }
+      track('leaderboard_view', { kind: k });
+    };
+    load(kind);
   }
 
   toast(msg) {
