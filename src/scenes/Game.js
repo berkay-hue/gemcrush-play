@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Board } from '../engine/board.js';
 import { bestMove } from '../engine/bot.js';
 import { CELL, gemKey } from '../textures.js';
-import { save, persist, spendLife, addCoins, spendCoins, recordWin, recordLoss, addLife } from '../meta/save.js';
+import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife } from '../meta/save.js';
 import { perks, sheepOnLoss } from '../meta/farm.js';
 import { winCut, WIN_CUT } from '../meta/crops.js';
 import { zoneCut } from '../meta/zones.js';
@@ -33,7 +33,7 @@ export class Game extends Phaser.Scene {
     this.board = new Board(this.level, (Date.now() ^ (this.level.seed * 7919)) >>> 0, this.perks);
     this.board.moves += this.perks.extraMoves;
     this.busy = false; this.ended = false; this.sel = null; this.mode = null; this.idle = 0;
-    spendLife();
+    beginLevel(this.level.id);
     track('level_start', { level: this.level.id, lives: save.lives, coins: save.coins });
 
     // layers
@@ -68,8 +68,7 @@ export class Game extends Phaser.Scene {
     // score bar with star marks
     this.barBg = this.add.rectangle(width / 2, 178, 400, 14, 0x000000, 0.5).setOrigin(0.5).setStrokeStyle(2, 0xffffff, 0.15);
     this.bar = this.add.rectangle(width / 2 - 200, 178, 0, 10, 0xffb71b).setOrigin(0, 0.5);
-    const s = this.level.stars || [0, 1, 2];
-    this.starMarks = [1, 2].map((i) => this.add.image(width / 2 - 200 + 400 * Math.min(1, s[i] / (s[2] * 1.1 || 1)), 178, 'stargray').setScale(0.4));
+    this.starMarks = [1, 2, 3].map((i) => this.add.image(width / 2 - 200 + 400 * i / 3 - (i === 3 ? 10 : 0), 178, 'stargray').setScale(0.45));
     this.refreshHud();
 
     // boosters bar
@@ -207,10 +206,12 @@ export class Game extends Phaser.Scene {
     const b = this.board;
     this.movesTxt.setText(String(b.moves));
     this.scoreTxt.setText(String(b.score));
-    const s3 = (this.level.stars || [0, 0, 1])[2] * 1.1 || 1;
-    this.tweens.add({ targets: this.bar, width: Math.min(400, 400 * b.score / s3), duration: 200 });
+    this.tweens.add({ targets: this.bar, width: 400 * b.objFrac(), duration: 250, ease: 'Cubic.Out' });
     const st = b.stars();
-    this.starMarks.forEach((m, i) => m.setTexture(st >= i + 2 ? 'star' : 'stargray'));
+    this.starMarks.forEach((m, i) => {
+      const on = st >= i + 1;
+      if (on && m.texture.key !== 'star') { m.setTexture('star'); this.tweens.add({ targets: m, scale: 0.75, yoyo: true, duration: 180, ease: 'Back.Out' }); sfx.special && sfx.special(); }
+    });
     const prog = b.progress();
     prog.forEach((p, i) => { const o = this.objIcons[i]; if (o) { o.lbl.setText(`${Math.min(p.current, p.target)}/${p.target}`); if (p.current >= p.target) o.check.setVisible(true); } });
   }
@@ -549,22 +550,23 @@ export class Game extends Phaser.Scene {
     if (this.board.isLost()) return this.outOfMoves();
   }
   async win() {
-    this.ended = true; sfx.win();
+    this.ended = true; sfx.win(); endLevel(true);
+    const left = this.board.moves;
     const bonus = this.board.cashOutMoves();
     const stars = this.board.stars(); const score = this.board.score;
-    const coins = CONFIG.coins.winReward + (stars === 3 ? CONFIG.coins.threeStar : 0);
+    const coins = CONFIG.coins.winReward + CONFIG.coins.threeStar + left * CONFIG.coins.perMoveLeft;
     const newStars = recordWin(this.level.id, score, stars); addCoins(coins);
     const cut = winCut(); this.cropCut = cut.length + zoneCut(); const en = stars === 3 ? 3 : 2; addEnergy(en);
     if (stars === 3) startBereket();
     if (this.vetFor) cure(this.vetFor);
     this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor };
-    track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: 0 });
+    track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
     for (let i = 0; i < 3; i++) { const s = this.add.image(width / 2 - 80 + i * 80, height / 2 - 90, i < stars ? 'star' : 'stargray').setScale(0); c.add(s); this.tweens.add({ targets: s, scale: 1, delay: 200 + i * 200, duration: 250, ease: 'Back.Out' }); }
     c.add(txt(this, width / 2, height / 2 - 20, `${t('score')}: ${score}`, 26, '#fff'));
-    if (bonus) c.add(txt(this, width / 2, height / 2 + 15, `${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
+    if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); c.add(txt(this, width / 2 + 10, height / 2 + 60, `+${coins}`, 26, '#ffe58a'));
     if (newStars) c.add(txt(this, width / 2, height / 2 + 95, `⭐ +${newStars} ${t('farmStars')}`, 20, '#ffb71b'));
     if (cut.length) c.add(txt(this, width / 2, height / 2 - 140, `🌽 ${t('cropFaster')} −${WIN_CUT / 60000} ${t('minShort')}`, 18, '#9dffb8'));
@@ -582,13 +584,15 @@ export class Game extends Phaser.Scene {
     const { c, close } = modal(this, 440, 440);
     c.add(txt(this, width / 2, height / 2 - 160, t('outOfMoves'), 34, '#ff3b5c'));
     c.add(txt(this, width / 2, height / 2 - 100, `${t('continueFor')} +${CONFIG.ads.rewardedExtraMoves} ${t('moves')}`, 20, '#fff'));
-    const cont = () => { this.board.moves += CONFIG.ads.rewardedExtraMoves; this.ended = false; this.refreshHud(); close(); track('continue', { level: this.level.id }); };
+    let decided = false; // ✕ ile kapatılırsa kayıp say (oyun "ended" durumunda asılı kalmasın)
+    c.once('destroy', () => { if (!decided) this.lose(); });
+    const cont = () => { decided = true; this.board.moves += CONFIG.ads.rewardedExtraMoves; this.ended = false; this.refreshHud(); close(); track('continue', { level: this.level.id }); };
     c.add(button(this, width / 2, height / 2 - 30, 360, 64, `📺 ${t('watchAd')}`, async () => { if (await showRewarded('extra_moves')) cont(); }, 0x3f7bff, '#fff', 22));
     c.add(button(this, width / 2, height / 2 + 50, 360, 64, `🪙 ${CONFIG.boosters.moves5} ${t('coins')}`, () => { if (spendCoins(CONFIG.boosters.moves5)) cont(); else this.toast(t('notEnoughCoins'), 24); }, 0xffb71b, '#1a1200', 22));
-    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('lose'), () => { close(); this.lose(); }, 0x2a333a, '#fff', 20));
+    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('lose'), () => { decided = true; close(); this.lose(); }, 0x2a333a, '#fff', 20));
   }
   async lose() {
-    this.ended = true; sfx.lose(); recordLoss();
+    this.ended = true; sfx.lose(); recordLoss(); endLevel(false);
     if (sheepOnLoss()) { addLife(1); this.time.delayedCall(600, () => this.toast('🐑 +1 ❤', 30)); }
     track('level_fail', { level: this.level.id, score: this.board.score });
     const { width, height } = this.scale;
@@ -598,7 +602,20 @@ export class Game extends Phaser.Scene {
     c.add(button(this, width / 2, height / 2 + 40, 300, 64, t('retry'), async () => { await maybeInterstitial('level_end'); this.scene.start(save.lives > 0 ? 'Game' : 'Farm', { level: this.level }); }, 0x2ee06a, '#04220e'));
     c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm'); }, 0x2a333a, '#fff', 18));
   }
-  quit() { if (this.ended) return; this.ended = true; recordLoss(); track('level_quit', { level: this.level.id }); this.scene.start('Farm'); }
+  quit() {
+    if (this.ended || this.quitOpen) return;
+    const { width, height } = this.scale;
+    this.quitOpen = true;
+    const { c, close } = modal(this, 420, 300);
+    c.once('destroy', () => { this.quitOpen = false; });
+    c.add(txt(this, width / 2, height / 2 - 95, t('quitQ'), 30, '#ffb71b'));
+    c.add(txt(this, width / 2, height / 2 - 45, t('quitWarn'), 20, '#ff9aa9'));
+    c.add(button(this, width / 2, height / 2 + 25, 300, 60, t('keepPlaying'), () => close(), 0x2ee06a, '#04220e', 22));
+    c.add(button(this, width / 2, height / 2 + 100, 240, 48, t('quitYes'), () => {
+      if (this.ended) return; this.ended = true; recordLoss(); endLevel(false);
+      track('level_quit', { level: this.level.id }); this.scene.start('Farm');
+    }, 0x2a333a, '#fff', 18));
+  }
 
   tutorial() {
     const { width } = this.scale;

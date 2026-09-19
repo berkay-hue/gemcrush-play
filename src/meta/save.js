@@ -10,6 +10,7 @@ const def = () => ({
   coins: CONFIG.coins.start,
   lives: CONFIG.lives.max,
   lifeTs: Date.now(),             // timestamp of last life regen tick
+  inLevel: 0,                     // oynanan bölüm (kapanırsa açılışta can düşülür)
   boosters: { hammer: 1, moves5: 1, shuffle: 1, prism: 0 },
   daily: { last: 0, streak: 0 },
   removeAds: false,
@@ -141,6 +142,15 @@ export function spendLife() {
   if (save.lives === CONFIG.lives.max) save.lifeTs = Date.now();
   save.lives--; persist(); return true;
 }
+// Can yalnız KAYBEDİNCE gider. Bölüm başında "askıda" işaretlenir; kazanınca silinir,
+// kaybedince/çıkınca can düşülür. Uygulama bölüm ortasında kapatılırsa açılışta düşülür.
+export function beginLevel(id) { save.inLevel = id; persist(); }
+export function endLevel(won) {
+  if (!save.inLevel) return;
+  save.inLevel = 0;
+  if (!won) spendLife(); else persist();
+}
+export function settlePendingLevel() { if (save.inLevel) endLevel(false); }
 export function addLife(n = 1) { save.lives = Math.min(CONFIG.lives.max, save.lives + n); persist(); }
 
 // ---- coins ----

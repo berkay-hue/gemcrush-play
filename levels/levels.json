@@ -6,7 +6,10 @@
   "moves": 22,
   "layout": null,
   "objectives": {
-   "score": 2500
+   "collect": {
+    "4": 8,
+    "1": 10
+   }
   },
   "stars": [
    0,
@@ -25,7 +28,10 @@
   "moves": 22,
   "layout": null,
   "objectives": {
-   "score": 2500
+   "collect": {
+    "2": 10,
+    "3": 12
+   }
   },
   "stars": [
    0,
@@ -35,7 +41,7 @@
   "seed": 1002,
   "targetWin": 0.9,
   "wall": false,
-  "botWin": 1
+  "botWin": 0.9166666666666666
  },
  {
   "id": 3,
@@ -44,7 +50,10 @@
   "moves": 22,
   "layout": null,
   "objectives": {
-   "score": 2500
+   "collect": {
+    "1": 12,
+    "3": 14
+   }
   },
   "stars": [
    0,
@@ -470,7 +479,10 @@
   "moves": 15,
   "layout": null,
   "objectives": {
-   "score": 3200
+   "collect": {
+    "2": 16,
+    "3": 20
+   }
   },
   "stars": [
    0,
@@ -480,7 +492,7 @@
   "seed": 1020,
   "targetWin": 0.65,
   "wall": false,
-  "botWin": 0.65
+  "botWin": 0.6666666666666666
  },
  {
   "id": 21,
@@ -737,7 +749,10 @@
    "........"
   ],
   "objectives": {
-   "score": 3900
+   "collect": {
+    "0": 18,
+    "2": 23
+   }
   },
   "stars": [
    0,
@@ -747,7 +762,7 @@
   "seed": 1030,
   "targetWin": 0.65,
   "wall": false,
-  "botWin": 0.7
+  "botWin": 0.6666666666666666
  },
  {
   "id": 31,
@@ -1024,7 +1039,10 @@
    "XXX..XXX"
   ],
   "objectives": {
-   "score": 4600
+   "collect": {
+    "2": 26,
+    "4": 21
+   }
   },
   "stars": [
    0,
@@ -1034,7 +1052,7 @@
   "seed": 1040,
   "targetWin": 0.5,
   "wall": false,
-  "botWin": 0.55
+  "botWin": 0.5
  },
  {
   "id": 41,
@@ -1302,7 +1320,10 @@
    "XXX..XXX"
   ],
   "objectives": {
-   "score": 5300
+   "collect": {
+    "2": 20,
+    "3": 25
+   }
   },
   "stars": [
    0,
@@ -1312,7 +1333,7 @@
   "seed": 1050,
   "targetWin": 0.5,
   "wall": false,
-  "botWin": 0.4
+  "botWin": 0.5
  },
  {
   "id": 51,
@@ -1583,7 +1604,10 @@
    "XX....XX"
   ],
   "objectives": {
-   "score": 6000
+   "collect": {
+    "0": 23,
+    "2": 29
+   }
   },
   "stars": [
    0,
@@ -1873,7 +1897,10 @@
    "........"
   ],
   "objectives": {
-   "score": 6700
+   "collect": {
+    "2": 35,
+    "4": 28
+   }
   },
   "stars": [
    0,
@@ -1883,7 +1910,7 @@
   "seed": 1070,
   "targetWin": 0.4,
   "wall": true,
-  "botWin": 0.25
+  "botWin": 0.5833333333333334
  },
  {
   "id": 71,
@@ -2154,7 +2181,10 @@
    "XX....XX"
   ],
   "objectives": {
-   "score": 7400
+   "collect": {
+    "2": 26,
+    "3": 33
+   }
   },
   "stars": [
    0,
@@ -2164,7 +2194,7 @@
   "seed": 1080,
   "targetWin": 0.4,
   "wall": false,
-  "botWin": 0.45
+  "botWin": 0.5
  },
  {
   "id": 81,
@@ -2445,7 +2475,10 @@
    "XXX..XXX"
   ],
   "objectives": {
-   "score": 8100
+   "collect": {
+    "0": 30,
+    "2": 38
+   }
   },
   "stars": [
    0,
@@ -2455,7 +2488,7 @@
   "seed": 1090,
   "targetWin": 0.4,
   "wall": false,
-  "botWin": 0.15
+  "botWin": 0.5
  },
  {
   "id": 91,
@@ -2729,7 +2762,10 @@
    "XX....XX"
   ],
   "objectives": {
-   "score": 8800
+   "collect": {
+    "2": 38,
+    "4": 30
+   }
   },
   "stars": [
    0,
@@ -2739,6 +2775,6 @@
   "seed": 1100,
   "targetWin": 0.4,
   "wall": false,
-  "botWin": 0.4
+  "botWin": 0.7916666666666666
  }
 ]

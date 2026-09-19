@@ -506,12 +506,17 @@ export class Board {
   isLost() {
     return this.moves <= 0 && !this.isWon();
   }
+  // Hedef ilerlemesi 0..1 (her hedef eşit ağırlık)
+  objFrac() {
+    const p = this.progress();
+    if (!p.length) return 0;
+    return p.reduce((a, o) => a + Math.min(1, o.current / o.target), 0) / p.length;
+  }
+  // Yıldız = hedef ilerlemesi: ⅓ → 1, ⅔ → 2, bölüm bitince 3. Kazanmak = 3 yıldız.
   stars() {
-    const s = this.level.stars || [0, 0, 0];
-    let n = this.isWon() ? 1 : 0;
-    if (this.score >= s[1]) n = 2;
-    if (this.score >= s[2]) n = 3;
-    return n;
+    if (this.isWon()) return 3;
+    const f = this.objFrac();
+    return f >= 2 / 3 ? 2 : f >= 1 / 3 ? 1 : 0;
   }
   // Convert leftover moves to score at the end of a won level
   cashOutMoves() {

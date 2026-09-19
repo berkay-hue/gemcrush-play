@@ -5,7 +5,7 @@ export const CONFIG = {
   gemNames: ['elmas', 'yakut', 'zumrut', 'safir', 'altin', 'gumus'],
   gemColors: [0x9ff3ff, 0xff3b5c, 0x2ee06a, 0x3f7bff, 0xffc21a, 0xd9dde6],
   lives: { max: 5, regenMs: 30 * 60 * 1000 },
-  coins: { start: 100, winReward: 15, threeStar: 30 },
+  coins: { start: 100, winReward: 15, threeStar: 30, perMoveLeft: 3 },
   boosters: { hammer: 150, moves5: 200, shuffle: 80, prism: 250 },
   ads: {
     interstitialEvery: 3,          // every N level ends (win or lose)

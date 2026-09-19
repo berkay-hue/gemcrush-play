@@ -1,5 +1,5 @@
 import { buildTextures } from '../textures.js';
-import { save, tickLives, account, syncOnBoot } from '../meta/save.js';
+import { save, tickLives, account, syncOnBoot, settlePendingLevel } from '../meta/save.js';
 import { authForm } from '../ui/authForm.js';
 import { setLang, detectLang, t } from '../i18n.js';
 import { track } from '../analytics.js';
