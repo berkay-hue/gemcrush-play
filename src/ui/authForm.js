@@ -2,7 +2,7 @@
 import { t } from '../i18n.js';
 import { register, login, authError } from '../meta/save.js';
 
-export function authForm(onDone) {
+export function authForm(onDone, cancelLabel) {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;padding:16px';
   wrap.innerHTML = `
@@ -14,7 +14,7 @@ export function authForm(onDone) {
     <div class="err" style="min-height:20px;color:#ff8a80;font-size:14px;text-align:center;margin:8px 0"></div>
     <button data-m="login" style="width:100%;font-size:19px;font-weight:800;padding:12px;border-radius:14px;border:0;background:#ffb71b;color:#1a1200;margin-bottom:8px">${t('login')}</button>
     <button data-m="register" style="width:100%;font-size:17px;font-weight:700;padding:11px;border-radius:14px;border:0;background:#2ee06a;color:#04220e;margin-bottom:8px">${t('register')}</button>
-    <button data-m="close" type="button" style="width:100%;font-size:15px;padding:9px;border-radius:14px;border:0;background:transparent;color:#9fb3a8">${t('cancel')}</button>
+    <button data-m="close" type="button" style="width:100%;font-size:15px;padding:9px;border-radius:14px;border:0;background:transparent;color:#9fb3a8">${cancelLabel || t('cancel')}</button>
   </form>`;
   document.body.appendChild(wrap);
   const f = wrap.querySelector('form'), err = wrap.querySelector('.err');

@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout, syncOnBoot } from '../meta/save.js';
+import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout } from '../meta/save.js';
 import { t, setLang, getLang } from '../i18n.js';
 import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
@@ -7,7 +7,6 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
-let booted = false;
 
 export class Map extends Phaser.Scene {
   constructor() { super('Map'); }
@@ -20,12 +19,6 @@ export class Map extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0d1512');
     this.add.image(width / 2, height / 2, 'bgGrad').setDisplaySize(width, height).setScrollFactor(0);
     tickLives();
-    if (!booted) {
-      booted = true;
-      syncOnBoot().then((changed) => { if (changed && this.scene.isActive()) { this.scene.restart(); } });
-      let asked = true; try { asked = !!localStorage.getItem('gemcrush.askedAcct'); localStorage.setItem('gemcrush.askedAcct', '1'); } catch {}
-      if (!asked && !account()) authForm((ok) => { if (ok) this.scene.restart(); });
-    }
 
     // --- scrolling level path ---
     const STEP = 92;

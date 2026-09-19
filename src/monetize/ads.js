@@ -60,7 +60,7 @@ export async function maybeInterstitial(placement) {
   if (AdMob && ready) {
     try { await AdMob.showInterstitial(); preload(); return; } catch {}
   }
-  await webAd('interstitial');
+  // web'de gerçek reklam yok: sahte geçiş reklamı oyunu donmuş gibi gösteriyordu
 }
 
 // ---- web fallback: 3s fake ad so you can test the loop in a browser ----
