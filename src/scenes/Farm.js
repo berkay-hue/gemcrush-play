@@ -34,6 +34,8 @@ import { BridgeMixin, isSickAnimal } from './farmBridge.js';
 import { HandsMixin } from './farmHands.js';
 import { LambMixin } from './farmLamb.js';
 import { GuideMixin, guideSeen } from './farmGuide.js';
+import { WardrobeMixin } from './farmWardrobe.js';
+import { look } from '../meta/wardrobe.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
@@ -129,6 +131,8 @@ export class Farm extends Phaser.Scene {
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 380, 80, 40, '📸', () => this.snap(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 430, 80, 40, '❓', () => this.guide(0), 0x2a333a, '#fff', 20); // F25: kuzu rehberi
+    button(this, width - 50, 480, 80, 40, '👕', () => this.wardrobe(), 0x2a333a, '#fff', 20); // F27: kuzu gardırobu
+    this.w3 && this.w3.mascotDress && this.w3.mascotDress(look());
     this.taskBadge(width - 16, 314);
     this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
     button(this, 50, 330, 80, 40, '🌾', () => this.festival(), festActive() ? 0xc9761b : 0x2a333a, '#fff', 20);
@@ -1040,4 +1044,4 @@ export class Farm extends Phaser.Scene {
     this.preLevel(lv);
   }
 }
-Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin, GuideMixin, CineMixin);
+Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin, GuideMixin, WardrobeMixin, CineMixin);

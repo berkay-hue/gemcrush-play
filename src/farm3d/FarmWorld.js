@@ -211,10 +211,11 @@ export class FarmWorld {
     }
     add(S(0.05), pink, 0, -0.06, 0.28, head).scale.set(1.2, 0.8, 0.8); // burun
     add(new T.TorusGeometry(0.05, 0.012, 6, 12, Math.PI), dark, 0, -0.13, 0.25, head).rotation.z = Math.PI; // gülümseme
-    // hasır şapka
-    add(new T.CylinderGeometry(0.5, 0.52, 0.04, 20), straw, 0, 0.3, 0, head);
-    add(new T.CylinderGeometry(0.22, 0.26, 0.24, 16), straw, 0, 0.43, 0, head);
-    add(new T.CylinderGeometry(0.265, 0.265, 0.07, 16), band, 0, 0.36, 0, head);
+    // F27: şapka + aksesuar grupları (mascotDress ile değişir); tulum rengi denim malzemesinden
+    const hatG = new T.Group(); head.add(hatG);
+    const accG = new T.Group(); body.add(accG);
+    const faceG = new T.Group(); head.add(faceG);
+    this._dress = { hatG, accG, faceG, denim, add, M, S, straw, band };
     // yaba (sağ elde)
     const fork = new T.Group(); fork.position.set(0.48, 0.2, 0.12); body.add(fork);
     add(new T.CylinderGeometry(0.025, 0.025, 1.7, 6), wood, 0, 0.8, 0, fork);
@@ -222,8 +223,9 @@ export class FarmWorld {
     for (const fx of [-0.1, 0, 0.1]) add(new T.CylinderGeometry(0.014, 0.01, 0.26, 5), steel, fx, 1.8, 0, fork);
     g.add(body); g.scale.setScalar(1.25); g.position.set(x, 0, z); g.rotation.y = 0.35;
     this.S.add(g);
+    this.mascotDress(this._look || { hat: 'hat_straw', suit: 'suit_denim', acc: 'acc_none' });
     // F20: tepkiler (sevinç/üzgün/el sallama/dans) + değirmen önünde dolaşma
-    const armR = body.children.find((m) => m.position.x > 0.4 && m.position.y > 0.8), smile = head.children.find((m) => m.geometry.type === 'TorusGeometry');
+    const armR = body.children.find((m) => m.position.x > 0.4 && m.position.y > 0.8), smile = head.children.find((m) => m.geometry && m.geometry.type === 'TorusGeometry');
     const HOMEP = [x, z], WPS = [[0, 0], [1.0, 0.3], [0.5, -1.2], [-0.4, 1.1], [1.3, 1.4], [0.9, -0.4]];
     const M8 = { mood: '', k: 0, dur: 0, look: null, walk: null, rest: 3 };
     this.mascotPos = [x, z];
@@ -270,6 +272,70 @@ export class FarmWorld {
     });
   }
 
+
+  // F27: kuzuyu giydir — look = { hat, suit, acc } (meta/wardrobe.js id'leri)
+  mascotDress(look) {
+    this._look = look; const D = this._dress; if (!D) return;
+    const { hatG, accG, faceG, denim, add, M, S } = D;
+    for (const G of [hatG, accG, faceG]) while (G.children.length) { const o = G.children[0]; G.remove(o); o.traverse((m) => m.geometry && m.geometry.dispose()); }
+    const C = (rt, rb, h, seg = 16) => new T.CylinderGeometry(rt, rb, h, seg);
+    const SUIT = { suit_denim: 0x3f78c9, suit_red: 0xd64541, suit_green: 0x3a9a4f, suit_pink: 0xf07fb0, suit_purple: 0x7b4fc9, suit_black: 0x2b2f33, suit_gold: 0xe6b422 };
+    denim.color.setHex(SUIT[look.suit] || SUIT.suit_denim);
+    denim.metalness = look.suit === 'suit_gold' ? 0.7 : 0; denim.roughness = look.suit === 'suit_gold' ? 0.3 : 0.85; denim.needsUpdate = true;
+    const h = look.hat;
+    if (h === 'hat_straw') {
+      add(C(0.5, 0.52, 0.04, 20), D.straw, 0, 0.3, 0, hatG); add(C(0.22, 0.26, 0.24), D.straw, 0, 0.43, 0, hatG); add(C(0.265, 0.265, 0.07), D.band, 0, 0.36, 0, hatG);
+    } else if (h === 'hat_cap') {
+      const red = M(0xd9453b, 0.7); const dome = add(new T.SphereGeometry(0.29, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), red, 0, 0.24, 0, hatG); dome.scale.set(1, 0.8, 1);
+      add(new T.BoxGeometry(0.34, 0.03, 0.26), red, 0, 0.25, 0.3, hatG); add(S(0.04), M(0xffffff), 0, 0.48, 0, hatG);
+    } else if (h === 'hat_beanie') {
+      const knit = M(0x2f8f9d, 1); const dome = add(new T.SphereGeometry(0.3, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), knit, 0, 0.2, 0, hatG); dome.scale.set(1, 1.05, 1);
+      add(C(0.31, 0.31, 0.1), M(0xf2e6c8, 1), 0, 0.22, 0, hatG); add(S(0.09), M(0xf2e6c8, 1), 0, 0.53, 0, hatG);
+    } else if (h === 'hat_flower') {
+      const cols = [0xff6fa1, 0xffd43b, 0xffffff, 0xb07cff, 0xff8a3d];
+      for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; add(S(0.07), M(cols[i % 5], 0.6), Math.cos(a) * 0.27, 0.24, Math.sin(a) * 0.24, hatG); add(S(0.03), M(0x7a4f14), Math.cos(a) * 0.3, 0.26, Math.sin(a) * 0.27, hatG); }
+      add(new T.TorusGeometry(0.26, 0.025, 6, 24), M(0x4caf50), 0, 0.23, 0, hatG).rotation.x = Math.PI / 2;
+    } else if (h === 'hat_cowboy') {
+      const lea = M(0x8b5a2b, 0.8); const brim = add(C(0.56, 0.56, 0.035, 24), lea, 0, 0.3, 0, hatG); brim.scale.set(1, 1, 0.8);
+      for (const sx of [-1, 1]) add(new T.BoxGeometry(0.2, 0.03, 0.5), lea, sx * 0.45, 0.35, 0, hatG).rotation.z = sx * 0.5;
+      add(C(0.2, 0.25, 0.28), lea, 0, 0.45, 0, hatG); add(C(0.255, 0.255, 0.05), M(0x2b1a0c), 0, 0.35, 0, hatG);
+    } else if (h === 'hat_party') {
+      add(new T.ConeGeometry(0.2, 0.5, 16), M(0x8a5cf6, 0.6), 0, 0.5, 0, hatG);
+      for (let i = 0; i < 4; i++) add(new T.TorusGeometry(0.2 - i * 0.042, 0.018, 5, 16), M([0xffd43b, 0xff6fa1, 0x4cc9f0, 0x7ee081][i], 0.5), 0, 0.3 + i * 0.1, 0, hatG).rotation.x = Math.PI / 2;
+      add(S(0.07), M(0xffd43b, 0.5), 0, 0.77, 0, hatG);
+    } else if (h === 'hat_crown') {
+      const gold = new T.MeshStandardMaterial({ color: 0xf2c230, metalness: 0.85, roughness: 0.25 });
+      add(C(0.24, 0.24, 0.14, 20), gold, 0, 0.32, 0, hatG);
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(new T.ConeGeometry(0.06, 0.16, 6), gold, Math.cos(a) * 0.22, 0.46, Math.sin(a) * 0.22, hatG); add(S(0.035), M([0xe0245e, 0x2e86de, 0x2ecc71][i % 3], 0.2), Math.cos(a) * 0.245, 0.33, Math.sin(a) * 0.245, hatG); }
+    }
+    const a = look.acc;
+    if (a === 'acc_bandana') {
+      const r = M(0xd9453b, 0.8); add(new T.TorusGeometry(0.26, 0.06, 8, 20), r, 0, 1.2, 0.04, accG).rotation.x = Math.PI / 2;
+      const tri = add(new T.ConeGeometry(0.16, 0.24, 3), r, 0, 1.08, 0.3, accG); tri.rotation.x = Math.PI; tri.scale.set(1, 1, 0.3);
+      for (let i = 0; i < 5; i++) add(S(0.018), M(0xffffff), (i - 2) * 0.05, 1.12 - Math.abs(i - 2) * 0.02, 0.33, accG);
+    } else if (a === 'acc_bow') {
+      const r = M(0x2b2f8a, 0.6);
+      for (const sx of [-1, 1]) { const w = add(new T.ConeGeometry(0.09, 0.16, 4), r, sx * 0.09, 1.18, 0.34, accG); w.rotation.z = sx * Math.PI / 2; }
+      add(S(0.045), r, 0, 1.18, 0.35, accG);
+    } else if (a === 'acc_bell') {
+      add(new T.TorusGeometry(0.25, 0.035, 6, 20), M(0x7a1f1f, 0.7), 0, 1.2, 0.04, accG).rotation.x = Math.PI / 2;
+      const gold = new T.MeshStandardMaterial({ color: 0xf2c230, metalness: 0.8, roughness: 0.3 });
+      add(new T.SphereGeometry(0.08, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), gold, 0, 1.08, 0.3, accG); add(S(0.025), M(0x3a2e2a), 0, 1.03, 0.3, accG);
+    } else if (a === 'acc_scarf') {
+      const k = M(0x2e9e6b, 1), s2 = M(0xf5f4eb, 1);
+      for (let i = 0; i < 6; i++) add(new T.TorusGeometry(0.27, 0.05, 6, 20), i % 2 ? s2 : k, 0, 1.15 + i * 0.022, 0.03, accG).rotation.x = Math.PI / 2;
+      for (let i = 0; i < 4; i++) add(new T.BoxGeometry(0.12, 0.1, 0.06), i % 2 ? s2 : k, 0.16, 1.06 - i * 0.1, 0.3, accG);
+    } else if (a === 'acc_glasses') {
+      const blk = M(0x111418, 0.2);
+      for (const sx of [-1, 1]) { const l = add(C(0.08, 0.08, 0.03, 16), blk, sx * 0.11, 0.05, 0.28, faceG); l.rotation.x = Math.PI / 2; }
+      add(new T.BoxGeometry(0.08, 0.02, 0.02), blk, 0, 0.07, 0.29, faceG);
+      for (const sx of [-1, 1]) add(new T.BoxGeometry(0.02, 0.02, 0.22), blk, sx * 0.19, 0.07, 0.18, faceG);
+    } else if (a === 'acc_medal') {
+      add(new T.TorusGeometry(0.25, 0.025, 6, 20), M(0x2e86de, 0.6), 0, 1.2, 0.04, accG).rotation.x = Math.PI / 2;
+      add(new T.BoxGeometry(0.05, 0.16, 0.02), M(0xd9453b, 0.6), 0, 1.06, 0.33, accG);
+      const m = add(C(0.08, 0.08, 0.025, 20), new T.MeshStandardMaterial({ color: 0xf2c230, metalness: 0.85, roughness: 0.25 }), 0, 0.95, 0.35, accG); m.rotation.x = Math.PI / 2;
+    }
+  }
 
   // PR-A: çiftlik adı tahta tabelası (iki direk + tahta, yüzü CanvasTexture)
   signboard(x, z) {
