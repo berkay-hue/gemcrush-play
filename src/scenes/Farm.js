@@ -30,6 +30,7 @@ import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
+import { PESTS, SCARE, pestAt, shoo, scareStatus, buyScarecrow, hasScarecrow, pestSig } from '../meta/pests.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
@@ -279,7 +280,7 @@ export class Farm extends Phaser.Scene {
     // F12: boş başlangıç — sahip olunmayan hiçbir şey dünyada görünmez, Mağaza'dan alınır
     if (st !== 'owned') { this.w3.setItem(it.id, 'hidden'); this.nodes[it.id] = c; return; }
     const sick = st === 'owned' && it.kind === 'animal' && LIVESTOCK.includes(it.id) && isSick(it.id);
-    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0, layers: layerSig(it.id) } : { sick, n: it.kind === 'animal' ? animalCount(it.id) : 0 });
+    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0, layers: layerSig(it.id) + (st === 'owned' ? pestSig(it.id) : '') } : { sick, n: it.kind === 'animal' ? animalCount(it.id) : 0 });
     this.nodes[it.id] = c;
     if (sick) {
       const b = txt(this, 0, -34, '🤒', 30);
@@ -310,8 +311,11 @@ export class Farm extends Phaser.Scene {
     if (c.crop) c.crop.destroy();
     const g = this.add.container(0, 0); c.crop = g; c.add(g);
     const st = cropState(it.id);
-    this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0, layers: layerSig(it.id) });
-    { const L = LAYERS.filter((l) => hasLayer(it.id, l.id)).map((l) => l.emoji).join(''); if (L) g.add(txt(this, 0, st === 'growing' ? -22 : -34, L, 14)); }
+    this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0, layers: layerSig(it.id) + pestSig(it.id) });
+    { const L = LAYERS.filter((l) => hasLayer(it.id, l.id)).map((l) => l.emoji).join('') + (hasScarecrow(it.id) ? SCARE.emoji : ''); if (L) g.add(txt(this, 0, st === 'growing' ? -22 : -34, L, 14)); }
+    // F32: zararlı rozeti — sallanır, dokununca kovulur
+    c.pest = pestAt(it.id);
+    if (c.pest) { const pb = txt(this, 34, st === 'growing' ? -26 : -40, PESTS[c.pest].emoji + '❗', 24).setStroke('#000', 3); g.add(pb); this.tweens.add({ targets: pb, angle: { from: -12, to: 12 }, y: pb.y - 5, yoyo: true, repeat: -1, duration: 260 }); }
     if (st === 'empty') g.add(txt(this, 0, 0, `＋ ${t('plant')}`, 16, '#fff2d6').setStroke('#3a2a10', 4));
     else if (st === 'growing') {
       g.add(this.add.rectangle(0, 0, 84, 12, 0x0a0f0d, 0.8).setStrokeStyle(2, 0xffffff, 0.6));
@@ -327,6 +331,7 @@ export class Farm extends Phaser.Scene {
   plotTap(id) {
     const it = item(id); const c = this.nodes[id]; const st = cropState(id);
     if (st === 'empty') return this.seedPicker(id);
+    if (pestAt(id)) return this.shooPest(id);
     if (st === 'ready') {
       this.harvestPlot(id);
       return;
@@ -383,14 +388,43 @@ export class Farm extends Phaser.Scene {
     m.add(txt(this, width / 2, height / 2 + 260, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}`, 13, '#9fe870'));
     m.add(button(this, width / 2, height / 2 + 290, 280, 40, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
   }
+  // F32: zararlıyı kov — emoji kaçar, +5 🪙; korkuluk yoksa karga için ipucu
+  shooPest(id) {
+    const it = item(id), c = this.nodes[id], en = getLang() === 'en', k = shoo(id); if (!k) return;
+    sfx.click && sfx.click(); haptic && haptic(); track('pest_shoo', { plot: id, pest: k });
+    const cx = c ? c.x : this.scale.width / 2, cy = c ? c.y : this.scale.height / 2;
+    const e = txt(this, cx + 30, cy - 30, PESTS[k].emoji, 34).setDepth(950);
+    this.tweens.add({ targets: e, x: cx + (k === 'crow' ? 260 : 90), y: cy - (k === 'crow' ? 320 : 10), angle: k === 'crow' ? -20 : 180, alpha: 0, scale: k === 'crow' ? 1.4 : 0.4, duration: 800, ease: 'Quad.In', onComplete: () => e.destroy() });
+    const p = txt(this, cx, cy - 20, `💨 +🪙5`, 20, '#ffe58a').setStroke('#000', 4).setDepth(951);
+    this.tweens.add({ targets: p, y: cy - 70, alpha: 0, duration: 900, onComplete: () => p.destroy() });
+    if (c) this.drawCrop(c, it); this.refreshHud();
+    this.toast(k === 'crow' && !hasScarecrow(id) ? (en ? '🐦‍⬛ Shooed! A scarecrow keeps crows away for good 🧑‍🌾' : '🐦‍⬛ Kovuldu! Korkuluk kargaları hep uzak tutar 🧑‍🌾') : (en ? `${PESTS[k].emoji} Shooed! Crop saved` : `${PESTS[k].emoji} Kovuldu! Ürün kurtuldu`));
+  }
   // F29: katmanlı tarla — gübre → fıskiye → sera; her katman tarlada 3D görünür
   layersModal(id) {
     const it = item(id), c = this.nodes[id], en = getLang() === 'en', L = en ? 'en' : 'tr';
-    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 540);
-    m.add(txt(this, width / 2, height / 2 - 225, en ? '🧱 Field layers' : '🧱 Tarla katmanları', 30, '#ffb71b'));
-    m.add(txt(this, width / 2, height / 2 - 190, `${this.itemName(it)} · ${en ? 'build from the ground up' : 'topraktan yukarı kur'}`, 16, '#cfe8d8'));
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 650);
+    m.add(txt(this, width / 2, height / 2 - 280, en ? '🧱 Field layers' : '🧱 Tarla katmanları', 30, '#ffb71b'));
+    m.add(txt(this, width / 2, height / 2 - 245, `${this.itemName(it)} · ${en ? 'build from the ground up' : 'topraktan yukarı kur'}`, 16, '#cfe8d8'));
+    // F32: korkuluk — katman sırasından bağımsız, kargaları uzak tutar
+    { const y = height / 2 + 200, s = scareStatus(id), own = s === 'owned';
+      const g = this.add.graphics();
+      g.fillStyle(own ? 0x2f6b48 : 0x3a2f1a, 1); g.fillRoundedRect(width / 2 - 225, y - 46, 450, 92, 18);
+      g.lineStyle(own ? 3 : 2, own ? 0x9dffb8 : 0xffb71b, own ? 0.9 : 0.35); g.strokeRoundedRect(width / 2 - 225, y - 46, 450, 92, 18);
+      m.add(g); m.add(txt(this, width / 2 - 185, y, SCARE.emoji, 40));
+      m.add(txt(this, width / 2 - 145, y - 16, en ? 'Scarecrow' : 'Korkuluk', 20, '#ffffff').setOrigin(0, 0.5));
+      m.add(txt(this, width / 2 - 145, y + 14, en ? 'Crows never land here' : 'Karga bu tarlaya konmaz', 13, '#ffe58a').setOrigin(0, 0.5));
+      if (own) m.add(txt(this, width / 2 + 165, y, en ? '✅ Standing' : '✅ Dikili', 17, '#9dffb8'));
+      else m.add(button(this, width / 2 + 160, y, 118, 46, s === 'locked' ? `🔒 ${t('level')} ${SCARE.lvl}` : `🪙 ${SCARE.cost}`, () => {
+        const r = buyScarecrow(id);
+        if (r !== 'ok') { this.toast(r === 'locked' ? `🔒 ${t('level')} ${SCARE.lvl}` : (en ? 'Not enough coins' : 'Yeterli para yok 🪙')); return; }
+        sfx.coin && sfx.coin(); track('scarecrow_buy', { plot: id });
+        close(); if (c) this.drawCrop(c, it); this.w3.burst && this.w3.burst(id); this.refreshHud();
+        this.toast(en ? '🧑‍🌾 Scarecrow up — crows, beware!' : '🧑‍🌾 Korkuluk dikildi — kargalar kaçsın!');
+        this.time.delayedCall(250, () => this.layersModal(id));
+      }, s === 'ok' ? 0xffb71b : 0x2a333a, s === 'ok' ? '#1a1200' : '#bbb', 15)); }
     LAYERS.forEach((l, i) => {
-      const y = height / 2 - 110 + i * 120, s = layerStatus(id, l.id), own = s === 'owned';
+      const y = height / 2 - 165 + i * 115, s = layerStatus(id, l.id), own = s === 'owned';
       const g = this.add.graphics();
       g.fillStyle(own ? 0x2f6b48 : 0x33291c, 1); g.fillRoundedRect(width / 2 - 225, y - 50, 450, 100, 18);
       g.lineStyle(own ? 3 : 2, own ? 0x9dffb8 : 0xffffff, own ? 0.9 : 0.2); g.strokeRoundedRect(width / 2 - 225, y - 50, 450, 100, 18);
@@ -411,13 +445,13 @@ export class Farm extends Phaser.Scene {
         this.time.delayedCall(250, () => this.layersModal(id));
       }, ok ? 0xffb71b : 0x2a333a, ok ? '#1a1200' : '#bbb', 15));
     });
-    m.add(txt(this, width / 2, height / 2 + 240, en ? 'Layers stay forever · 3D on your field' : 'Katmanlar kalıcıdır · tarlanda 3D görünür', 14, '#cfe8d8'));
+    m.add(txt(this, width / 2, height / 2 + 280, en ? 'Layers stay forever · 3D on your field' : 'Katmanlar kalıcıdır · tarlanda 3D görünür', 14, '#cfe8d8'));
   }
   tickCrops() {
     for (const it of CATALOG) {
       const c = this.nodes[it.id]; if (!c || !c.crop) continue;
       const st = cropState(it.id), stage = st === 'ready' ? 3 : st === 'growing' ? Math.min(2, Math.floor(growth(it.id) * 3)) : -1;
-      if (st !== c.cropState || (st === 'growing' && stage !== c.cropStage)) { this.drawCrop(c, it); continue; }
+      if (st !== c.cropState || (st === 'growing' && stage !== c.cropStage) || (this.w3 && st !== 'empty' && (pestAt(it.id) || null) !== (c.pest || null))) { this.drawCrop(c, it); continue; }
       if (st === 'growing') { c.bar.width = 100 * growth(it.id); c.left.setText(fmtMs(msLeft(it.id))); }
     }
   }

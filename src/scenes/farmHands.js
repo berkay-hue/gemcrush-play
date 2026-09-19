@@ -60,7 +60,7 @@ export const HandsMixin = {
     }
     if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
-    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : ''].filter(Boolean).join('  ·  '));
+    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : '', r.pest ? (r.pest === 'crow' ? '🐦‍⬛' : '🐛') + ' −%30' : ''].filter(Boolean).join('  ·  '));
     return { ...r, emoji: r.emoji || it.emoji };
   },
   // pad pointerdown'dan: hazır tarlada başlarsa sürükleyerek hasat moduna gir

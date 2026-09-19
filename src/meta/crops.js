@@ -6,6 +6,7 @@ import { owns, bldLvl, BLD_MAX } from './farm.js';
 import { stash } from './produce.js';
 import { layerSpeed, layerYield, hasLayer } from './layers.js';
 import { inSeason, SPEED, PRICE } from './mevsim.js';
+import { pestAt, PEST_CUT } from './pests.js';
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -77,14 +78,14 @@ export function plant(id, now = Date.now(), seed = seedOf(id)) {
 export function harvest(id, now = Date.now()) {
   if (cropState(id, now) !== 'ready') return null;
   const info = cropInfo(id), seed = seedOf(id);
-  const sez = !!F()[id].sez;
-  delete F()[id]; save.farm.harvests = (save.farm.harvests || 0) + 1;
-  const n = cropYield(id) * (bereketLeft(now) ? 2 : 1), good = info.good || null;
+  const sez = !!F()[id].sez, pest = pestAt(id, now); // F32: kovulmamış zararlı ürünün %30'unu yer
+  delete F()[id]; if (save.farm.pests) delete save.farm.pests[id]; save.farm.harvests = (save.farm.harvests || 0) + 1;
+  const n0 = cropYield(id) * (bereketLeft(now) ? 2 : 1), n = pest && n0 > 1 ? Math.max(1, Math.round(n0 * PEST_CUT)) : n0, good = info.good || null;
   const put = good ? stash(good, n) : 0; // ambar doluysa kalan paraya döner
-  const coins = Math.round(info.price * (sez ? PRICE : 1)) * (n - put); if (coins) addCoins(coins);
+  const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (pest && n0 === n ? PEST_CUT : 1)); if (coins) addCoins(coins);
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez };
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {

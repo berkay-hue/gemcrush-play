@@ -645,6 +645,38 @@ export class FarmWorld {
       const ridge = new T.Mesh(new T.BoxGeometry(1.92, 0.035, 0.035), frame); ridge.position.set(x, 0.06 + 0.98, z); g.add(ridge);
       for (const dz of [-0.86, 0.86]) { const rail = new T.Mesh(new T.BoxGeometry(1.92, 0.05, 0.05), frame); rail.position.set(x, 0.08, z + dz); g.add(rail); }
     }
+    // F32: k = korkuluk (köşede), C = sekerek gagalayan karga, B = kıvrılan tırtıl
+    const alive = (tick) => { let r = g; while (r.parent) r = r.parent; if (r !== this.S) { this.tickers = this.tickers.filter((f) => f !== tick); return false; } return true; };
+    if (sig.includes('k')) {
+      const sx = x + 1.08, sz = z - 0.78, wood = M(0x8a5a2b, { roughness: 1 }), straw = M(0xe8c35a, { roughness: 1 });
+      const post = new T.Mesh(new T.CylinderGeometry(0.035, 0.04, 1.2, 8), wood); post.position.set(sx, 0.6, sz); post.castShadow = true; g.add(post);
+      const bar = new T.Mesh(new T.CylinderGeometry(0.025, 0.025, 0.8, 8), wood); bar.rotation.z = Math.PI / 2; bar.position.set(sx, 0.92, sz); g.add(bar);
+      const shirt = new T.Mesh(new T.BoxGeometry(0.34, 0.36, 0.16), M(0xc0392b, { roughness: 0.9 })); shirt.position.set(sx, 0.86, sz); shirt.castShadow = true; g.add(shirt);
+      for (const d of [-1, 1]) { const tuft = new T.Mesh(new T.ConeGeometry(0.05, 0.14, 6), straw); tuft.rotation.z = d * Math.PI / 2; tuft.position.set(sx + d * 0.46, 0.92, sz); g.add(tuft); }
+      const head = new T.Mesh(new T.SphereGeometry(0.13, 12, 10), M(0xd9b77a, { roughness: 1 })); head.position.set(sx, 1.2, sz); head.castShadow = true; g.add(head);
+      const eye = M(0x222222); for (const d of [-1, 1]) { const e = new T.Mesh(new T.SphereGeometry(0.018, 6, 4), eye); e.position.set(sx + d * 0.045, 1.22, sz + 0.12); g.add(e); }
+      const brim = new T.Mesh(new T.CylinderGeometry(0.24, 0.24, 0.02, 16), straw); brim.position.set(sx, 1.3, sz); g.add(brim);
+      const crown = new T.Mesh(new T.CylinderGeometry(0.1, 0.13, 0.14, 12), straw); crown.position.set(sx, 1.38, sz); g.add(crown);
+      const band = new T.Mesh(new T.CylinderGeometry(0.131, 0.131, 0.03, 12), M(0x3a6fd8)); band.position.set(sx, 1.33, sz); g.add(band);
+    }
+    if (sig.includes('C')) {
+      const bird = new T.Group(); bird.position.set(x + 0.3, 0.12, z + 0.1); g.add(bird);
+      const blk = M(0x1d1f24, { roughness: 0.6, metalness: 0.2 });
+      const body = new T.Mesh(new T.SphereGeometry(0.13, 12, 10), blk); body.scale.set(1, 0.85, 1.35); body.position.y = 0.15; body.castShadow = true; bird.add(body);
+      const hd = new T.Mesh(new T.SphereGeometry(0.08, 10, 8), blk); hd.position.set(0, 0.28, 0.15); bird.add(hd);
+      const beak = new T.Mesh(new T.ConeGeometry(0.03, 0.1, 6), M(0xf2b01e)); beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.27, 0.26); bird.add(beak);
+      const tail = new T.Mesh(new T.BoxGeometry(0.1, 0.02, 0.16), blk); tail.position.set(0, 0.17, -0.2); tail.rotation.x = -0.4; bird.add(tail);
+      for (const d of [-1, 1]) { const w = new T.Mesh(new T.BoxGeometry(0.02, 0.1, 0.2), blk); w.position.set(d * 0.13, 0.17, -0.02); bird.add(w); const e = new T.Mesh(new T.SphereGeometry(0.015, 6, 4), M(0xffffff)); e.position.set(d * 0.05, 0.31, 0.2); bird.add(e); }
+      const tick = (t) => { if (!alive(tick)) return; const u = (t / 900) % 1; bird.position.y = 0.12 + Math.max(0, Math.sin(u * Math.PI * 2)) * 0.12; bird.position.x = x + 0.3 + Math.sin(t / 1700) * 0.35; bird.rotation.y = Math.sin(t / 1700) > 0 ? 0.6 : -0.6; hd.rotation.x = u > 0.5 ? Math.sin(t / 60) * 0.4 : 0; };
+      this.tickers.push(tick);
+    }
+    if (sig.includes('B')) {
+      const bug = new T.Group(); bug.position.set(x - 0.35, 0.12, z + 0.35); g.add(bug);
+      const segs = []; for (let i = 0; i < 6; i++) { const sg = new T.Mesh(new T.SphereGeometry(i === 0 ? 0.075 : 0.065, 10, 8), M(i === 0 ? 0x4c9a2a : (i % 2 ? 0x7cd33c : 0x68bf2e), { roughness: 0.5 })); sg.position.set(0, 0.07, -i * 0.09); sg.castShadow = true; bug.add(sg); segs.push(sg); }
+      for (const d of [-1, 1]) { const a = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.1, 4), M(0x222222)); a.position.set(d * 0.03, 0.16, 0.02); a.rotation.z = d * 0.4; bug.add(a); }
+      const tick = (t) => { if (!alive(tick)) return; segs.forEach((sg, i) => { sg.position.y = 0.07 + Math.max(0, Math.sin(t / 200 - i * 0.8)) * 0.05; sg.position.x = Math.sin(t / 400 - i * 0.6) * 0.03; }); bug.rotation.y = Math.sin(t / 2500) * 0.9; };
+      this.tickers.push(tick);
+    }
   }
 
   // state: 'owned' | 'ghost' | 'hidden'. Rebuilds an item's models when state changes.
