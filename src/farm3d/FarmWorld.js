@@ -5,6 +5,7 @@
 import * as T from '../../vendor/three/three.module.min.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import * as SU from '../../vendor/three/SkeletonUtils.js';
+import { Ambience, hourNow } from './ambience.js';
 
 const SQ3 = Math.sqrt(3);
 export const hex = (q, r) => [2 * (q + r / 2), SQ3 * r];
@@ -44,7 +45,10 @@ const DECOR = [
   ['flower_purpleA', [4.6, 5], 0.4, 1], ['flower_redB', [-6.8, -3.5], 0.4, 2], ['mushroom_red', [-9, 4.8], 0.4, 0],
   ['rock_smallC', [7.5, 7.3], 0.5, 1], ['log_stack', [-5.4, -5.6], 0.7, 0.4], ['stump_round', [7, 4.2], 0.4, 0],
   ['town/cart', [2.4, -3.8], 1.1, -0.8], ['town/lantern', [1.5, 1.2], 1.4, 0], ['campfire_logs', [-2.8, -5.6], 0.4, 0],
+  ['town/lantern', [2.9, 6.3], 1.4, 0], ['town/lantern', [-6.2, 2.3], 1.4, 0],
 ];
+// F19: gece yanan ışık noktaları [x, y, z, ateş?]
+const LAMPS = [[1.5, 1.25, 1.2], [2.9, 1.25, 6.3], [-6.2, 1.25, 2.3], [-2.8, 0.5, -5.6, 1]];
 // F9: dekorun çarpışma yarıçapı (hayvanlar içinden geçmesin)
 const DECOR_R = (n) => n === 'b:degirmen' ? 1.5 : n === 'town/fountain-round' ? 1.25 : n.startsWith('tree_') ? 0.6 : n === 'town/cart' ? 0.75 : n === 'log_stack' ? 0.5 : n === 'campfire_logs' ? 0.45 : n === 'town/lantern' ? 0.25 : n.startsWith('rock_') || n.startsWith('stump') ? 0.35 : 0;
 const ITEM_R = { ambar: 1.8, ahir: 1.6, kumes: 1.05, market: 1.3, traktor: 0.85 };
@@ -108,14 +112,16 @@ export class FarmWorld {
     S.background = new T.Color(0xa8dcf2); S.fog = new T.Fog(0xa8dcf2, 34, 62);
     this.C = new T.PerspectiveCamera(34, 540 / 960, 0.1, 200);
     this.target = new T.Vector3(0, 0, 0.6); this.zoom = 1;
-    S.add(new T.HemisphereLight(0xffffff, 0x6a8f4a, 1.25));
+    S.add(this.hemi = new T.HemisphereLight(0xffffff, 0x6a8f4a, 1.25));
     const sun = this.sun = new T.DirectionalLight(0xfff0d0, 2.2);
     sun.position.set(8, 14, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006;
     Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22 }); S.add(sun);
     this.loader = new GLTFLoader(); this.cache = {};
     this.items = {}; this.movers = []; this.tickers = []; this.running = false;
     this.ray = new T.Raycaster();
+    this.lampSpots = LAMPS; this.trees = []; this.nightK = 0;
     this.buildGround();
+    this.amb = new Ambience(this);
     addEventListener('resize', () => this.fit());
   }
 
@@ -155,7 +161,7 @@ export class FarmWorld {
     const fl = this.floor = new T.Mesh(new T.PlaneGeometry(260, 260), new T.MeshStandardMaterial({ color: 0x5f9e3c, roughness: 1 }));
     fl.rotation.x = -Math.PI / 2; fl.position.y = -0.06; fl.receiveShadow = true; this.S.add(fl);
     this.island(0, ...ISL, POND);
-    for (const [n, [x, z], h, ry, s] of DECOR) this.put(n, x, z, h ? { h, ry } : { s, ry });
+    for (const [n, [x, z], h, ry, s] of DECOR) this.put(n, x, z, h ? { h, ry } : { s, ry }).then((o) => { if (n.startsWith('tree_')) this.trees.push({ o, ph: x * 3 + z }); });
     this.mascot(-7.3, 1.1);
     this.signboard(1.3, 6.7);
   }
@@ -204,6 +210,9 @@ export class FarmWorld {
     this.tickers.push((t, dt) => {
       if (!g.parent) return;
       if (hop > 0) hop = Math.max(0, hop - (dt || 0.016) / 0.7);
+      const zz = this.mascotSleep = this.nightK > 0.6 && hop === 0; // F19: gece uyur
+      if (zz) { body.position.y = -0.08 + Math.sin(t / 1100) * 0.02; head.rotation.x = 0.42 + Math.sin(t / 1100) * 0.06; head.rotation.y = 0; body.rotation.z = 0.06; fork.rotation.z = 0.35; return; }
+      head.rotation.x = 0;
       body.position.y = Math.abs(Math.sin(t / 420)) * 0.05 + Math.sin(hop * Math.PI) * 0.6;
       body.rotation.z = Math.sin(t / 700) * 0.04;
       head.rotation.y = Math.sin(t / 1300) * 0.25 + (hop > 0 ? Math.sin(hop * 20) * 0.2 : 0);
@@ -399,7 +408,7 @@ export class FarmWorld {
       // windmill.glb blades lie in the model's YZ plane: spin about the LOCAL x axis via an inner pivot
       // (rotation.x on b itself is applied after its yaw, i.e. about the parent's X -> wrong plane)
       const spin = new T.Group(); [...b.children].forEach((k) => spin.add(k)); b.add(spin);
-      const tick = (t) => { if (!this.S.getObjectById(g.id)) return; spin.rotation.x = -t / 900; }; this.tickers.push(tick);
+      const tick = (t, dt) => { if (!this.S.getObjectById(g.id)) return; spin.rotation.x -= (dt || 0.016) * 1.1 * (1 + 2.6 * (this.amb?.wind || 0)); }; this.tickers.push(tick);
     }
     return g;
   }
@@ -530,12 +539,18 @@ export class FarmWorld {
     this.R.setAnimationLoop((t) => { const dt = Math.min(0.05, (t - last) / 1000); last = t; this.frame(t, dt); });
   }
   // F10: sky + sun follow the real local hour (soft; never fully dark)
-  daylight(h = new Date().getHours() + new Date().getMinutes() / 60) {
+  daylight(h = hourNow()) {
     const day = Math.max(0, Math.sin((h - 6) / 12 * Math.PI));          // 0 night .. 1 noon
+    this.nightK = Math.min(1, Math.max(0, (h >= 12 ? h - 18.6 : 5.6 - h) / 1.4)); // F19
+    const wet = this.amb?.weather === 'yagmur' ? 1 : 0;
     const warm = Math.max(0, 1 - Math.abs(h - 18.5) / 2) + Math.max(0, 1 - Math.abs(h - 6.5) / 2);
     const sky = new T.Color(0x2c3e66).lerp(new T.Color(this.skyBase), 0.35 + 0.65 * day).lerp(new T.Color(0xffb88a), warm * 0.35);
+    if (wet) sky.lerp(new T.Color(0x6f7c8a), 0.45);
+    sky.lerp(new T.Color(0x141c33), this.nightK * 0.55);
     this.S.background.copy(sky); this.S.fog.color.copy(sky);
-    this.sun.intensity = 0.9 + 1.3 * day;
+    this.sun.intensity = (0.9 + 1.3 * day) * (1 - 0.35 * wet) * (1 - 0.45 * this.nightK);
+    this.hemi.intensity = 1.25 * (1 - 0.4 * this.nightK) * (1 - 0.15 * wet);
+    this.hemi.color.set(0xffffff).lerp(new T.Color(0x8fa6e0), this.nightK * 0.7);
     this.sun.color.set(0xfff0d0).lerp(new T.Color(0xff9a5a), warm * 0.6);
     this.sun.position.set(8 * Math.cos((h - 12) / 12 * Math.PI) + 2, 14, 6);
   }
@@ -549,7 +564,8 @@ export class FarmWorld {
         this.S.add(m); return m;
       });
     }
-    for (const m of this._clouds) { m.position.x += dt * 0.6; if (m.position.x > 18) m.position.x = -18; }
+    const wet = this.amb?.weather === 'yagmur';
+    for (const m of this._clouds) { m.material.opacity = wet ? 0.2 : 0.09 * (1 - this.nightK * 0.7); m.position.x += dt * (0.6 + 1.4 * (this.amb?.wind || 0)); if (m.position.x > 18) m.position.x = -18; }
   }
   // F10: little cube burst at an item (harvest, pet, buy)
   burst(id, color = 0xffd23f, n = 14) {
@@ -624,6 +640,7 @@ export class FarmWorld {
       else if (a.st === 'sun') { sq = 0.72 + Math.sin(t / 900 + a.ph) * 0.02; }   // kedi yayılıp güneşlenir
       else if (a.st === 'eat') tilt = 0.35 + Math.sin(t / 150) * 0.08;
       else sq = 1 + Math.sin(t / 500 + a.ph) * 0.025;             // breathing
+      if (!a.jump && (a.id.startsWith('tavuk') || a.id.startsWith('horoz')) && a.st !== 'walk' && Math.random() < dt * 0.35) a.jump = 0.6; // F19: tavuklar zıplar
       if (a.jump > 0) { a.jump = Math.max(0, a.jump - dt); const k = a.jump / 0.6; hop += Math.sin(k * Math.PI) * 0.25; }
       if (c) { const s0 = a.o.scale.x; c.position.y = hop / s0; c.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); c.rotation.x = tilt; }
     }
