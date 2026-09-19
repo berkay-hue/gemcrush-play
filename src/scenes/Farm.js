@@ -27,6 +27,7 @@ import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FES
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
+import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
@@ -275,7 +276,7 @@ export class Farm extends Phaser.Scene {
     // F12: boş başlangıç — sahip olunmayan hiçbir şey dünyada görünmez, Mağaza'dan alınır
     if (st !== 'owned') { this.w3.setItem(it.id, 'hidden'); this.nodes[it.id] = c; return; }
     const sick = st === 'owned' && it.kind === 'animal' && LIVESTOCK.includes(it.id) && isSick(it.id);
-    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0 } : { sick, n: it.kind === 'animal' ? animalCount(it.id) : 0 });
+    this.w3.setItem(it.id, st === 'owned' ? 'owned' : 'ghost', it.kind === 'plot' ? { crop: st === 'owned' ? cropState(it.id) : '', seed: seedOf(it.id), growth: st === 'owned' ? growth(it.id) : 0, layers: layerSig(it.id) } : { sick, n: it.kind === 'animal' ? animalCount(it.id) : 0 });
     this.nodes[it.id] = c;
     if (sick) {
       const b = txt(this, 0, -34, '🤒', 30);
@@ -300,7 +301,8 @@ export class Farm extends Phaser.Scene {
     if (c.crop) c.crop.destroy();
     const g = this.add.container(0, 0); c.crop = g; c.add(g);
     const st = cropState(it.id);
-    this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0 });
+    this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0, layers: layerSig(it.id) });
+    { const L = LAYERS.filter((l) => hasLayer(it.id, l.id)).map((l) => l.emoji).join(''); if (L) g.add(txt(this, 0, st === 'growing' ? -22 : -34, L, 14)); }
     if (st === 'empty') g.add(txt(this, 0, 0, `＋ ${t('plant')}`, 16, '#fff2d6').setStroke('#3a2a10', 4));
     else if (st === 'growing') {
       g.add(this.add.rectangle(0, 0, 84, 12, 0x0a0f0d, 0.8).setStrokeStyle(2, 0xffffff, 0.6));
@@ -321,7 +323,7 @@ export class Farm extends Phaser.Scene {
       return;
     }
     // growing: info + rush + go play to speed up
-    const { width, height } = this.scale; const { c: m, close } = modal(this, 440, 360);
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 440, 430);
     m.add(txt(this, width / 2, height / 2 - 125, cropInfo(id).emoji, 60));
     m.add(txt(this, width / 2, height / 2 - 70, `${this.itemName(it)} · ${cropInfo(id).name[getLang()] || cropInfo(id).name.tr}`, 26, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
@@ -332,11 +334,12 @@ export class Farm extends Phaser.Scene {
     const done = () => { sfx.coin(); close(); this.drawCrop(c, it); };
     m.add(button(this, width / 2 - 100, height / 2 + 125, 180, 48, `💎 ${cost} ${t('rush')}`, () => { if (cropRush(id)) { track('crop_rush', { plot: id, via: 'gems' }); done(); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 17));
     m.add(button(this, width / 2 + 100, height / 2 + 125, 180, 48, `📺 ${t('rush')}`, async () => { if (await showRewarded('crop_rush') && cropRush(id, true)) { track('crop_rush', { plot: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 17));
+    m.add(button(this, width / 2, height / 2 + 180, 300, 44, `🧱 ${getLang() === 'en' ? 'Field layers' : 'Tarla katmanları'}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 17));
   }
   // F23: boş tarlaya dokununca tohum seç — 3×3 kart; kilitli tohum seviyesini, fiyatlı tohum parasını gösterir
   seedPicker(id) {
     const it = item(id), c = this.nodes[id], en = getLang() === 'en';
-    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 560);
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 630);
     m.add(txt(this, width / 2, height / 2 - 235, en ? '🌱 Choose a seed' : '🌱 Tohum seç', 30, '#ffb71b'));
     m.add(txt(this, width / 2, height / 2 - 200, this.itemName(it), 17, '#cfe8d8'));
     const keys = Object.keys(SEEDS).sort((a, b) => SEEDS[a].lvl - SEEDS[b].lvl || SEEDS[a].ms - SEEDS[b].ms), last = seedOf(id);
@@ -364,7 +367,38 @@ export class Farm extends Phaser.Scene {
       z.on('pointerup', () => { if (open) go(k); else this.toast(`🔒 ${t('level')} ${S.lvl}`); });
       m.add(z);
     });
-    m.add(txt(this, width / 2, height / 2 + 262, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 14, '#cfe8d8'));
+    m.add(txt(this, width / 2, height / 2 + 250, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 14, '#cfe8d8'));
+    m.add(button(this, width / 2, height / 2 + 290, 280, 40, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
+  }
+  // F29: katmanlı tarla — gübre → fıskiye → sera; her katman tarlada 3D görünür
+  layersModal(id) {
+    const it = item(id), c = this.nodes[id], en = getLang() === 'en', L = en ? 'en' : 'tr';
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 540);
+    m.add(txt(this, width / 2, height / 2 - 225, en ? '🧱 Field layers' : '🧱 Tarla katmanları', 30, '#ffb71b'));
+    m.add(txt(this, width / 2, height / 2 - 190, `${this.itemName(it)} · ${en ? 'build from the ground up' : 'topraktan yukarı kur'}`, 16, '#cfe8d8'));
+    LAYERS.forEach((l, i) => {
+      const y = height / 2 - 110 + i * 120, s = layerStatus(id, l.id), own = s === 'owned';
+      const g = this.add.graphics();
+      g.fillStyle(own ? 0x2f6b48 : 0x33291c, 1); g.fillRoundedRect(width / 2 - 225, y - 50, 450, 100, 18);
+      g.lineStyle(own ? 3 : 2, own ? 0x9dffb8 : 0xffffff, own ? 0.9 : 0.2); g.strokeRoundedRect(width / 2 - 225, y - 50, 450, 100, 18);
+      m.add(g);
+      m.add(txt(this, width / 2 - 185, y, l.emoji, 44));
+      m.add(txt(this, width / 2 - 145, y - 18, `${i + 1}. ${l.name[L]}`, 20, '#ffffff').setOrigin(0, 0.5));
+      m.add(txt(this, width / 2 - 145, y + 14, l.info[L], 13, '#ffe58a').setOrigin(0, 0.5));
+      const price = l.cost.g ? `💎 ${l.cost.g}` : `🪙 ${l.cost.c}`;
+      if (own) { m.add(txt(this, width / 2 + 165, y, en ? '✅ Built' : '✅ Kurulu', 17, '#9dffb8')); return; }
+      const lbl = s === 'locked' ? `🔒 ${t('level')} ${l.lvl}` : s === 'need' ? (en ? `⬆ ${LAYERS[i - 1].emoji} first` : `⬆ önce ${LAYERS[i - 1].emoji}`) : price;
+      const ok = s === 'ok';
+      m.add(button(this, width / 2 + 160, y, 118, 46, lbl, () => {
+        const r = buyLayer(id, l.id);
+        if (r !== 'ok') { this.toast(r === 'locked' ? `🔒 ${t('level')} ${l.lvl}` : r === 'need' ? `${LAYERS[i - 1].emoji} ${en ? 'needed first' : 'önce gerekli'}` : r === 'gems' ? (en ? 'Not enough gems 💎' : 'Yeterli elmas yok 💎') : (en ? 'Not enough coins' : 'Yeterli para yok 🪙')); return; }
+        sfx.coin && sfx.coin(); track('layer_buy', { plot: id, layer: l.id });
+        close(); if (c) this.drawCrop(c, it); this.w3.burst && this.w3.burst(id); this.refreshHud();
+        this.toast(`${l.emoji} ${l.name[L]} ${en ? 'built!' : 'kuruldu!'}`);
+        this.time.delayedCall(250, () => this.layersModal(id));
+      }, ok ? 0xffb71b : 0x2a333a, ok ? '#1a1200' : '#bbb', 15));
+    });
+    m.add(txt(this, width / 2, height / 2 + 240, en ? 'Layers stay forever · 3D on your field' : 'Katmanlar kalıcıdır · tarlanda 3D görünür', 14, '#cfe8d8'));
   }
   tickCrops() {
     for (const it of CATALOG) {

@@ -7,6 +7,7 @@ import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt } from '../ui/widgets.js';
+import { getLang } from '../i18n.js';
 import { sickleTex } from '../farmArt.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { t } from '../i18n.js';
@@ -59,7 +60,7 @@ export const HandsMixin = {
     }
     if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
-    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
+    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : ''].filter(Boolean).join('  ·  '));
     return { ...r, emoji: r.emoji || it.emoji };
   },
   // pad pointerdown'dan: hazır tarlada başlarsa sürükleyerek hasat moduna gir

@@ -591,6 +591,43 @@ export class FarmWorld {
     }
   }
 
+  // F29: tarla katmanları — g: gübreli koyu toprak + çuval, f: dönen fıskiye + damlalar, s: kemerli cam sera
+  layers3d(x, z, g, sig) {
+    const M = (c, o = {}) => new T.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
+    if (sig.includes('g')) {
+      const top = new T.Mesh(new T.BoxGeometry(1.9, 0.02, 1.66), M(0x2b1a0e, { roughness: 1 })); top.position.set(x, 0.085, z); top.receiveShadow = true; g.add(top);
+      const gm = M(0xe8f2d0, { roughness: 0.5 });
+      for (let i = 0; i < 26; i++) { const p = new T.Mesh(new T.SphereGeometry(0.018, 5, 4), gm); p.position.set(x + (Math.random() - 0.5) * 1.8, 0.1, z + (Math.random() - 0.5) * 1.55); g.add(p); }
+      const sack = new T.Mesh(new T.CylinderGeometry(0.13, 0.16, 0.3, 10), M(0xc9a36a, { roughness: 1 })); sack.position.set(x + 1.12, 0.17, z + 0.7); sack.scale.z = 0.75; sack.castShadow = true; g.add(sack);
+      const tie = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), M(0xa9824c)); tie.position.set(x + 1.12, 0.35, z + 0.7); g.add(tie);
+      const lab = new T.Mesh(new T.BoxGeometry(0.02, 0.1, 0.12), M(0x3fae5a)); lab.position.set(x + 0.99, 0.18, z + 0.7); g.add(lab);
+    }
+    if (sig.includes('f')) {
+      const metal = M(0x9aa6ad, { metalness: 0.7, roughness: 0.3 });
+      const pole = new T.Mesh(new T.CylinderGeometry(0.025, 0.03, 0.9, 8), metal); pole.position.set(x - 1.08, 0.45, z - 0.78); pole.castShadow = true; g.add(pole);
+      const head = new T.Group(); head.position.set(x - 1.08, 0.92, z - 0.78); g.add(head);
+      const hub = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 0.07, 10), M(0x2f7fd0, { metalness: 0.3 })); head.add(hub);
+      for (let k = 0; k < 2; k++) { const arm = new T.Mesh(new T.BoxGeometry(0.34, 0.025, 0.03), metal); arm.rotation.y = k * Math.PI; arm.position.set(Math.cos(k * Math.PI) * 0.17, 0, 0); head.add(arm); }
+      const wm = M(0x7fd0ff, { transparent: true, opacity: 0.75, roughness: 0.1 });
+      const drops = []; for (let i = 0; i < 10; i++) { const d = new T.Mesh(new T.SphereGeometry(0.025, 6, 4), wm); g.add(d); drops.push({ d, ph: i / 10, a: i * 0.63 }); }
+      const tick = (t) => {
+        let r = g; while (r.parent) r = r.parent;
+        if (r !== this.S) { this.tickers = this.tickers.filter((f) => f !== tick); return; }
+        head.rotation.y = t / 260;
+        for (const q of drops) { const u = ((t / 1400) + q.ph) % 1, a = q.a + t / 900, r = 0.2 + u * 1.2; q.d.position.set(x - 1.08 + Math.cos(a) * r * 0.9, 0.92 + u * 0.5 - u * u * 1.3, z - 0.78 + Math.abs(Math.sin(a)) * r); q.d.visible = q.d.position.y > 0.08; }
+      };
+      this.tickers.push(tick);
+    }
+    if (sig.includes('s')) {
+      const glass = new T.Mesh(new T.CylinderGeometry(0.98, 0.98, 1.9, 24, 1, true, 0, Math.PI), new T.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, side: T.DoubleSide, depthWrite: false }));
+      glass.rotation.z = Math.PI / 2; glass.position.set(x, 0.06, z); g.add(glass); // yarım silindir, eksen x, kemer yukarı
+      const frame = M(0xf4f1e6, { roughness: 0.5 });
+      for (const dx of [-0.95, -0.32, 0.32, 0.95]) { const arc = new T.Mesh(new T.TorusGeometry(0.98, 0.022, 6, 24, Math.PI), frame); arc.rotation.y = Math.PI / 2; arc.position.set(x + dx, 0.06, z); arc.castShadow = true; g.add(arc); }
+      const ridge = new T.Mesh(new T.BoxGeometry(1.92, 0.035, 0.035), frame); ridge.position.set(x, 0.06 + 0.98, z); g.add(ridge);
+      for (const dz of [-0.86, 0.86]) { const rail = new T.Mesh(new T.BoxGeometry(1.92, 0.05, 0.05), frame); rail.position.set(x, 0.08, z + dz); g.add(rail); }
+    }
+  }
+
   // state: 'owned' | 'ghost' | 'hidden'. Rebuilds an item's models when state changes.
   async setItem(id, state, opts = {}) {
     const L = LAYOUT[id]; if (!L) return;
@@ -598,7 +635,7 @@ export class FarmWorld {
     if (id === 'ahir' && state !== 'owned') this._pen = null;
     const stage = opts.crop === 'growing' ? Math.min(2, Math.floor((opts.growth || 0) * 3)) : -1;
     const pos = state === 'hidden' ? '' : String(this.where(id));
-    const sig = state + '|' + (opts.crop || '') + (opts.seed || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '') + (opts.n ? '|n' + opts.n : '');
+    const sig = state + '|' + (opts.crop || '') + (opts.seed || '') + stage + (opts.sick ? '|sick' : '') + '|' + pos + (opts.lv || '') + (opts.bad ? '|bad' : '') + (opts.n ? '|n' + opts.n : '') + (opts.layers ? '|L' + opts.layers : '');
     if (cur && cur.sig === sig) return;
     if (cur) { this.S.remove(cur.g); this.movers = this.movers.filter((m) => m.id !== id); }
     const g = new T.Group(); g.userData.id = id; this.S.add(g);
@@ -607,6 +644,7 @@ export class FarmWorld {
     if (L.plot) {
       const [x, z] = this.where(id);
       this.soil(x, z, g);
+      if (opts.layers) this.layers3d(x, z, g, opts.layers);
       // F23: 4 sıra × 3 hücre; her tohumun kendi büyüme ve olgun modeli
       const cells = []; for (const dz of [-0.6, -0.2, 0.2, 0.6]) for (const dx of [-0.62, 0, 0.62]) cells.push([dx + (Math.random() - 0.5) * 0.08, dz]);
       const P = SEED3D[opts.seed] || SEED3D.wheat, nb = g.children.length;
