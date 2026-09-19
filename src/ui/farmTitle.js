@@ -62,3 +62,37 @@ export function renameBox(onDone) {
     onSave: (v) => setProfile({ name: v }), onClose: onDone,
   });
 }
+
+// Kayıt kodu kutusu — tarayıcı prompt()/pano izni yerine oyun içi metin alanı (kopyala / yapıştır-yükle)
+export function codeBox({ title, value = '', readOnly = false, okLabel, onSave } = {}) {
+  const cv = document.querySelector('canvas');
+  const r = cv ? cv.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;z-index:9999;background:rgba(6,14,10,.62);display:flex;align-items:center;justify-content:center;font-family:"Baloo 2",system-ui,sans-serif;padding:16px;box-sizing:border-box`;
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  wrap.innerHTML = `<form style="position:relative;width:100%;max-width:360px;background:linear-gradient(#2c5a45,#143126);border:4px solid #f2c230;border-radius:22px;padding:24px 18px 18px;box-sizing:border-box;box-shadow:0 0 0 3px #7a4f14,0 18px 44px rgba(0,0,0,.6)">
+    <div style="position:absolute;top:-19px;left:50%;transform:translateX(-50%);background:linear-gradient(#ffd45a,#e79a12);color:#3a2206;font-weight:800;font-size:17px;padding:4px 18px;border-radius:14px;border:3px solid #7a4f14;white-space:nowrap">${esc(title)}</div>
+    <button type="button" data-x aria-label="close" style="position:absolute;top:-14px;right:-14px;width:40px;height:40px;border-radius:50%;border:3px solid #ffd9a0;background:#7a1f1f;color:#fff;font-size:20px;font-weight:800;cursor:pointer">✕</button>
+    <textarea name="c" rows="5" ${readOnly ? 'readonly' : ''} spellcheck="false" style="width:100%;box-sizing:border-box;font-size:13px;font-family:ui-monospace,monospace;padding:10px;border-radius:12px;border:3px solid #0c2219;background:#f5f4eb;color:#1f3a2e;resize:none;word-break:break-all;outline:none"></textarea>
+    <div class="st" style="min-height:22px;font-size:15px;font-weight:700;color:#ffe58a;text-align:center;margin:8px 2px 10px"></div>
+    <button style="width:100%;font-size:19px;padding:11px;border-radius:16px;border:0;background:linear-gradient(#5fd97a,#2e9e4f);color:#fff;font-family:inherit;font-weight:800;box-shadow:0 5px 0 #1b6533;cursor:pointer">${esc(okLabel || t('saveBtn'))}</button></form>`;
+  document.body.appendChild(shield(wrap));
+  const f = wrap.querySelector('form'), st = wrap.querySelector('.st');
+  f.c.value = value;
+  const close = () => wrap.remove();
+  wrap.querySelector('[data-x]').addEventListener('click', close);
+  wrap.addEventListener('pointerdown', (e) => { if (e.target === wrap) close(); });
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (readOnly) {
+      f.c.select();
+      let ok = false;
+      try { await navigator.clipboard.writeText(value); ok = true; } catch { try { ok = document.execCommand('copy'); } catch { ok = false; } }
+      st.textContent = ok ? `✔ ${t('copied')}` : t('copyManual');
+      return;
+    }
+    const res = onSave ? onSave(f.c.value.trim()) : true;
+    if (res === false) st.textContent = t('badCode'); else close();
+  });
+  setTimeout(() => { f.c.focus(); if (readOnly) f.c.select(); }, 60);
+}

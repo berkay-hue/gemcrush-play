@@ -7,7 +7,7 @@ import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine, awning, signBoard } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
-import { nameBox } from '../ui/farmTitle.js';
+import { nameBox, codeBox } from '../ui/farmTitle.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 
 export class Map extends Phaser.Scene {
@@ -358,14 +358,14 @@ export class Map extends Phaser.Scene {
       if (acc) { logout(); close(); this.scene.restart({}); return; }
       close(); authForm((ok) => { if (ok) { this.scene.restart({}); } });
     }, acc ? 0x2a333a : 0x3f7bff, '#fff', 20));
-    c.add(button(this, width / 2, y0 + 378, 320, 44, `📋 ${t('copyCode')}`, async () => {
-      const code = exportCode();
-      try { await navigator.clipboard.writeText(code); this.toastMsg(t('copied')); } catch { window.prompt(t('copyCode'), code); }
+    c.add(button(this, width / 2, y0 + 378, 320, 44, `📋 ${t('copyCode')}`, () => {
+      codeBox({ title: `📋 ${t('copyCode')}`, value: exportCode(), readOnly: true, okLabel: `📋 ${t('copyBtn')}` });
     }, 0x2a333a, '#fff', 18));
     c.add(button(this, width / 2, y0 + 430, 320, 44, `📥 ${t('loadCode')}`, () => {
-      const code = window.prompt(t('loadCode'));
-      if (!code) return;
-      if (importCode(code)) { close(); this.scene.restart({}); } else this.toastMsg(t('badCode'));
+      codeBox({ title: `📥 ${t('loadCode')}`, okLabel: `📥 ${t('loadBtn')}`, onSave: (code) => {
+        if (!code || !importCode(code)) return false;
+        close(); this.scene.restart({}); return true;
+      } });
     }, 0x2a333a, '#fff', 20));
     c.add(button(this, width / 2, y0 + 495, 320, 48, `🗑️ ${t('wipe')}`, async () => {
       if (!window.confirm(t('wipeConfirm'))) return;
