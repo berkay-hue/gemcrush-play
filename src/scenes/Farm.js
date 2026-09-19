@@ -10,6 +10,7 @@ import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, mark
 import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
 import { t, getLang } from '../i18n.js';
+import { SLOTS, refreshOrders, canDeliver, deliver, skip, readyCount, xpProgress } from '../meta/orders.js';
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
@@ -110,6 +111,7 @@ export class Farm extends Phaser.Scene {
     if (!Farm._greeted) { Farm._greeted = true; this.time.delayedCall(700, () => this.greet()); }
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
     button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
+    this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
       const n = this.nodes[data.harvest];
@@ -774,6 +776,39 @@ export class Farm extends Phaser.Scene {
     }, 0x2ee06a, '#04220e', 22));
   }
 
+  // F10: sipariş panosu
+  orders() {
+    const { width, height } = this.scale;
+    const { c, close } = modal(this, 480, 640);
+    const top = height / 2 - 320, list = refreshOrders(), xp = xpProgress(), inv = inventory();
+    c.add(txt(this, width / 2, top + 42, `📋 ${t('orders')}`, 28, '#ffb71b'));
+    c.add(txt(this, width / 2, top + 84, `${t('farmLv')} ${xp.level}  ·  XP ${xp.cur}/${xp.need}`, 17, '#9dffb8'));
+    c.add(this.add.rectangle(width / 2, top + 112, 380, 12, 0x000000, 0.4).setStrokeStyle(1, 0xffffff, 0.2));
+    c.add(this.add.rectangle(width / 2 - 190, top + 112, 380 * Math.min(1, xp.cur / xp.need), 12, 0x2ee06a).setOrigin(0, 0.5));
+    const again = () => { close(); this.orders(); this.refreshHud(); };
+    list.slice(0, SLOTS).forEach((o, i) => {
+      const y = top + 200 + i * 140;
+      c.add(this.add.rectangle(width / 2, y, 440, 124, 0x000000, 0.25).setStrokeStyle(2, canDeliver(i) ? 0x2ee06a : 0xffffff, canDeliver(i) ? 0.7 : 0.12));
+      if (o.wait) {
+        const w = txt(this, width / 2, y, `🚶 ${t('orderWait')} ${fmtMs(o.wait - Date.now())}`, 19, '#9fb3a8'); c.add(w);
+        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!w.active) return tk.remove(); const ms = o.wait - Date.now(); if (ms <= 0) { tk.remove(); again(); } else w.setText(`🚶 ${t('orderWait')} ${fmtMs(ms)}`); } });
+        return;
+      }
+      c.add(txt(this, width / 2 - 200, y - 32, `${o.emoji} ${o.name}`, 20, '#fff').setOrigin(0, 0.5));
+      const need = Object.entries(o.need).map(([g, n]) => `${GOODS[g].emoji}${Math.min(inv[g] || 0, n)}/${n}`).join('   ');
+      c.add(txt(this, width / 2 - 200, y + 4, need, 22, '#ffe58a').setOrigin(0, 0.5));
+      c.add(txt(this, width / 2 - 200, y + 38, `🪙${o.coins}  ·  +${o.xp} XP`, 16, '#9dffb8').setOrigin(0, 0.5));
+      const ok = canDeliver(i);
+      c.add(button(this, width / 2 + 140, y - 12, 140, 50, t('deliver'), () => {
+        const r = deliver(i); if (!r) { this.toast(t('tradeNeed')); return; }
+        sfx.coin(); track('order_deliver', { coins: r.coins, xp: r.xp });
+        this.toast(`+🪙${r.coins}  +${r.xp} XP${r.levelUp ? `  ·  ⬆️ ${t('farmLv')} ${r.levelUp} +💎1` : ''}`); again();
+      }, ok ? 0x2ee06a : 0x2a333a, ok ? '#04220e' : '#777', 19));
+      c.add(button(this, width / 2 + 140, y + 40, 140, 36, `❌ ${t('orderSkip')}`, () => { if (skip(i)) { track('order_skip', {}); again(); } }, 0x3a2a2a, '#fbb', 14));
+    });
+    c.add(txt(this, width / 2, top + 610, t('ordersHint'), 14, '#9fb3a8').setWordWrapWidth(420));
+  }
+
   // F9: arkadaşlar paneli → ziyaret
   friends() {
     friendsPanel((code) => {
@@ -794,6 +829,7 @@ export class Farm extends Phaser.Scene {
     this.gemsTxt.setText(`💎 ${save.gems}`);
     this.starsTxt.setText(`⭐ ${starBalance()}`);
     if (this.nodes) this.tickCrops();
+    if (this.ordBtn) { const n = readyCount(); this.ordBtn.list[1]?.setText(n ? `📋 ✓${n}` : '📋'); }
   }
 
   tryStart(lv) {

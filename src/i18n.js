@@ -1,5 +1,6 @@
 const DICT = {
   tr: {
+    orders: "Sipariş panosu", deliver: "Teslim et", orderWait: "Yeni köylü geliyor", orderSkip: "Geç", farmLv: "Çiftlik sv.", ordersHint: "Ürünleri teslim et, 🪙 ve XP kazan. Seviye atlayınca 💎!",
     play: 'OYNA', chapter: 'Bölüm', hard: 'ZOR', hardLevel: 'ZOR SEVİYE', level: 'Seviye', moves: 'Hamle', score: 'Puan', goal: 'Hedef',
     win: 'Seviye Tamamlandı!', lose: 'Hamle Bitti', retry: 'Tekrar', next: 'Sonraki', map: 'Harita', farm: 'Çiftliğim', farmOwned: 'Senin! 🎉', farmNeeds: 'Önce gerekli', farmHave: 'sende', farmBuy: 'Satın al', collect: 'Topla', market: 'Pazar', nestEmpty: 'Kuluçka için yumurta topla.', nestReady: 'Civciv çıkmak üzere!', nestWins: 'bölüm kazan', hatch: 'Çıkar', incubate: 'Kuluçkaya koy', rush: 'Hızlandır', book: 'Koleksiyon', seasonOnly: 'Yalnız bu mevsim satışta!', questClaim: 'Al', questAll: 'Tüm görevler bitti! 🎉', questNext: 'Görev', plant: 'Ek', planted: 'ekildi', minShort: 'dk', cropTip: 'Her kazandığın bölüm ekinleri 5 dk hızlandırır!', cropFaster: 'Ekinler hızlandı',
     farmEarn: 'Yeterli yıldız yok. Seviye geç, yıldız kazan!',
@@ -18,6 +19,7 @@ const DICT = {
     lives: 'Can', full: 'DOLU', farmStars: 'çiftlik yıldızı',
   },
   en: {
+    orders: "Order board", deliver: "Deliver", orderWait: "New villager coming", orderSkip: "Skip", farmLv: "Farm lv.", ordersHint: "Deliver goods for 🪙 and XP. Level up for 💎!",
     play: 'PLAY', chapter: 'Chapter', hard: 'HARD', hardLevel: 'HARD LEVEL', level: 'Level', moves: 'Moves', score: 'Score', goal: 'Goal',
     win: 'Level Complete!', lose: 'Out of Moves', retry: 'Retry', next: 'Next', map: 'Map', farm: 'My Farm', farmOwned: 'Yours! 🎉', farmNeeds: 'Requires', farmHave: 'you have', farmBuy: 'Buy', collect: 'Collect', market: 'Market', nestEmpty: 'Collect an egg to incubate.', nestReady: 'A chick is about to hatch!', nestWins: 'levels won', hatch: 'Hatch', incubate: 'Incubate', rush: 'Rush', book: 'Collection', seasonOnly: 'On sale this season only!', questClaim: 'Claim', questAll: 'All quests done! 🎉', questNext: 'Quest', plant: 'Plant', planted: 'planted', minShort: 'min', cropTip: 'Every level you win makes crops grow 5 min faster!', cropFaster: 'Crops sped up',
     farmEarn: 'Not enough stars. Beat levels to earn more!',
