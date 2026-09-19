@@ -64,10 +64,8 @@ export function importCode(code) {
   } catch { return false; }
 }
 export async function wipeAll() {
-  const id = save.deviceId;
-  if (CONFIG.supabase.url) try {
-    await fetch(`${CONFIG.supabase.url}/rest/v1/profiles?device_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { apikey: CONFIG.supabase.anonKey, Authorization: `Bearer ${CONFIG.supabase.anonKey}` } });
-  } catch {}
+  const a = account();
+  if (a) { try { await rpc('gc_delete', { p_token: a.token }); } catch {} setAccount(null); }
   try { localStorage.removeItem(KEY); } catch {}
   const next = def(); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist();
 }
@@ -75,21 +73,48 @@ export async function wipeAll() {
 let syncTimer = null;
 export function persist() {
   try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {}
-  if (CONFIG.supabase.url) {
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(cloudSync, 3000);
-  }
+  if (account()) { clearTimeout(syncTimer); syncTimer = setTimeout(pushCloud, 2500); }
 }
 
-async function cloudSync() {
-  try {
-    await fetch(`${CONFIG.supabase.url}/rest/v1/profiles`, {
-      method: 'POST',
-      headers: { apikey: CONFIG.supabase.anonKey, Authorization: `Bearer ${CONFIG.supabase.anonKey}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ device_id: save.deviceId, progress: { level: save.level, stars: save.stars, coins: save.coins, starsSpent: save.starsSpent, farm: save.farm }, updated_at: new Date().toISOString() }),
-    });
-  } catch {}
+// ---- Hesap: kullanıcı adı + şifre, ilerleme bulutta (gc_* RPC, token hash'li) ----
+const AKEY = 'gemcrush.account.v1';
+export function account() { try { return JSON.parse(localStorage.getItem(AKEY) || 'null'); } catch { return null; } }
+function setAccount(a) { try { a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); } catch {} }
+async function rpc(fn, body) {
+  const c = CONFIG.cloud || {};
+  if (!c.url) throw new Error('offline');
+  const r = await fetch(`${c.url}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: c.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && j.message) || 'ag');
+  return j;
 }
+// ilerleme puanı: hangisi daha ileride
+export function progressScore(s) { return (s.level || 0) * 1000 + Object.values(s.stars || {}).reduce((a, n) => a + (n || 0), 0); }
+function adopt(obj) { const next = migrate({ ...def(), ...obj }); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
+async function pushCloud() { const a = account(); if (!a) return; try { await rpc('gc_push', { p_token: a.token, p_save: save }); } catch (e) { if (/oturum/.test(e.message)) setAccount(null); } }
+export async function register(user, pass) {
+  const token = await rpc('gc_register', { p_user: user, p_pass: pass, p_save: save });
+  setAccount({ user: user.trim().toLowerCase(), token });
+}
+// giriş: buluttaki ve cihazdaki kayıttan ileride olanı tutar
+export async function login(user, pass) {
+  const r = await rpc('gc_login', { p_user: user, p_pass: pass });
+  setAccount({ user: user.trim().toLowerCase(), token: r.token });
+  if (r.save && typeof r.save.level === 'number' && progressScore(r.save) >= progressScore(save)) adopt(r.save);
+  else await pushCloud();
+}
+export function logout() { clearTimeout(syncTimer); setAccount(null); }
+// açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
+export async function syncOnBoot() {
+  const a = account(); if (!a) return false;
+  try {
+    const s = await rpc('gc_pull', { p_token: a.token });
+    if (s && typeof s.level === 'number' && progressScore(s) > progressScore(save)) { adopt(s); return true; }
+    await pushCloud();
+  } catch (e) { if (/oturum/.test(e.message)) setAccount(null); }
+  return false;
+}
+export function authError(e) { const m = String(e && e.message || ''); return ['kullanici_adi', 'sifre_kisa', 'alinmis', 'hatali'].find((k) => m.includes(k)) || 'ag'; }
 
 // Dev/test: on localhost (or ?dev=1) lives are always full
 export const DEV = typeof location !== 'undefined' && (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]dev=1/.test(location.search));

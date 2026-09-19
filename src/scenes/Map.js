@@ -1,11 +1,13 @@
 import { CONFIG } from '../config.js';
-import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars } from '../meta/save.js';
+import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout, syncOnBoot } from '../meta/save.js';
 import { t, setLang, getLang } from '../i18n.js';
 import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
+import { authForm } from '../ui/authForm.js';
+let booted = false;
 
 export class Map extends Phaser.Scene {
   constructor() { super('Map'); }
@@ -18,6 +20,12 @@ export class Map extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0d1512');
     this.add.image(width / 2, height / 2, 'bgGrad').setDisplaySize(width, height).setScrollFactor(0);
     tickLives();
+    if (!booted) {
+      booted = true;
+      syncOnBoot().then((changed) => { if (changed && this.scene.isActive()) { this.scene.restart(); } });
+      let asked = true; try { asked = !!localStorage.getItem('gemcrush.askedAcct'); localStorage.setItem('gemcrush.askedAcct', '1'); } catch {}
+      if (!asked && !account()) authForm((ok) => { if (ok) this.scene.restart(); });
+    }
 
     // --- scrolling level path ---
     const STEP = 92;
@@ -202,17 +210,22 @@ export class Map extends Phaser.Scene {
     }, 0x2a333a, '#fff', 20);
     c.add(nb);
     c.add(txt(this, width / 2, y0 + 232, `${t('level')} ${save.level}  ·  ⭐ ${totalStars()}  ·  🪙 ${save.coins}`, 17, '#ffe58a'));
-    c.add(txt(this, width / 2, y0 + 275, t('codeHint'), 14, '#9fb3a8', { wordWrap: { width: 380 } }));
-    c.add(button(this, width / 2, y0 + 330, 320, 52, `📋 ${t('copyCode')}`, async () => {
+    const acc = account();
+    c.add(txt(this, width / 2, y0 + 268, acc ? `☁️ ${t('loggedAs')} ${acc.user}` : t('accountHint'), 15, acc ? '#8fe3ff' : '#9fb3a8', { wordWrap: { width: 380 } }));
+    c.add(button(this, width / 2, y0 + 318, 320, 52, acc ? `🚪 ${t('logout')}` : `☁️ ${t('saveCloud')}`, () => {
+      if (acc) { logout(); close(); this.scene.restart(); return; }
+      close(); authForm((ok) => { if (ok) { this.scene.restart(); } });
+    }, acc ? 0x2a333a : 0x3f7bff, '#fff', 20));
+    c.add(button(this, width / 2, y0 + 378, 320, 44, `📋 ${t('copyCode')}`, async () => {
       const code = exportCode();
       try { await navigator.clipboard.writeText(code); this.toastMsg(t('copied')); } catch { window.prompt(t('copyCode'), code); }
-    }, 0x3f7bff, '#fff', 20));
-    c.add(button(this, width / 2, y0 + 395, 320, 52, `📥 ${t('loadCode')}`, () => {
+    }, 0x2a333a, '#fff', 18));
+    c.add(button(this, width / 2, y0 + 430, 320, 44, `📥 ${t('loadCode')}`, () => {
       const code = window.prompt(t('loadCode'));
       if (!code) return;
       if (importCode(code)) { close(); this.scene.restart(); } else this.toastMsg(t('badCode'));
     }, 0x2a333a, '#fff', 20));
-    c.add(button(this, width / 2, y0 + 475, 320, 52, `🗑️ ${t('wipe')}`, async () => {
+    c.add(button(this, width / 2, y0 + 495, 320, 48, `🗑️ ${t('wipe')}`, async () => {
       if (!window.confirm(t('wipeConfirm'))) return;
       await wipeAll(); close(); this.scene.restart();
     }, 0xc0392b, '#fff', 20));

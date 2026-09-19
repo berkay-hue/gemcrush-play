@@ -27,6 +27,7 @@ export const CONFIG = {
     ],
   },
   privacyUrl: 'https://berkay-hue.github.io/gemcrush-privacy/',
+  cloud: { url: 'https://mzecvuabehfajktynept.supabase.co', key: 'sb_publishable_UKCXr-kSFrUniEOQMOjahQ_KBkT5jwh' }, // hesap + bulut kayıt (gc_* RPC)
   supabase: { url: '', anonKey: '' }, // fill to enable cloud save + analytics
   dailyRewards: [25, 40, 60, 80, 100, 150, 300],
 };
