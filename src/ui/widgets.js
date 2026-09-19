@@ -70,6 +70,7 @@ export function fadeIn(scene) { scene.cameras.main.fadeIn(240, 10, 15, 13); }
 
 // F16: DOM katmanı (arkadaşlar, giriş, görevler…) açıkken olayların oyuna sızmasını keser
 export function shield(el) {
+  el.dataset.gcOverlay = '1';
   ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'click', 'wheel'].forEach((ev) => el.addEventListener(ev, (e) => e.stopPropagation(), { passive: true }));
   return el;
 }

@@ -231,6 +231,23 @@ export class Farm extends Phaser.Scene {
     });
     this.input.on('wheel', (_p, _o, _dx, dy) => w.zoomBy(dy > 0 ? 1.08 : 0.93));
     this.input.on('pointerupoutside', () => { down = null; });
+    // F16b: maskot kuzu sol yel değirmeninin önünde durur (dekor değirmen [-8.5,-0.5])
+    const LX = -7.3, LZ = 1.1;
+    const lamb = this.add.image(0, 0, 'lamb').setOrigin(0.5, 0.92).setDepth(1).setInteractive({ useHandCursor: true });
+    let bob = 0, mood = 0;
+    lamb.on('pointerup', () => {
+      if (mood) return; sfx.click(); lamb.setTexture('lamb_happy'); mood = 1;
+      this.tweens.add({ targets: lamb, y: '-=22', duration: 180, yoyo: true, ease: 'Quad.Out' });
+      this.time.delayedCall(1100, () => { if (lamb.active) lamb.setTexture('lamb'); mood = 0; });
+    });
+    this.events.on('update', (_t, dt) => {
+      bob += dt / 420;
+      const a = w.project(LX, 0, LZ), b = w.project(LX, 2.4, LZ);
+      const h = Math.max(24, Math.min(220, a.y - b.y));
+      lamb.setDisplaySize(h, h).setVisible(a.vis && a.y > 90 && a.y < 900);
+      if (!this.tweens.isTweening(lamb)) { lamb.x = a.x; lamb.y = a.y - Math.abs(Math.sin(bob)) * h * 0.06; }
+      else lamb.x = a.x;
+    });
     // overlays follow their 3D anchors
     this.events.on('update', () => {
       for (const id in this.nodes) {

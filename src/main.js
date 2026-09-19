@@ -30,15 +30,17 @@ window.__game = new Phaser.Game({
   scene: [Boot, Farm, Zone, MapScene, Game, Visit],
 });
 
-// F16: body'ye eklenen sabit DOM katmanı varken Phaser girdisini tamamen kapat (arkadaki düğmeler basılmasın)
-const overlayOpen = () => [...document.body.children].some((el) => el.id !== 'app' && el.style && el.style.position === 'fixed' && el.style.display !== 'none');
+// F16b: yalnız BİZİM DOM panellerimiz (shield() ile işaretli) girdiyi kapatır; eklenti/tarayıcı öğeleri kapatmaz
+const overlayOpen = () => !!document.querySelector('body > [data-gc-overlay]:not([style*="display: none"])');
 let inputTimer = 0;
-new MutationObserver(() => {
+const syncInput = () => {
   const g = window.__game; if (!g || !g.input) return;
   clearTimeout(inputTimer);
   if (overlayOpen()) { g.input.enabled = false; g.input.pointers?.forEach((p) => p.reset && p.reset()); }
-  else inputTimer = setTimeout(() => { g.input.enabled = true; }, 180); // kapanış dokunuşunun bırakması da yutulsun
-}).observe(document.body, { childList: true, attributes: true, subtree: false, attributeFilter: ['style'] });
+  else if (!g.input.enabled) inputTimer = setTimeout(() => { g.input.enabled = true; }, 180); // kapanış dokunuşunun bırakması da yutulsun
+};
+new MutationObserver(syncInput).observe(document.body, { childList: true, attributes: true, subtree: true, attributeFilter: ['style'] });
+setInterval(() => { const g = window.__game; if (g && g.input && !g.input.enabled && !overlayOpen()) g.input.enabled = true; }, 1000); // emniyet: girdi asla kilitli kalmasın
 
 // her sahne açılışında yumuşak geçiş (Boot hariç)
 window.__game.events.once('ready', () => {
