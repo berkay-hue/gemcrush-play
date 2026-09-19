@@ -416,9 +416,10 @@ export class Farm extends Phaser.Scene {
     const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
     const again = () => { close(); this.market(tab); this.refreshHud(); };
     if (tab === 'sell') {
+      const step = Object.keys(GOODS).length > 5 ? 76 : 88;
       Object.values(GOODS).forEach((p, i) => {
-        const y = top + 192 + i * 88; const n = inv[p.good] || 0;
-        c.add(card(this, width / 2, y, 440, 76, n ? { top: 0x7a5420, bottom: 0x3e2a0e, accent: 0xffe58a, accentA: 0.45 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
+        const y = top + 192 + i * step; const n = inv[p.good] || 0;
+        c.add(card(this, width / 2, y, 440, step - 12, n ? { top: 0x7a5420, bottom: 0x3e2a0e, accent: 0xffe58a, accentA: 0.45 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
         c.add(iconSlot(this, width / 2 - 178, y, 54, p.emoji, n ? 0xffb71b : 0x5b646a, 28));
         c.add(txt(this, width / 2 - 140, y, `×${n}`, 26, n ? '#fff' : '#8a949a').setOrigin(0, 0.5));
         c.add(button(this, width / 2 + 40, y, 110, 46, `🪙${p.price}`, () => { if (sell(p.good)) { sfx.coin(); track('market_sell', { good: p.good }); again(); } }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 18));

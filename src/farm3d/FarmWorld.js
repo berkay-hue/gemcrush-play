@@ -38,6 +38,8 @@ export const LAYOUT = {
   koyun: { area: [3, -0.8, 6.5, 2.4], model: 'p:sheep', h: 0.6, n: 1 },
   inek: { area: [3, -0.8, 6.5, 2.4], model: 'animal-cow', h: 0.8, n: 1 },
   at: { area: [3, -0.8, 6.5, 2.4], model: 'animal-deer', h: 0.95, n: 1 },
+  // F26: kovanlar değirmen önündeki çiçekliğe dizilir, yerinde durur; etraflarında arılar uçar
+  kovan: { area: [-7.4, 2.6, -4.6, 4.8], model: 'p:hive', h: 0.75, n: 1, still: 1 },
   tarla1: { at: [-2, 2], plot: 1 }, tarla2: { at: [-1, 2], plot: 1 }, tarla3: { at: [0, 2], plot: 1 },
   tarla4: { at: [-3, 3], plot: 1 }, tarla5: { at: [-2, 3], plot: 1 }, tarla6: { at: [-1, 3], plot: 1 },
   tarla7: { at: [0, 3], plot: 1 }, tarla8: { at: [-4, 4], plot: 1 }, tarla9: { at: [-3, 4], plot: 1 }, tarla10: { at: [-2, 4], plot: 1 },
@@ -162,6 +164,7 @@ export class FarmWorld {
     let o;
     if (n.startsWith('b:')) o = await this.building(n.slice(2));
     else if (n === 'p:sheep') o = this.sheep();
+    else if (n === 'p:hive') o = this.hive();
     else o = SU.clone((await this.load(n)).scene);
     o.traverse((m) => { if (m.isMesh) { m.castShadow = m.receiveShadow = true; this.tint(m.material); } });
     if (h) { o.updateMatrixWorld(true); const b = new T.Box3().setFromObject(o, true); s = h / (b.max.y - b.min.y); o.position.y = -b.min.y * s; }
@@ -479,6 +482,35 @@ export class FarmWorld {
     return g;
   }
 
+  // F26: prosedürel arı kovanı — ahşap kasa katları, bal şeridi, çatı + etrafında dönen arılar
+  hive() {
+    const g = new T.Group(), M = (c, r = 0.8) => new T.MeshStandardMaterial({ color: c, roughness: r });
+    const box = (w, h, d, x, y, z, m) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+    const wood = M(0xe0b56a), dark = M(0x9a6a32), honey = M(0xffb71b, 0.35), roof = M(0x7a4f2a);
+    box(0.9, 0.12, 0.9, 0, 0.06, 0, dark);
+    for (let i = 0; i < 3; i++) { box(0.78, 0.26, 0.78, 0, 0.26 + i * 0.28, 0, i === 1 ? honey : wood); box(0.82, 0.03, 0.82, 0, 0.4 + i * 0.28, 0, dark); }
+    box(0.26, 0.05, 0.02, 0, 0.2, 0.4, M(0x2b1a0c));
+    const r1 = box(0.62, 0.06, 1.0, -0.22, 1.06, 0, roof), r2 = box(0.62, 0.06, 1.0, 0.22, 1.06, 0, roof);
+    r1.rotation.z = 0.5; r2.rotation.z = -0.5;
+    const bees = new T.Group(); g.add(bees);
+    const body = M(0xffc21a, 0.5), stripe = M(0x1a1208, 0.6), wing = new T.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+    for (let k = 0; k < 4; k++) {
+      const b = new T.Group();
+      const s = new T.Mesh(new T.SphereGeometry(0.06, 8, 6), body); s.scale.set(1.4, 1, 1); b.add(s);
+      const st = new T.Mesh(new T.CylinderGeometry(0.062, 0.062, 0.03, 8), stripe); st.rotation.z = Math.PI / 2; b.add(st);
+      for (const sx of [-1, 1]) { const w = new T.Mesh(new T.SphereGeometry(0.045, 6, 4), wing); w.scale.set(0.6, 0.2, 1); w.position.set(0, 0.06, sx * 0.05); b.add(w); }
+      b.userData = { r: 0.55 + k * 0.12, sp: 1.6 + k * 0.4, ph: k * 1.7, y: 0.7 + (k % 2) * 0.35 };
+      bees.add(b);
+    }
+    const tick = (t) => {
+      let r = g; while (r.parent) r = r.parent;
+      if (r !== this.S) { this.tickers = this.tickers.filter((f) => f !== tick); return; }
+      bees.children.forEach((b) => { const u = b.userData, a = t / 1000 * u.sp + u.ph; b.position.set(Math.cos(a) * u.r, u.y + Math.sin(a * 3) * 0.08, Math.sin(a) * u.r); b.rotation.y = -a; });
+    };
+    this.tickers.push(tick);
+    return g;
+  }
+
   // F23: gerçekçi sürülmüş toprak — koyu taban + 4 kabarık sırt + ince kenar; kenarlar hücreye tam oturur (boşluk yok)
   soil(x, z, g) {
     const dark = new T.MeshStandardMaterial({ color: 0x4a2f1a, roughness: 1 }), ridge = new T.MeshStandardMaterial({ color: 0x6b4526, roughness: 1 });
@@ -537,7 +569,7 @@ export class FarmWorld {
         this._col = this.colliders();
         const [x, z] = this.freeIn(area, HOME[id] !== 'ahir');
         const o = await this.put(L.model, x, z, { h: L.h, ry: Math.random() * 6, parent: g });
-        if (state === 'owned') this.movers.push({ id, o, area, st: 'idle', until: 0, tx: x, tz: z, ph: Math.random() * 9, v: (L.h < 0.5 ? 0.8 : 0.45) * (opts.sick ? 0.35 : 1), sick: !!opts.sick, ry0: 0, jump: 0, pet: L.pet, pen: HOME[id] !== 'ahir', stk: 0 });
+        if (state === 'owned' && !L.still) this.movers.push({ id, o, area, st: 'idle', until: 0, tx: x, tz: z, ph: Math.random() * 9, v: (L.h < 0.5 ? 0.8 : 0.45) * (opts.sick ? 0.35 : 1), sick: !!opts.sick, ry0: 0, jump: 0, pet: L.pet, pen: HOME[id] !== 'ahir', stk: 0 });
       }
     } else {
       const [x, z] = this.where(id);

@@ -13,6 +13,8 @@ export const CATALOG = [
   { id: 'horoz', lvl: 6,  kind: 'animal', emoji: '🐓', price: 6,  needs: 'kumes', x: 160, y: 450, name: { tr: 'Horoz', en: 'Rooster' } },
   { id: 'koyun', lvl: 8,  kind: 'animal', emoji: '🐑', price: 8,  needs: 'ahir',  x: 370, y: 440, name: { tr: 'Koyun', en: 'Sheep' } },
   { id: 'inek', lvl: 14,   kind: 'animal', emoji: '🐄', price: 12, needs: 'ahir',  x: 470, y: 450, name: { tr: 'İnek', en: 'Cow' } },
+  // F26: arıcılık — kovan binasız kurulur, bal verir (en fazla 4 kovan)
+  { id: 'kovan', lvl: 12, kind: 'animal', emoji: '🐝', price: 9, needs: null, x: 60, y: 540, name: { tr: 'Arı Kovanı', en: 'Beehive' } },
   { id: 'at', lvl: 30,     kind: 'animal', emoji: '🐎', price: 18, needs: 'ahir',  x: 420, y: 540, name: { tr: 'At', en: 'Horse' } },
   // crop plots
   // F23: 10 tarla; isim yalnız başlangıç tohumu, her tarlaya istenen tohum ekilir

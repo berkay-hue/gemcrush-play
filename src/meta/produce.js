@@ -7,9 +7,10 @@ export const PRODUCTS = {
   tavuk: { good: 'egg', emoji: '🥚', ms: 1 * H, price: 15 },
   inek: { good: 'milk', emoji: '🥛', ms: 2 * H, price: 35 },
   koyun: { good: 'wool', emoji: '🧶', ms: 3 * H, price: 50 },
+  kovan: { good: 'honey', emoji: '🍯', ms: 4 * H, price: 70 }, // F26
 };
 // 3 of a good can be swapped for a booster instead of coins
-export const TRADES = { egg: 'shuffle', milk: 'hammer', wool: 'moves5' };
+export const TRADES = { egg: 'shuffle', milk: 'hammer', wool: 'moves5', honey: 'prism' };
 // F4: tarladan gelen ürünler de ambara girer ve satılır/takaslanır
 export const CROP_ITEMS = { wheat: { good: 'wheat', emoji: '🌾', price: 12 }, corn: { good: 'corn', emoji: '🌽', price: 60 } };
 export const GOODS = { ...Object.fromEntries(Object.values(PRODUCTS).map((p) => [p.good, p])), ...CROP_ITEMS };
@@ -19,6 +20,7 @@ export const RECIPES = [
   { need: { wheat: 2, corn: 1 }, give: 'hammer' },
   { need: { corn: 2, egg: 1 }, give: 'moves5' },
   { need: { wheat: 3, corn: 2, milk: 1 }, give: 'prism' },
+  { need: { honey: 1, milk: 1 }, give: 'moves5' }, // F26: ballı süt
 ];
 export const canCraft = (i) => Object.entries(RECIPES[i].need).every(([g, n]) => (P().inv[g] || 0) >= n);
 export function craft(i) {
