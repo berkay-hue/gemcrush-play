@@ -249,3 +249,5 @@ export function claimDaily() {
 export function totalStars() { return Object.values(save.stars).reduce((a, n) => a + (n || 0), 0); }
 export function starBalance() { return Math.max(0, totalStars() - save.starsSpent); }
 export function spendStars(n) { if (starBalance() < n) return false; save.starsSpent += n; persist(); return true; }
+// F38: oyuncu pazarı — hesaplı çağrı (token eklenir)
+export const acctRpc = (fn, body = {}) => rpc(fn, { p_token: tok(), ...body });

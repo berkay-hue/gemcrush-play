@@ -28,6 +28,8 @@ import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
+import { authForm } from '../ui/authForm.js';
+import { mktList, mktPost, mktBuy, mktClaim, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
 import { NORMAL_SEEDS } from '../meta/crops.js';
 import { rareOwned, rareCount, RARE_PITY } from '../meta/rare.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
@@ -516,7 +518,7 @@ export class Farm extends Phaser.Scene {
     const top = height / 2 - 350;
     c.add(txt(this, width / 2, top + 36, `🧺 ${t('market')}`, 28, '#ffb71b').setShadow(0, 3, 'rgba(0,0,0,.5)', 4, true, true));
     { const a = chip(this, 0, top + 70, '🪙', save.coins || 0, 0xffb71b), b = chip(this, 0, top + 70, '🏚️', `${ambarUsed()}/${ambarCap()}`, ambarFull() ? 0xff5a5a : 0x9dffb8); a.x = width / 2 - (a.w + b.w + 14) / 2 + 17; b.x = a.x + a.w + 14; c.add([a, b]); }
-    [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 105 + i * 210, top + 118, 196, 48, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 19)));
+    [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`], ['pazar', `🤝 ${t('pzTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 146 + i * 146, top + 118, 138, 48, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 18)));
     const inv = inventory();
     const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
     const again = () => { close(); this.market(tab); this.refreshHud(); };
@@ -533,6 +535,7 @@ export class Farm extends Phaser.Scene {
       c.add(txt(this, width / 2, top + 650, `🐥 ×${save.farm.chicks || 0}`, 20, '#ffe58a'));
       return;
     }
+    if (tab === 'pazar') return this.pazar(c, top, close, again);
     c.add(txt(this, width / 2, top + 160, t('tradeHint'), 15, '#9fb3a8'));
     RECIPES.forEach((r, i) => {
       const y = top + 232 + i * 100, ok = canCraft(i);
@@ -544,6 +547,53 @@ export class Farm extends Phaser.Scene {
         sfx.coin(); track('market_craft', { recipe: i, give: b }); this.toast(`+1 ${icons[b]}`); again();
       }, ok ? 0x3f7bff : 0x2a333a, ok ? '#fff' : '#777', 22));
     });
+  }
+
+  // F38: oyuncular arası pazar — fiyat arz/talep ile oynar, ilan 48 saat açık, satıştan %5 kesinti
+  async pazar(c, top, close, again) {
+    const { width } = this.scale;
+    c.add(txt(this, width / 2, top + 160, t('pzHint'), 15, '#9fb3a8'));
+    if (!account()) {
+      c.add(txt(this, width / 2, top + 300, `🔒 ${t('pzGuest')}`, 19, '#fff').setWordWrapWidth(400));
+      c.add(button(this, width / 2, top + 400, 260, 58, `👤 ${t('account')}`, () => { close(); authForm(() => this.market('pazar'), t('guest')); }, 0xffb71b, '#1a1200', 21));
+      return;
+    }
+    const wait = txt(this, width / 2, top + 330, '⏳', 36); c.add(wait);
+    let L;
+    try {
+      const got = await mktClaim(false);
+      if (got && (got.coins || Object.keys(got.back || {}).length)) { sfx.coin(); this.toast(`🤝 ${got.coins ? `+🪙${got.coins} ` : ''}${Object.entries(got.back || {}).map(([g, n]) => `${GOODS[g] ? GOODS[g].emoji : g}×${n}`).join(' ')}`); this.refreshHud(); }
+      L = await mktList();
+    } catch (e) { if (c.scene) wait.setText(`⚠️ ${t('rkOffline')}`).setFontSize(19); return; }
+    if (!c.scene) return; wait.destroy();
+    const inv = inventory(), goods = Object.values(GOODS), step = 58;
+    let mine = 0;
+    goods.forEach((p, i) => {
+      const y = top + 200 + i * step, m = (L.goods && L.goods[p.good]) || { price: p.price, idx: 1, units: 0, min: null, mine: 0 };
+      mine += m.mine || 0;
+      const n = inv[p.good] || 0, tr = trend(m.idx || 1);
+      c.add(card(this, width / 2, y, 440, step - 10, m.units ? { top: 0x2c4a6a, bottom: 0x14243a, accent: 0x8fc8ff, accentA: 0.4 } : { top: 0x3a4146, bottom: 0x1d2226, accentA: 0.1 }));
+      c.add(txt(this, width / 2 - 200, y, p.emoji, 28).setOrigin(0, 0.5));
+      c.add(txt(this, width / 2 - 160, y - 10, `🪙${m.price}`, 19, '#ffe58a').setOrigin(0, 0.5));
+      c.add(txt(this, width / 2 - 160, y + 12, `${tr > 0 ? '▲' : tr < 0 ? '▼' : '•'}${Math.abs(tr)}% · 📦${m.units || 0}`, 13, tr > 0 ? '#8ff0b0' : tr < 0 ? '#ff9a9a' : '#9fb3a8').setOrigin(0, 0.5));
+      const buyOk = m.units > 0 && m.min != null;
+      c.add(button(this, width / 2 + 50, y, 116, 42, buyOk ? `${t('pzBuy')} 🪙${m.min}` : t('pzNone'), async () => {
+        if (!buyOk) { this.toast(t('pzNone')); return; }
+        try { const r = await mktBuy(p.good); sfx.coin(); track('pazar_buy', { good: p.good, n: r.n }); this.toast(`🤝 +${p.emoji}×${r.n} −🪙${r.cost}`); again(); }
+        catch (e) { this.toast(/yok/.test(e.message) ? (save.coins < m.min ? t('needCoins') : t('pzGone')) : `⚠️ ${t('rkOffline')}`); }
+      }, buyOk ? 0x3f7bff : 0x2a333a, buyOk ? '#fff' : '#777', 16));
+      c.add(button(this, width / 2 + 170, y, 96, 42, `${t('pzSell')} ×${Math.min(3, n) || 1}`, async () => {
+        if (!n) { this.toast(t('tradeNeed')); return; }
+        try { await mktPost(p.good, Math.min(3, n), m.price); sfx.coin(); track('pazar_post', { good: p.good }); this.toast(`📜 ${p.emoji}×${Math.min(3, n)} · 🪙${m.price}`); again(); }
+        catch (e) { this.toast(/dolu/.test(e.message) ? t('pzFull') : /fiyat/.test(e.message) ? t('pzPrice') : `⚠️ ${t('rkOffline')}`); }
+      }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 16));
+    });
+    const y = top + 200 + goods.length * step + 6;
+    c.add(txt(this, width / 2 - 200, y, `📜 ${t('pzMine')} ${mine}/${MAX_LISTINGS} · %${FEE * 100} ${t('pzFee')}`, 15, '#ffe58a').setOrigin(0, 0.5));
+    c.add(button(this, width / 2 + 160, y, 120, 40, `↩ ${t('pzCancel')}`, async () => {
+      if (!mine) { this.toast(t('pzNoMine')); return; }
+      try { await mktClaim(true); track('pazar_cancel', {}); this.toast(`↩ ${t('pzBack')}`); again(); } catch { this.toast(`⚠️ ${t('rkOffline')}`); }
+    }, mine ? 0xff8a3d : 0x2a333a, mine ? '#1a0a00' : '#777', 16));
   }
 
   nest() {
