@@ -4,6 +4,7 @@ import { item, status, owns } from '../meta/farm.js';
 import { cropState, harvest, SEEDS } from '../meta/crops.js';
 import { hunger, feed, feedLeft, isSick, LIVESTOCK, FEED_COINS } from '../meta/animals.js';
 import { energy, E_MAX } from '../meta/energy.js';
+import { rollGold } from '../meta/care.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { txt } from '../ui/widgets.js';
@@ -194,6 +195,7 @@ export const HandsMixin = {
     if (this.lambReact) { const p = this.w3.where && this.w3.where(id); if (p && this.w3.mascotLook) this.w3.mascotLook(p[0], p[1]); this.lambReact('joy', 'Afiyet olsun ' + it.emoji + ' 💚'); }
     if (this.energyTxt) this.energyTxt.setText(`⚡${energy()}/${E_MAX}`);
     if (this.bucket) this.bucket.dot.setVisible(this.ownedLivestock().some((k) => !isSick(k) && feedLeft(k) === 0 && hunger(k) < 70));
+    if (rollGold(id) && this.goldEgg) this.goldEgg(id); // F37: mutlu hayvan besleyince altın yumurta şansı
     this.refreshHud();
   },
 };

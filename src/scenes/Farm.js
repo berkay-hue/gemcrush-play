@@ -47,6 +47,7 @@ import { GuideMixin, guideSeen } from './farmGuide.js';
 import { WardrobeMixin } from './farmWardrobe.js';
 import { look } from '../meta/wardrobe.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
+import { CARE, happiness, careLeft, doCare, goldReady, GOLD, GOLD_AT } from '../meta/care.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
 const PLOT_W = 2.1, PLOT_D = 1.9; // F22: tarla ayak izi (2 sıra toprak) — komşu tarla bu kadar ötede
@@ -580,8 +581,9 @@ export class Farm extends Phaser.Scene {
       const h = txt(this, a.x, a.y, i % 3 ? '❤️' : '💕', 22 + (i % 3) * 4).setDepth(950);
       this.tweens.add({ targets: h, x: a.x + (Math.random() - 0.5) * 110, y: a.y - 60 - Math.random() * 70, alpha: 0, scale: 1.4, duration: 900 + i * 60, ease: 'Cubic.Out', onComplete: () => h.destroy() });
     }
-    if (this._petId === id && Date.now() - this._petT < 2500) { this._petId = null; this.card && this.card.destroy(); return this.nameModal(id); }
+    if (this._petId === id && Date.now() - this._petT < 2500) { this._petId = null; this.card && this.card.destroy(); return this.careModal(id); }
     if (ftueDone('pet')) { this.drawHint(); this.toast('🎉 Rehber tamam! Çiftlik senin.'); }
+    { const r = doCare(id, 'pet'); if (r.gold) this.goldEgg(id); } // F37: sevmek bakımdır (1 saatte bir sayılır)
     const lv0 = lovePet(id);
     if (lv0.reward) { sfx.coin && sfx.coin(); this.toast(`💞 Sevgi turu tamam! +🪙${lv0.reward.coins} +💎${lv0.reward.gems}`); this.refreshHud(); }
     else if (!loveState().done) this.toast(`💞 Sevgi turu ${lv0.n}/${LOVE_N}`);
@@ -589,7 +591,7 @@ export class Farm extends Phaser.Scene {
     this.card && this.card.destroy();
     if (!a) return;
     const it = item(id) || PETS[id], lv = LIVESTOCK.includes(id), sick = lv && isSick(id);
-    const line = sick ? 'Hasta 🤒 — veteriner lazım' : lv ? ('Tokluk ' + hunger(id) + '% · mutlu 😊') : 'Mutlu 😊';
+    const hp = happiness(id), line = sick ? 'Hasta 🤒 — veteriner lazım' : (lv ? 'Tokluk ' + hunger(id) + '% · ' : '') + 'Mutluluk ' + hp + '% ' + (hp >= GOLD_AT ? '🥰' : hp >= 50 ? '😊' : '😐');
     const c = this.card = this.add.container(Math.max(120, Math.min(420, a.x)), Math.max(90, a.y - 90)).setDepth(960);
     c.add(this.add.rectangle(0, 0, 220, 58, 0xfff8e6, 0.96).setStrokeStyle(3, 0xffb71b));
     c.add(txt(this, 0, -12, it.emoji + ' ' + (nameOf(id) || (it.name && it.name.tr) || it.name || id), 17, '#3a2a00'));
@@ -598,18 +600,56 @@ export class Farm extends Phaser.Scene {
     this.time.delayedCall(2500, () => { if (this.card === c) { c.destroy(); this.card = null; } });
   }
 
-  // F7: named animal card; livestock/products still reachable through the main modal
-  nameModal(id) {
-    const it = item(id) || PETS[id], { width, height } = this.scale;
-    const { c, close } = modal(this, 400, 300);
-    c.add(txt(this, width / 2, height / 2 - 95, it.emoji, 60));
-    c.add(txt(this, width / 2, height / 2 - 40, nameOf(id) || 'Adı yok', 28, '#ffb71b'));
-    c.add(txt(this, width / 2, height / 2 - 8, (it.name && (it.name[getLang()] || it.name.tr)) || it.name, 16, '#ccc'));
-    c.add(button(this, width / 2 - (PETS[id] ? 0 : 90), height / 2 + 50, 170, 50, '✏️ Ad ver', () => {
-      nameBox({ title: getLang() === 'en' ? 'Give a name' : 'Ad ver', value: nameOf(id) || '', placeholder: it.emoji, onSave: (n) => { setName(id, n); close(); this.nameModal(id); } });
-    }, 0x2ee06a, '#04220e', 18));
-    if (!PETS[id]) c.add(button(this, width / 2 + 90, height / 2 + 50, 170, 50, 'Detay ▶', () => { close(); this.itemModal(id); }, 0x2a333a, '#fff', 18));
-    c.add(button(this, width / 2, height / 2 + 115, 120, 42, '✕', close, 0x2a333a, '#fff', 18));
+  // F37: bakım kartı — ad + mutluluk çubuğu + besle/sev/temizle (F7 ad kartının yerine)
+  careModal(id) {
+    const it = item(id) || PETS[id], { width, height } = this.scale, en = getLang() === 'en', cx = width / 2, cy = height / 2;
+    const { c, close } = modal(this, 440, 470);
+    const again = () => { close(); this.careModal(id); };
+    c.add(txt(this, cx, cy - 180, it.emoji, 56));
+    c.add(txt(this, cx, cy - 130, nameOf(id) || (en ? 'No name' : 'Adı yok'), 26, '#ffb71b'));
+    c.add(txt(this, cx, cy - 102, (it.name && (it.name[getLang()] || it.name.tr)) || it.name, 15, '#ccc'));
+    const hp = happiness(id), sick = LIVESTOCK.includes(id) && isSick(id), g = this.add.graphics();
+    g.fillStyle(0x0f1f17, 0.9).fillRoundedRect(cx - 150, cy - 78, 300, 22, 11);
+    g.fillStyle(hp >= GOLD_AT ? 0xffd23f : hp >= 50 ? 0x2ee06a : 0xff8a5c, 1).fillRoundedRect(cx - 148, cy - 76, Math.max(10, 296 * hp / 100), 18, 9);
+    c.add(g);
+    c.add(txt(this, cx, cy - 67, `${en ? 'Happiness' : 'Mutluluk'} ${hp}%`, 14, '#fff').setStroke('#0f1f17', 4));
+    c.add(txt(this, cx, cy - 38, sick ? (en ? 'Sick 🤒 — needs the vet' : 'Hasta 🤒 — veteriner lazım')
+      : hp >= GOLD_AT ? (goldReady(id) ? (en ? '🥚✨ Golden egg chance on every care!' : '🥚✨ Her bakımda altın yumurta şansı!') : (en ? '🥚 Golden egg laid today' : '🥚 Bugünün altın yumurtası alındı'))
+      : (en ? `Reach ${GOLD_AT}% for a golden egg 🥚✨` : `%${GOLD_AT} olunca altın yumurta şansı 🥚✨`), 14, sick ? '#ff9a9a' : '#ffe7a3'));
+    const L = { feed: en ? 'Feed' : 'Besle', pet: en ? 'Pet' : 'Sev', clean: en ? 'Clean' : 'Temizle' };
+    const cost = { feed: LIVESTOCK.includes(id) ? '🪙10 ⚡1' : `🪙${CARE.feed.coins}`, pet: en ? 'free' : 'bedava', clean: `⚡${CARE.clean.energy}` };
+    ['feed', 'pet', 'clean'].forEach((k, i) => {
+      const x = cx - 135 + i * 135, left = careLeft(id, k), busy = left > 0 || sick;
+      c.add(button(this, x, cy + 20, 124, 64, `${CARE[k].emoji} ${L[k]}`, () => {
+        if (sick) return this.toast(en ? 'Sick — call the vet 🩺' : 'Hasta — veteriner lazım 🩺');
+        if (left > 0) return this.toast(`⏳ ${fmtMs(careLeft(id, k))}`);
+        const r = doCare(id, k);
+        if (!r.ok) return this.toast(r.err === 'coins' ? (en ? '🪙 not enough' : '🪙 yetersiz') : r.err === 'energy' ? (en ? '⚡ no energy' : '⚡ enerji yok') : `⏳ ${fmtMs(careLeft(id, k))}`);
+        sfx.pet && sfx.pet(); track('animal_care', { id, k }); this.w3.poke && this.w3.poke(id); this.w3.burst && this.w3.burst(id, 0x9be7ff, 12);
+        if (r.gold) this.goldEgg(id); else this.toast(`${it.emoji} ${CARE[k].emoji} 💚`);
+        this.refreshHud(); again();
+      }, busy ? 0x2a333a : 0x2ee06a, busy ? '#aab' : '#04220e', 18));
+      c.add(txt(this, x, cy + 66, left > 0 ? `⏳ ${fmtMs(left)}` : cost[k], 13, left > 0 ? '#aab' : '#ffe7a3'));
+    });
+    c.add(button(this, cx - (PETS[id] ? 0 : 90), cy + 135, 170, 50, en ? '✏️ Rename' : '✏️ Ad ver', () => {
+      nameBox({ title: en ? 'Give a name' : 'Ad ver', value: nameOf(id) || '', placeholder: it.emoji, onSave: (n) => { setName(id, n); again(); } });
+    }, 0xffb71b, '#1a1200', 18));
+    if (!PETS[id]) c.add(button(this, cx + 90, cy + 135, 170, 50, en ? 'Details ▶' : 'Detay ▶', () => { close(); this.itemModal(id); }, 0x2a333a, '#fff', 18));
+    c.add(txt(this, cx, cy + 190, `🥚✨ ${en ? 'Golden eggs' : 'Altın yumurta'}: ${save.farm.goldEggs || 0}`, 13, '#aab'));
+  }
+
+  // F37: altın yumurta kutlaması
+  goldEgg(id) {
+    const a = this.w3.anchor(id, 0.5); sfx.coin && sfx.coin(); track('gold_egg', { id });
+    if (this.w3.burst) { this.w3.burst(id, 0xffd23f, 26); this.time.delayedCall(180, () => this.w3.burst(id, 0xfff3b0, 18)); }
+    if (a) {
+      const e = txt(this, a.x, a.y, '🥚', 44).setDepth(980).setScale(0.2);
+      this.tweens.add({ targets: e, scale: 1.4, y: a.y - 90, angle: 360, duration: 700, ease: 'Back.Out', onComplete: () => this.tweens.add({ targets: e, alpha: 0, y: '-=40', duration: 600, delay: 500, onComplete: () => e.destroy() }) });
+    }
+    if (navigator.vibrate) try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (er) { /* yok */ }
+    this.lambReact && this.lambReact('joy', getLang() === 'en' ? 'A golden egg! 🥚✨' : 'Altın yumurta! 🥚✨');
+    this.toast(`🥚✨ ${getLang() === 'en' ? 'Golden egg' : 'Altın yumurta'}! +💎${GOLD.gems} +🪙${GOLD.coins}`);
+    this.refreshHud();
   }
 
   // F30: üretim zinciri penceresi (değirmen: 🌾×2 → 🥣, fırın: 🥣+🥚 → 🍞)
