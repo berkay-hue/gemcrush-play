@@ -1,7 +1,7 @@
 // PR-A: elle çiftlik — tahta tabela (çiftlik adı), sürükleyerek hasat, besleme kovası
 import { save, persist } from '../meta/save.js';
 import { item, status, owns } from '../meta/farm.js';
-import { cropState, harvest } from '../meta/crops.js';
+import { cropState, harvest, SEEDS } from '../meta/crops.js';
 import { hunger, feed, feedLeft, isSick, LIVESTOCK, FEED_COINS } from '../meta/animals.js';
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
@@ -60,8 +60,21 @@ export const HandsMixin = {
     }
     if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
-    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : '', r.pest ? (r.pest === 'crow' ? '🐦‍⬛' : '🐛') + ' −%30' : '', r.combo ? `🔗×${r.combo} +%${r.combo * 10}` : ''].filter(Boolean).join('  ·  '));
+    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : '', r.pest ? (r.pest === 'crow' ? '🐦‍⬛' : '🐛') + ' −%30' : '', r.combo ? `🔗×${r.combo} +%${r.combo * 10}` : '', r.gem ? `+💎${r.gem}` : ''].filter(Boolean).join('  ·  '));
+    if (r.rare) this.rareDrop(r.rare, cx, cy);
     return { ...r, emoji: r.emoji || it.emoji };
+  },
+  // F34: nadir tohum düştü — parlayan tohum yükselir, ışık halkası, kısa kutlama yazısı
+  rareDrop(k, cx, cy) {
+    const S = SEEDS[k], en = getLang() === 'en'; track('rare_drop', { seed: k });
+    const ring = this.add.circle(cx, cy - 20, 20, 0xffe58a, 0.55).setDepth(960);
+    this.tweens.add({ targets: ring, radius: 90, alpha: 0, duration: 700, ease: 'Quad.Out', onComplete: () => ring.destroy() });
+    const e = txt(this, cx, cy - 10, S.emoji, 48).setDepth(961).setScale(0.3);
+    this.tweens.add({ targets: e, y: cy - 110, scale: 1.3, duration: 650, ease: 'Back.Out' });
+    this.tweens.add({ targets: e, alpha: 0, delay: 1700, duration: 400, onComplete: () => e.destroy() });
+    const l = txt(this, cx, cy - 165, en ? `✨ Rare seed: ${S.name.en}!` : `✨ Nadir tohum: ${S.name.tr}!`, 22, '#ffe58a').setStroke('#3a2400', 5).setDepth(962).setAlpha(0);
+    this.tweens.add({ targets: l, alpha: 1, y: cy - 175, duration: 350, delay: 300, yoyo: true, hold: 1400, onComplete: () => l.destroy() });
+    sfx.coin && sfx.coin();
   },
   // pad pointerdown'dan: hazır tarlada başlarsa sürükleyerek hasat moduna gir
   harvestStart(p, down) {

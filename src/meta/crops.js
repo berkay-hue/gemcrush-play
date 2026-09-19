@@ -8,6 +8,7 @@ import { layerSpeed, layerYield, hasLayer } from './layers.js';
 import { inSeason, SPEED, PRICE } from './mevsim.js';
 import { pestAt, PEST_CUT } from './pests.js';
 import { comboOf, comboMul, beeSpeed } from './combo.js';
+import { isRare, useRare, rollRare, RARE } from './rare.js';
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -34,7 +35,11 @@ export const SEEDS = {
   sunflower: { emoji: '🌻', ms: 8 * H, price: 45, cost: 6, lvl: 18, name: { tr: 'Ayçiçeği', en: 'Sunflower' } },
   pumpkin: { emoji: '🎃', ms: 9 * H, price: 55, cost: 8, lvl: 24, name: { tr: 'Balkabağı', en: 'Pumpkin' } },
   corn: { emoji: '🌽', ms: 10 * H, price: 60, cost: 0, lvl: 1, good: 'corn', name: { tr: 'Mısır', en: 'Corn' } },
+  // F34: nadir tohumlar — seçicide yalnız envanterdeyken görünür (bkz. rare.js)
+  goldwheat: { emoji: '🌟', ms: 3 * H, price: 180, cost: 0, lvl: 1, rare: 1, name: { tr: 'Altın Başak', en: 'Golden Wheat' } },
+  rainbow: { emoji: '🌈', ms: 6 * H, price: 400, cost: 0, lvl: 1, rare: 1, name: { tr: 'Gökkuşağı Çiçeği', en: 'Rainbow Bloom' } },
 };
+export const NORMAL_SEEDS = Object.keys(SEEDS).filter((k) => !SEEDS[k].rare);
 // tarlada ekili (ya da son ekilen) tohum; eski kayıtlarda tarlanın kendi tohumu
 export const seedOf = (id) => (F()[id] && F()[id].seed) || (save.farm.lastSeed || {})[id] || CROPS[id].key;
 export const cropInfo = (id) => SEEDS[seedOf(id)] || SEEDS.wheat;
@@ -73,7 +78,8 @@ export function msLeft(id, now = Date.now()) { const c = F()[id]; return c ? Mat
 export function plant(id, now = Date.now(), seed = seedOf(id)) {
   if (!CROPS[id] || !owns(id) || F()[id] || !SEEDS[seed]) return false;
   const cost = SEEDS[seed].cost || 0; if ((save.coins || 0) < cost) return false;
-  save.coins -= cost; (save.farm.lastSeed || (save.farm.lastSeed = {}))[id] = seed;
+  if (isRare(seed) && !useRare(seed)) return false; // F34: nadir tohum envanterden harcanır, son tohum olarak hatırlanmaz
+  save.coins -= cost; if (!isRare(seed)) (save.farm.lastSeed || (save.farm.lastSeed = {}))[id] = seed;
   const ms = baseMs(id, seed, now); F()[id] = { seed, readyAt: now + ms, ms }; if (inSeason(seed, now)) F()[id].sez = 1; persist(); return true;
 }
 export function harvest(id, now = Date.now()) {
@@ -84,9 +90,11 @@ export function harvest(id, now = Date.now()) {
   const n0 = cropYield(id) * (bereketLeft(now) ? 2 : 1), n = pest && n0 > 1 ? Math.max(1, Math.round(n0 * PEST_CUT)) : n0, good = info.good || null;
   const put = good ? stash(good, n) : 0; // ambar doluysa kalan paraya döner
   const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (pest && n0 === n ? PEST_CUT : 1) * cm); if (coins) addCoins(coins);
+  const gem = (RARE[seed] && RARE[seed].gem) || 0; if (gem) save.gems = (save.gems || 0) + gem;
+  const rare = rollRare(seed); // F34
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, combo };
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, combo, rare, gem };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {

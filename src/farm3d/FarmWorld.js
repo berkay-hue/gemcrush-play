@@ -26,6 +26,8 @@ const SEED3D = {
   sunflower: { grow: [['crops_leafsStageA', 0.2], ['crops_leafsStageB', 0.4], ['crops_cornStageA', 0.55]], ripe: 'flower_yellowA', h: 0.85 },
   pumpkin: { grow: [['crops_leafsStageA', 0.15], ['crops_leafsStageB', 0.25], ['plant_bushSmall', 0.3]], ripe: 'crop_pumpkin', h: 0.45 },
   melon: { grow: [['crops_leafsStageA', 0.15], ['crops_leafsStageB', 0.25], ['plant_bushSmall', 0.3]], ripe: 'crop_melon', h: 0.42 },
+  goldwheat: { grow: [['crops_leafsStageA', 0.18], ['crops_wheatStageA', 0.4], ['crops_wheatStageB', 0.6]], ripe: 'crops_wheatStageB', h: 0.8, tint: 0xffd21a, glow: 0x6a4a00 },
+  rainbow: { grow: [['crops_leafsStageA', 0.2], ['crops_leafsStageB', 0.36], ['plant_bushSmall', 0.4]], ripe: 'flower_purpleA', h: 0.6, fruit: 0x5ad1ff, glow: 0x3a1a5a },
   turnip: { grow: [['crops_leafsStageA', 0.14], ['crops_leafsStageB', 0.24], ['crops_leafsStageB', 0.3]], ripe: 'crop_turnip', h: 0.38 },
 };
 
@@ -706,6 +708,7 @@ export class FarmWorld {
         for (const [dx, dz] of cells) {
           const o = await this.put(P.ripe, x + dx, z + dz, { h: P.h * (0.92 + Math.random() * 0.16), ry: Math.random() * 6, parent: g });
           if (P.tint) o.traverse((m) => { if (m.isMesh) { m.material = m.material.clone(); m.material.color.lerp(new T.Color(P.tint), 0.55); } });
+          if (P.glow) o.traverse((m) => { if (m.isMesh && m.material.emissive) { if (!P.tint) m.material = m.material.clone(); m.material.emissive = new T.Color(P.glow); } }); // F34: nadir ekin parlar
           if (P.fruit) for (let k = 0; k < 4; k++) {
             const f = new T.Mesh(new T.SphereGeometry(0.055, 8, 6), new T.MeshStandardMaterial({ color: P.fruit, roughness: 0.4 }));
             const a = k * 1.7 + Math.random(); f.position.set(Math.cos(a) * 0.14, P.h * (0.35 + Math.random() * 0.4) / o.scale.y, Math.sin(a) * 0.14);

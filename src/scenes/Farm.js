@@ -27,6 +27,8 @@ import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
 import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
+import { NORMAL_SEEDS } from '../meta/crops.js';
+import { rareOwned, rareCount, RARE_PITY } from '../meta/rare.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
@@ -356,10 +358,10 @@ export class Farm extends Phaser.Scene {
   // F23: boş tarlaya dokununca tohum seç — 3×3 kart; kilitli tohum seviyesini, fiyatlı tohum parasını gösterir
   seedPicker(id) {
     const it = item(id), c = this.nodes[id], en = getLang() === 'en';
-    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 630);
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 500, 690);
     m.add(txt(this, width / 2, height / 2 - 235, en ? '🌱 Choose a seed' : '🌱 Tohum seç', 30, '#ffb71b'));
     m.add(txt(this, width / 2, height / 2 - 200, this.itemName(it), 17, '#cfe8d8'));
-    const keys = Object.keys(SEEDS).sort((a, b) => SEEDS[a].lvl - SEEDS[b].lvl || SEEDS[a].ms - SEEDS[b].ms), last = seedOf(id);
+    const keys = NORMAL_SEEDS.slice().sort((a, b) => SEEDS[a].lvl - SEEDS[b].lvl || SEEDS[a].ms - SEEDS[b].ms), last = seedOf(id);
     const go = (k) => {
       if (!plant(id, Date.now(), k)) { this.toast(en ? 'Not enough coins' : 'Yeterli para yok 🪙'); return; }
       close(); if (ftueDone('plant')) this.drawHint(); sfx.coin && sfx.coin(); track('crop_plant', { plot: id, seed: k });
@@ -389,9 +391,16 @@ export class Farm extends Phaser.Scene {
       z.on('pointerup', () => { if (open) go(k); else this.toast(`🔒 ${t('level')} ${S.lvl}`); });
       m.add(z);
     });
-    m.add(txt(this, width / 2, height / 2 + 240, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 13, '#cfe8d8'));
-    m.add(txt(this, width / 2, height / 2 + 256, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}  ·  🔗 ${en ? 'neighbour match +10%' : 'komşuyla aynı +%10'}${beeNear(id) ? '  ·  🐝 %15' : ''}`, 13, '#9fe870'));
-    m.add(button(this, width / 2, height / 2 + 290, 280, 40, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
+    // F34: nadir tohumlar — envanterde varsa altın düğme, yoksa ipucu
+    const ro = rareOwned();
+    if (ro.length) ro.forEach((k, i) => {
+      const S = SEEDS[k], w = ro.length > 1 ? 225 : 300, x = width / 2 + (ro.length > 1 ? (i - 0.5) * 235 : 0);
+      m.add(button(this, x, height / 2 + 232, w, 42, `${S.emoji} ${S.name[getLang()] || S.name.tr} ×${rareCount(k)}`, () => go(k), 0xffcf3a, '#3a2400', 16));
+    });
+    else m.add(txt(this, width / 2, height / 2 + 232, en ? `✨ Rare seeds drop from harvests (${RARE_PITY - (save.farm.rarePity | 0)} harvests to a sure one)` : `✨ Hasatta nadir tohum düşebilir (garantiye ${RARE_PITY - (save.farm.rarePity | 0)} hasat)`, 13, '#ffe58a'));
+    m.add(txt(this, width / 2, height / 2 + 268, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 13, '#cfe8d8'));
+    m.add(txt(this, width / 2, height / 2 + 284, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}  ·  🔗 ${en ? 'neighbour match +10%' : 'komşuyla aynı +%10'}${beeNear(id) ? '  ·  🐝 %15' : ''}`, 13, '#9fe870'));
+    m.add(button(this, width / 2, height / 2 + 318, 280, 38, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
   }
   // F32: zararlıyı kov — emoji kaçar, +5 🪙; korkuluk yoksa karga için ipucu
   shooPest(id) {
