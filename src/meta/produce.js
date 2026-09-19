@@ -1,6 +1,7 @@
 // Faz 4: timed animal products, market and egg hatching.
 import { save, persist, addCoins, spendGems } from './save.js';
 import { owns, ambarCap, animalCount } from './farm.js';
+import { honeyMul } from './combo.js';
 
 const H = 3600000;
 export const PRODUCTS = {
@@ -55,7 +56,7 @@ export function collect(id, now = Date.now()) {
   // F24: her hayvan 1 ürün verir, ambarda yer kadar
   const k = Math.max(1, Math.min(animalCount(id) || 1, ambarCap() - ambarUsed()));
   f.inv[pr.good] = (f.inv[pr.good] || 0) + k;
-  f.prod[id] = now + pr.ms; persist();
+  f.prod[id] = now + Math.round(pr.ms * (id === 'kovan' ? honeyMul() : 1)); persist(); // F33: çiçekli kovan hızlı
   return { ...pr, n: k };
 }
 export function inventory() { return P().inv; }

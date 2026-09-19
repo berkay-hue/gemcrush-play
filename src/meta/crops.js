@@ -7,6 +7,7 @@ import { stash } from './produce.js';
 import { layerSpeed, layerYield, hasLayer } from './layers.js';
 import { inSeason, SPEED, PRICE } from './mevsim.js';
 import { pestAt, PEST_CUT } from './pests.js';
+import { comboOf, comboMul, beeSpeed } from './combo.js';
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -44,7 +45,7 @@ export const CROP_GOODS = { tarla1: 'wheat', tarla2: 'corn' }; // eski; artık S
 // F4: tarla seviyesi (paraya yükseltilir, BLD_MAX'e kadar): -%10 süre / seviye, ürün 1,1,2,2,3
 export const plotLvl = (id) => bldLvl(id);
 // F31: mevsim tohumu %25 hızlı büyür
-const baseMs = (id, seed, now = Date.now()) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id) * (inSeason(seed, now) ? SPEED : 1));
+const baseMs = (id, seed, now = Date.now()) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id) * beeSpeed(id) * (inSeason(seed, now) ? SPEED : 1)); // F33: kovan yakını %15 hızlı
 // ekili ürün kendi süresini taşır (sonradan gübre alınca ilerleme çubuğu sıçramaz)
 export const cropMs = (id) => (F()[id] && F()[id].ms) || baseMs(id, SEEDS[seedOf(id)] ? seedOf(id) : 'wheat');
 // F31: mevsimde ekilen ürün %20 pahalı satılır (ekim anındaki mevsim geçerli)
@@ -78,14 +79,14 @@ export function plant(id, now = Date.now(), seed = seedOf(id)) {
 export function harvest(id, now = Date.now()) {
   if (cropState(id, now) !== 'ready') return null;
   const info = cropInfo(id), seed = seedOf(id);
-  const sez = !!F()[id].sez, pest = pestAt(id, now); // F32: kovulmamış zararlı ürünün %30'unu yer
+  const sez = !!F()[id].sez, pest = pestAt(id, now), combo = comboOf(id), cm = comboMul(id); // F33: kombo komşu başına +%10 // F32: kovulmamış zararlı ürünün %30'unu yer
   delete F()[id]; if (save.farm.pests) delete save.farm.pests[id]; save.farm.harvests = (save.farm.harvests || 0) + 1;
   const n0 = cropYield(id) * (bereketLeft(now) ? 2 : 1), n = pest && n0 > 1 ? Math.max(1, Math.round(n0 * PEST_CUT)) : n0, good = info.good || null;
   const put = good ? stash(good, n) : 0; // ambar doluysa kalan paraya döner
-  const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (pest && n0 === n ? PEST_CUT : 1)); if (coins) addCoins(coins);
+  const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (pest && n0 === n ? PEST_CUT : 1) * cm); if (coins) addCoins(coins);
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest };
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, combo };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {

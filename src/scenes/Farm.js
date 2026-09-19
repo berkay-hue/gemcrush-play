@@ -30,6 +30,7 @@ import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
+import { comboOf, beeNear, neighbors, flowersNearHive, COMBO_STEP } from '../meta/combo.js';
 import { PESTS, SCARE, pestAt, shoo, scareStatus, buyScarecrow, hasScarecrow, pestSig } from '../meta/pests.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
@@ -312,7 +313,7 @@ export class Farm extends Phaser.Scene {
     const g = this.add.container(0, 0); c.crop = g; c.add(g);
     const st = cropState(it.id);
     this.w3.setItem(it.id, 'owned', { crop: st, seed: seedOf(it.id), growth: st === 'growing' ? growth(it.id) : 0, layers: layerSig(it.id) + pestSig(it.id) });
-    { const L = LAYERS.filter((l) => hasLayer(it.id, l.id)).map((l) => l.emoji).join('') + (hasScarecrow(it.id) ? SCARE.emoji : ''); if (L) g.add(txt(this, 0, st === 'growing' ? -22 : -34, L, 14)); }
+    { const L = LAYERS.filter((l) => hasLayer(it.id, l.id)).map((l) => l.emoji).join('') + (hasScarecrow(it.id) ? SCARE.emoji : '') + (st !== 'empty' && comboOf(it.id) ? '🔗' + comboOf(it.id) : '') + (beeNear(it.id) ? '🐝' : ''); if (L) g.add(txt(this, 0, st === 'growing' ? -22 : -34, L, 14)); }
     // F32: zararlı rozeti — sallanır, dokununca kovulur
     c.pest = pestAt(it.id);
     if (c.pest) { const pb = txt(this, 34, st === 'growing' ? -26 : -40, PESTS[c.pest].emoji + '❗', 24).setStroke('#000', 3); g.add(pb); this.tweens.add({ targets: pb, angle: { from: -12, to: 12 }, y: pb.y - 5, yoyo: true, repeat: -1, duration: 260 }); }
@@ -342,7 +343,9 @@ export class Farm extends Phaser.Scene {
     m.add(txt(this, width / 2, height / 2 - 70, `${this.itemName(it)} · ${cropInfo(id).name[getLang()] || cropInfo(id).name.tr}`, 26, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
     const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
-    m.add(txt(this, width / 2, height / 2 + 8, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
+    m.add(txt(this, width / 2, height / 2 + 2, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
+    { const en = getLang() === 'en', cb = comboOf(id), bz = beeNear(id), bits = [cb ? `🔗×${cb} +%${Math.round(cb * COMBO_STEP * 100)} ${en ? 'coins' : 'para'}` : '', bz ? `🐝 ${en ? '15% faster' : '%15 hızlı'}` : ''].filter(Boolean);
+      m.add(txt(this, width / 2, height / 2 + 24, bits.length ? bits.join('  ·  ') : (en ? '🔗 Same seed side by side = +10% each' : '🔗 Aynı tohumu yan yana ek = komşu başına +%10'), 14, bits.length ? '#ffd45a' : '#9fb3a8')); }
     m.add(button(this, width / 2, height / 2 + 60, 300, 56, `▶ ${t('play')} (−5 ${t('minShort')})`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 20));
     const cost = cropRushCost(id), ok = save.gems >= cost;
     const done = () => { sfx.coin(); close(); this.drawCrop(c, it); };
@@ -363,6 +366,7 @@ export class Farm extends Phaser.Scene {
       this.drawCrop(c, it); this.tweens.add({ targets: c.crop, scaleY: { from: 0.2, to: 1 }, duration: 400, ease: 'Back.Out' });
       this.toast(`${SEEDS[k].emoji} ${t('planted')} · ${fmtMs(cropMs(id))}`);
     };
+    const cr = save.farm.crops || {}, nb = new Set(neighbors(id).map((o) => cr[o] && cr[o].seed).filter(Boolean));
     keys.forEach((k, i) => {
       const S = SEEDS[k], open = seedOpen(k), x = width / 2 + ((i % 3) - 1) * 150, y = height / 2 - 110 + Math.floor(i / 3) * 128;
       const sel = k === last && open;
@@ -380,12 +384,13 @@ export class Farm extends Phaser.Scene {
       if (open && S.cost) m.add(txt(this, x + 50, y - 44, `-${S.cost}🪙`, 12, '#ffd9a0'));
       if (S.good && open) m.add(txt(this, x - 50, y - 44, '🏚️', 14));
       if (sz) m.add(txt(this, x - 50, y - 22, '✨', 16));
+      if (open && nb.has(k)) m.add(txt(this, x + 50, y - 22, '🔗', 16));
       const z = this.add.zone(x, y, 132, 112).setInteractive({ useHandCursor: open });
       z.on('pointerup', () => { if (open) go(k); else this.toast(`🔒 ${t('level')} ${S.lvl}`); });
       m.add(z);
     });
     m.add(txt(this, width / 2, height / 2 + 240, en ? '🏚️ = goes to the barn · others sell for coins' : '🏚️ = ambara girer · diğerleri paraya satılır', 13, '#cfe8d8'));
-    m.add(txt(this, width / 2, height / 2 + 260, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}`, 13, '#9fe870'));
+    m.add(txt(this, width / 2, height / 2 + 256, `${mevsim().emoji} ✨ ${en ? 'in season: +25% faster, +20% price' : 'mevsim tohumu: %25 hızlı, %20 pahalı'}  ·  🔗 ${en ? 'neighbour match +10%' : 'komşuyla aynı +%10'}${beeNear(id) ? '  ·  🐝 %15' : ''}`, 13, '#9fe870'));
     m.add(button(this, width / 2, height / 2 + 290, 280, 40, `🧱 ${en ? 'Field layers' : 'Tarla katmanları'} ${LAYERS.filter((l) => hasLayer(id, l.id)).map((l) => l.emoji).join('')}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 16));
   }
   // F32: zararlıyı kov — emoji kaçar, +5 🪙; korkuluk yoksa karga için ipucu
@@ -659,6 +664,7 @@ export class Farm extends Phaser.Scene {
     if (st === 'owned' && PRODUCTS[id]) {
       const pr = PRODUCTS[id];
       c.add(txt(this, width / 2, height / 2 + 140, `🏚️ ${ambarUsed()}/${ambarCap()}`, 15, ambarFull() ? '#ff9a9a' : '#9fb3a8'));
+      if (id === 'kovan') { const en = getLang() === 'en', fl = flowersNearHive(); c.add(txt(this, width / 2, height / 2 + 26, fl ? (en ? '🌻 flowers nearby: honey 25% faster' : '🌻 çiçek yakında: bal %25 hızlı') : (en ? '🌻 plant sunflowers near the hive: honey +25% faster' : '🌻 kovanın yanına ayçiçeği ek: bal %25 hızlı'), 14, fl ? '#ffd45a' : '#9fb3a8')); }
       if (isReady(id)) c.add(button(this, width / 2, height / 2 + 80, 260, 60, `${t('collect')} ${pr.emoji}`, () => {
         if (ambarFull()) { this.toast(t('ambarFull')); return; }
         if (collect(id)) { sfx.coin(); track('farm_collect', { item: id }); close(); this.scene.restart({ harvest: id }); }
