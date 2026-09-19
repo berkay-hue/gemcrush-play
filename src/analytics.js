@@ -1,12 +1,14 @@
 // Minimal analytics: queue in localStorage, flush to Supabase `events` if configured.
 import { CONFIG } from './config.js';
 import { save } from './meta/save.js';
+import { bump } from './meta/tasks.js';
 
 const QKEY = 'gemcrush.events';
 let queue = [];
 try { queue = JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch {}
 
 export function track(name, props = {}) {
+  try { bump(name, props); } catch {}
   queue.push({ device_id: save.deviceId, name, props, ts: new Date().toISOString() });
   if (queue.length > 500) queue = queue.slice(-500);
   try { localStorage.setItem(QKEY, JSON.stringify(queue)); } catch {}

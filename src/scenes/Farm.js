@@ -17,6 +17,8 @@ import { sfx } from '../sound.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { friendsPanel } from '../ui/friends.js';
+import { tasksPanel } from '../ui/tasks.js';
+import { tasksBadge } from '../meta/tasks.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
@@ -112,6 +114,8 @@ export class Farm extends Phaser.Scene {
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
     button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
     this.inboxBadge(width - 16, 264);
+    button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
+    this.taskBadge(width - 16, 314);
     this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
@@ -827,6 +831,19 @@ export class Farm extends Phaser.Scene {
     friendsPanel((code) => {
       friendFarm(code).then((f) => this.scene.start('Visit', { f })).catch(() => this.toast(`⚠️ ${t('frFarmErr')}`));
     }, () => this.friends(), () => { this.refreshHud(); this.inboxBadge(this.scale.width - 16, 264); });
+  }
+
+  // F12: görevler/başarım/albüm — alınabilir ödül sayısı 📜 üstünde
+  taskBadge(x, y) {
+    if (this.tkBadge) { this.tkBadge.destroy(); this.tkBadge = null; }
+    const n = tasksBadge();
+    if (!n) return;
+    const c = this.tkBadge = this.add.container(x, y).setDepth(50);
+    c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
+    c.add(txt(this, 0, 0, String(Math.min(n, 9)), 14, '#fff'));
+  }
+  tasks() {
+    tasksPanel(() => { this.refreshHud(); this.taskBadge(this.scale.width - 16, 314); });
   }
 
   drawTitle() {
