@@ -6,7 +6,7 @@ import { SEASONS, currentSeason, decor, buySeasonal } from '../meta/season.js';
 import { showRewarded } from '../monetize/ads.js';
 import { Visitors, KINDS } from '../farm3d/visitors.js';
 import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
-import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, land, LAND_MAX, landCost, landLvl, landStatus, buyLand, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
+import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, ARSA, arsa, ownsPlot, plotStatus, buyPlot, inPlot, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
 import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
 import { t, getLang } from '../i18n.js';
@@ -18,10 +18,12 @@ import { CROPS, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cr
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
 import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
+import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 import { BridgeMixin, isSickAnimal } from './farmBridge.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
+const ISL_HW = 11, ISL_HD = 9; // ana ada (FarmWorld ISL 12×10, kenar payı)
 const MOVABLE = (id) => ['building', 'plot', 'vehicle'].includes((item(id) || {}).kind);
 
 export class Farm extends Phaser.Scene {
@@ -76,8 +78,6 @@ export class Farm extends Phaser.Scene {
     if (!decor().includes(se.id)) button(this, 50, 180, 80, 40, `${se.emoji} 💎${se.price}`, () => this.seasonal(), 0x8fe3ff, '#06222e', 16);
     button(this, width - 50, 130, 80, 40, `🗺 ${t('map')}`, () => this.scene.start('Map'), 0x2a333a, '#fff', 16);
 
-    button(this, 22, 470, 40, 90, '◀', () => (this.w3 ? this.goRegion(-1) : this.scene.start('Zone', { zone: 'sol' })), 0x2a333a, '#fff', 22);
-    button(this, width - 22, 470, 40, 90, '▶', () => (this.w3 ? this.goRegion(1) : this.scene.start('Zone', { zone: 'sag' })), 0x2a333a, '#fff', 22);
     this.energyTxt = txt(this, width / 2, 100, `⚡${energy()}/${E_MAX}`, 16, '#ffe58a').setOrigin(0.5, 0);
     this.drawBereket();
     // OYNA sign
@@ -94,6 +94,7 @@ export class Farm extends Phaser.Scene {
     this.drawQuest();
     this.time.delayedCall(400, () => this.bridgeArrive(data));
     if (data.cropCut !== undefined && ftueDone('play')) this.time.delayedCall(2200, () => { ftueDone('reward'); this.drawHint(); });
+    this.events.once('shutdown', () => this.events.off('update', this.fingerFollow, this));
     this.drawHint();
     if (!Farm._greeted) { Farm._greeted = true; this.time.delayedCall(700, () => this.greet()); }
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
@@ -171,10 +172,9 @@ export class Farm extends Phaser.Scene {
     this.cameras.main.transparent = true;
     this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
     { const ah = autoHarvest(); if (ah) this.time.delayedCall(600, () => this.toast(`🚜 +${ah} 🪙`)); }
-    w.show(); w.posOf = posOf; w.tmpPos = null; w.setLand(land());
+    w.show(); w.posOf = posOf; w.tmpPos = null; w.setPlots(ARSA.map((a) => ({ ...a, owned: ownsPlot(a.id) }))); w.setTheme(currentTheme());
     if (!w.visitors) w.visitors = new Visitors(w);
     this.events.once('shutdown', () => w.hide());
-    this.setupRegions();
     // drag = pan, pinch/wheel = zoom, short tap = raycast pick
     const pad = this.add.zone(0, 0, this.scale.width, this.scale.height).setOrigin(0).setInteractive().setDepth(-10);
     let down = null, pinch = 0;
@@ -193,7 +193,7 @@ export class Farm extends Phaser.Scene {
     pad.on('pointerup', (p) => {
       if (down && !down.moved && Date.now() - down.t < 500 && this.placing) this.placeTap(p);
       else if (down && !down.moved && Date.now() - down.t < 500 && this.editing) { const id = w.pick(p.x, p.y); if (id && MOVABLE(id)) this.placeStart(id, true); }
-      else if (down && !down.moved && Date.now() - down.t < 500 && !this.regionTap(p)) {
+      else if (down && !down.moved && Date.now() - down.t < 500 && !this.plotSignTap(p)) {
         const vis = w.visitors.pick(p.x, p.y);
         const id = vis ? null : w.pick(p.x, p.y);
         if (vis) this.greetVisitor(vis);
@@ -487,6 +487,47 @@ export class Farm extends Phaser.Scene {
     } else c.add(button(this, width / 2, height / 2 + 90, 200, 50, 'OK', close, 0x2a333a, '#fff', 20));
   }
 
+  // ---- F7: satılık arsalar (sağ/sol) + tema önizleme ----
+  plotSignTap(p) {
+    const id = this.w3.pick(p.x, p.y);
+    if (!id || !id.startsWith('arsa:')) return false;
+    this.plotBuyTap(id.slice(5)); return true;
+  }
+  plotBuyTap(id) {
+    const { width, height } = this.scale, a = arsa(id), st = plotStatus(id);
+    const { c, close } = modal(this, 440, 340);
+    c.add(txt(this, width / 2, height / 2 - 110, `🪧 ${t('plot')} · ${a.id.startsWith('sol') ? '⬅️' : '➡️'}`, 28, '#ffb71b'));
+    c.add(txt(this, width / 2, height / 2 - 60, `${t('level')} ${a.lvl}+  ·  🪙 ${a.coins}`, 20, '#fff'));
+    if (st === 'owned') { c.add(txt(this, width / 2, height / 2 + 20, `✅ ${t('plotOwned')}`, 22, '#9dffb8')); c.add(button(this, width / 2, height / 2 + 100, 200, 50, 'OK', close, 0x2a333a, '#fff', 20)); return; }
+    if (st === 'level') {
+      c.add(txt(this, width / 2, height / 2 + 10, `🔒 ${t('needLevel')}: ${a.lvl}`, 20, '#ff9a9a'));
+      c.add(button(this, width / 2, height / 2 + 90, 260, 56, `${t('play')} ▶`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 22));
+      return;
+    }
+    c.add(button(this, width / 2, height / 2 + 40, 300, 60, `${t('plotBuy')} 🪙 ${a.coins}`, () => {
+      if (!buyPlot(id)) { sfx.error && sfx.error(); this.toast(t('needCoins')); return; }
+      sfx.coin(); track('farm_plot', { id }); close();
+      const q = this.w3.project((a.rect[0] + a.rect[2]) / 2, 0, (a.rect[1] + a.rect[3]) / 2); this.dustPuff(q.x, q.y, 14);
+      this.time.delayedCall(450, () => this.scene.restart());
+    }, st === 'ok' ? 0x2ee06a : 0x2a333a, st === 'ok' ? '#04220e' : '#888', 22));
+    c.add(button(this, width / 2, height / 2 + 115, 160, 46, t('close'), close, 0x2a333a, '#fff', 18));
+  }
+  themeBuyUse(id) {
+    if (!ownsTheme(id)) { if (!buyTheme(id)) { sfx.error && sfx.error(); this.toast(t('needGems')); return false; } sfx.coin(); track('theme_buy', { id }); }
+    setTheme(id); track('theme_set', { id }); this.w3.setTheme(currentTheme()); this.refreshHud && this.refreshHud(); return true;
+  }
+  themePreview(id) {
+    const { width, height } = this.scale, th = THEMES.find((x) => x.id === id), lang = getLang() === 'en' ? 'en' : 'tr';
+    this.w3.setTheme(th); if (this.hud) this.hud.setVisible(false);
+    const bar = this.add.container(0, 0).setDepth(900);
+    bar.add(this.add.rectangle(width / 2, height - 110, width - 30, 150, 0x0a0f0d, 0.88).setStrokeStyle(2, 0xffb71b, 0.8));
+    bar.add(txt(this, width / 2, height - 160, `${th.icon} ${th[lang]} — ${t('previewHint')}`, 18, '#fff'));
+    const end = (keep) => { bar.destroy(); if (this.hud) this.hud.setVisible(true); if (!keep) this.w3.setTheme(currentTheme()); };
+    const own = ownsTheme(id);
+    bar.add(button(this, width / 2 - 95, height - 100, 170, 56, own ? t('use') : `${t('buy')} 💎${th.gems}`, () => { if (this.themeBuyUse(id)) end(true); }, 0xffb71b, '#1a1200', 18));
+    bar.add(button(this, width / 2 + 95, height - 100, 170, 56, t('close'), () => { end(false); this.shop('theme'); }, 0x2a333a, '#fff', 18));
+  }
+
   // ---- F12: Mağaza (sekmeli), F15: bölüm kilitleri ----
   shop(tab = 'building') {
     const { width, height } = this.scale;
@@ -494,17 +535,35 @@ export class Farm extends Phaser.Scene {
     markSeen(CATALOG.filter((i) => status(i.id) !== 'locked' || (save.level || 1) >= (i.lvl || 1)).map((i) => i.id));
     const top = height / 2 - 380;
     c.add(txt(this, width / 2, top + 40, `🏪 ${t('shop')}  ·  ⭐ ${starBalance()}`, 26, '#ffb71b'));
-    [...TABS, ['land', '🗺️']].forEach(([k, e], i) => c.add(button(this, width / 2 - 180 + i * 90, top + 100, 82, 50, e, () => { close(); this.shop(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 26)));
+    const tabs = [...TABS, ['land', '🗺️'], ['theme', '🎨']];
+    tabs.forEach(([k, e], i) => c.add(button(this, width / 2 - 200 + i * 80, top + 100, 72, 50, e, () => { close(); this.shop(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 26)));
     if (tab === 'land') {
-      const n = land(), ls = landStatus(), y = top + 220;
-      c.add(txt(this, width / 2, y, `🗺️ ${t('land')} ${n}/${LAND_MAX}`, 24, '#fff'));
-      c.add(txt(this, width / 2, y + 40, t('landHint'), 15, '#9fb3a8'));
-      if (ls === 'max') c.add(txt(this, width / 2, y + 110, '✅ MAX', 26, '#9dffb8'));
-      else if (ls === 'level') c.add(txt(this, width / 2, y + 110, `🔒 ${t('level')} ${landLvl()}`, 22, '#ff9a9a'));
-      else c.add(button(this, width / 2, y + 110, 300, 60, `${t('expand')} 🪙 ${landCost()}`, () => {
-        if (!buyLand()) { this.toast(t('needCoins')); return; }
-        sfx.build(); track('farm_land', { n: n + 1 }); close(); this.scene.restart();
-      }, ls === 'ok' ? 0x2ee06a : 0x2a333a, ls === 'ok' ? '#04220e' : '#888', 22));
+      c.add(txt(this, width / 2, top + 150, t('landHint'), 15, '#9fb3a8'));
+      ARSA.forEach((a, i) => {
+        const y = top + 210 + i * 84, st = plotStatus(a.id), side = a.id.startsWith('sol') ? '⬅️' : '➡️';
+        c.add(this.add.rectangle(width / 2, y, 450, 74, 0x000000, 0.25).setStrokeStyle(2, 0xffffff, 0.12));
+        c.add(txt(this, width / 2 - 185, y, side, 32));
+        c.add(txt(this, width / 2 - 145, y - 12, `${t('plot')} ${i + 1}`, 20, '#fff').setOrigin(0, 0.5));
+        c.add(txt(this, width / 2 - 145, y + 14, st === 'owned' ? `✅ ${t('plotOwned')}` : `${t('level')} ${a.lvl}+ · 🪙 ${a.coins}`, 13, st === 'level' ? '#ff9a9a' : '#9dffb8').setOrigin(0, 0.5));
+        if (st === 'owned') return;
+        c.add(button(this, width / 2 + 150, y, 130, 50, st === 'level' ? `🔒 ${a.lvl}` : `🪙 ${a.coins}`, () => { close(); this.plotBuyTap(a.id); }, st === 'ok' ? 0x2ee06a : 0x2a333a, st === 'ok' ? '#04220e' : '#aaa', 18));
+      });
+      return;
+    }
+    if (tab === 'theme') {
+      const lang = getLang() === 'en' ? 'en' : 'tr';
+      c.add(txt(this, width / 2, top + 150, `💎 ${save.gems || 0}`, 18, '#8fe3ff'));
+      THEMES.forEach((th, i) => {
+        const y = top + 205 + i * 74, own = ownsTheme(th.id), cur = currentTheme().id === th.id;
+        c.add(this.add.rectangle(width / 2, y, 450, 66, 0x000000, 0.25).setStrokeStyle(2, cur ? 0x2ee06a : 0xffffff, cur ? 0.9 : 0.12));
+        const g = this.add.graphics(); g.fillGradientStyle(th.sky[0], th.sky[0], th.hills[1], th.hills[1], 1); g.fillRoundedRect(width / 2 - 215, y - 26, 52, 52, 10); c.add(g);
+        c.add(txt(this, width / 2 - 189, y, th.icon, 26));
+        c.add(txt(this, width / 2 - 150, y - 11, th[lang], 18, '#fff').setOrigin(0, 0.5));
+        c.add(txt(this, width / 2 - 150, y + 13, own ? t('owned') : `💎 ${th.gems}`, 13, own ? '#8ff0b0' : '#8fe3ff').setOrigin(0, 0.5));
+        c.add(button(this, width / 2 + 80, y, 96, 44, `👁 ${t('preview')}`, () => { close(); this.themePreview(th.id); }, 0x2a333a, '#fff', 14));
+        if (cur) c.add(txt(this, width / 2 + 180, y, '✓', 26, '#8ff0b0'));
+        else c.add(button(this, width / 2 + 180, y, 86, 44, own ? t('use') : `💎 ${th.gems}`, () => { close(); this.themeBuyUse(th.id); }, own ? 0x2ee06a : 0xffb71b, '#1a1200', 15));
+      });
       return;
     }
     CATALOG.filter((i) => i.kind === tab).forEach((it, i) => {
@@ -576,11 +635,12 @@ export class Farm extends Phaser.Scene {
     this.placing.p = g.map((v) => Math.round(v * 2) / 2); this.placeShow();
   }
   placeValid(id, [x, z]) {
-    const e = 10 + 2 * land(), rad = (k) => (LAYOUT[k].plot ? 1.5 : k === 'traktor' ? 1.1 : 2.1);
-    if (Math.abs(x) > e || Math.abs(z) > e - 2) return false;
+    const rad = (k) => (LAYOUT[k].plot ? 1.5 : k === 'traktor' ? 1.1 : 2.1), r = rad(id) * 0.5;
+    const main = Math.abs(x) <= ISL_HW - r && Math.abs(z) <= ISL_HD - r;
+    if (!main && !inPlot(x, z, r)) return false;                          // ana ada ya da sahip olunan arsa
     if (Math.hypot(x, z) < 1.2 + rad(id) * 0.4) return false;          // çeşme
-    if (x > 4.5 && z < -5) return false;                               // göl
-    if (land() === 0 && x < -6.5 && Math.abs(z + 0.5) < 2.5) return false; // değirmen
+    if (x > 4.5 && z < -5 && main) return false;                       // göl
+    if (x < -6.5 && x > -10.5 && Math.abs(z + 0.5) < 2.5) return false; // değirmen
     for (const k of [...CATALOG.map((i) => i.id), 'market']) {
       if (k === id || !LAYOUT[k] || !(k === 'market' || (owns(k) && MOVABLE(k)))) continue;
       const q = this.w3.where(k); if (Math.hypot(q[0] - x, q[1] - z) < (rad(k) + rad(id)) * 0.8) return false;
@@ -642,19 +702,45 @@ export class Farm extends Phaser.Scene {
     }, 0x8fe3ff, '#06222e', 22));
   }
 
-  // F8: current guide step as a bouncing banner (+ finger on the play sign)
+  // F8: current guide step as a bouncing banner + a finger locked onto the real target
   drawHint() {
     this.hint && this.hint.destroy(); this.hint = null;
+    this.finger && this.finger.destroy(); this.finger = null;
+    this.events.off('update', this.fingerFollow, this);
     const cur = ftueCurrent(); if (!cur) return;
     const { width, height } = this.scale;
-    const c = this.hint = this.add.container(width / 2, height - 150).setDepth(40);
-    const tx = txt(this, 0, 0, cur.text, 18, '#1a1200');
+    const c = this.hint = this.add.container(width / 2, height - 215).setDepth(40);
+    const tx = txt(this, 0, 0, cur.text.replace(/^👆\s*/, ''), 18, '#1a1200');
     c.add([this.add.rectangle(0, 0, tx.width + 36, 44, 0xffe58a).setStrokeStyle(3, 0x3a2a10), tx]);
     this.tweens.add({ targets: c, y: c.y - 8, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' });
-    if (cur.id === 'play') {
-      const f = txt(this, 150, 70, '👇', 36); c.add(f);
-      this.tweens.add({ targets: f, y: 80, yoyo: true, repeat: -1, duration: 350 });
+    if (!this.hintTarget(cur.id)) return;
+    this.finger = txt(this, 0, 0, '👇', 40).setOrigin(0.5, 1).setDepth(41);
+    this.fingerBob = 0;
+    this.tweens.add({ targets: this, fingerBob: 10, yoyo: true, repeat: -1, duration: 350 });
+    const q = this.hintTarget(cur.id), w = this.w3, ids = { coop: 'kumes', plant: 'tarla1' };
+    if (w && ids[cur.id] && q && (q.x < 40 || q.x > width - 40 || q.y < 150 || q.y > height - 200)) {
+      const p = w.where(ids[cur.id]); if (p) { w.target.x = p[0]; w.target.z = p[1]; }   // bring it into view
     }
+    this.fingerFollow();
+    this.events.on('update', this.fingerFollow, this);
+  }
+  // screen point the guide finger touches (tip = bottom of the emoji)
+  hintTarget(id) {
+    const w = this.w3;
+    if (id === 'play' && this.playBtn) return { x: this.playBtn.x, y: this.playBtn.y - 36 * this.playBtn.scaleY };
+    if (!w) return null;
+    if (id === 'coop') return w.anchor('kumes', 0.8);
+    if (id === 'plant') { const p = ['tarla1', 'tarla2', 'tarla3'].map((k) => w.anchor(k, 0.4)).find((q) => q && q.vis); return p || null; }
+    if (id === 'pet') { const m = w.movers.find((a) => a.pet) || w.movers[0]; return m ? w.anchor(m.id, 0.9) : null; }
+    return null;
+  }
+  fingerFollow() {
+    if (!this.finger || !this.finger.active) return;
+    const cur = ftueCurrent(), q = cur && this.hintTarget(cur.id);
+    this.finger.setVisible(!!q && q.vis !== false); if (!q) return;
+    const { width } = this.scale, off = q.x < 24 ? '👈' : q.x > width - 24 ? '👉' : '👇';
+    if (this.finger.text !== off) this.finger.setText(off);
+    this.finger.setPosition(Math.max(28, Math.min(width - 28, q.x)), Math.max(170, q.y - 6 - (this.fingerBob || 0)));
   }
 
   // F8: session greeting = daily streak reward, then "while you were away"

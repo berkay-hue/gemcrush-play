@@ -56,22 +56,36 @@ export function markSeen(ids) { const s = save.farm.seen || (save.farm.seen = []
 export const posOf = (id) => (save.farm.pos || {})[id] || null;
 export function setPos(id, x, z) { (save.farm.pos || (save.farm.pos = {}))[id] = [Math.round(x * 2) / 2, Math.round(z * 2) / 2]; persist(); }
 
-// ---- F14: land expansion. land n -> buildable half-size 6 + 3n (max 5) ----
-export const LAND_MAX = 5;
-export const land = () => save.farm.land || 0;
-export const landHalf = (n = land()) => 6 + 3 * n;
-export const landCost = (n = land()) => 200 * (n + 1) * (n + 1);
-export const landLvl = (n = land()) => 4 + n * 6;
-// F14: 'max' | 'level' | 'coins' | 'ok'
-export function landStatus() {
-  if (land() >= LAND_MAX) return 'max';
-  if ((save.level || 1) < landLvl()) return 'level';
-  return (save.coins || 0) < landCost() ? 'coins' : 'ok';
+// ---- F7 (v2): purchasable side plots. Left/right of the main island; each needs a
+// minimum level first, then coins. rect = [x0, z0, x1, z1] in world coords.
+export const ARSA = [
+  { id: 'sol1', lvl: 5, coins: 500, rect: [-22, -3, -12, 3] },
+  { id: 'sag1', lvl: 8, coins: 800, rect: [12, -3, 22, 3] },
+  { id: 'sol2', lvl: 12, coins: 1500, rect: [-22, -9, -12, -3] },
+  { id: 'sag2', lvl: 16, coins: 2000, rect: [12, -9, 22, -3] },
+  { id: 'sol3', lvl: 20, coins: 3000, rect: [-22, 3, -12, 9] },
+  { id: 'sag3', lvl: 25, coins: 4000, rect: [12, 3, 22, 9] },
+];
+export const arsa = (id) => ARSA.find((a) => a.id === id);
+export function plots() {
+  const f = save.farm;
+  if (!Array.isArray(f.plots)) f.plots = ARSA.slice(0, Math.min(ARSA.length, f.land || 0)).map((a) => a.id); // eski "land" kademesi → ilk n arsa
+  return f.plots;
 }
-export function buyLand() {
-  if (landStatus() !== 'ok') return false;
-  save.coins -= landCost(); save.farm.land = land() + 1; persist(); return true;
+export const ownsPlot = (id) => plots().includes(id);
+// 'owned' | 'level' | 'coins' | 'ok'
+export function plotStatus(id) {
+  const a = arsa(id); if (!a) return 'level';
+  if (ownsPlot(id)) return 'owned';
+  if ((save.level || 1) < a.lvl) return 'level';
+  return (save.coins || 0) < a.coins ? 'coins' : 'ok';
 }
+export function buyPlot(id) {
+  if (plotStatus(id) !== 'ok') return false;
+  save.coins -= arsa(id).coins; plots().push(id); persist(); return true;
+}
+// is world point (x,z) inside an owned plot (with margin m)?
+export const inPlot = (x, z, m = 0) => ARSA.some((a) => ownsPlot(a.id) && x >= a.rect[0] + m && x <= a.rect[2] - m && z >= a.rect[1] + m && z <= a.rect[3] - m);
 
 // ---- F16/F18: building levels (1..5), ambar capacity ----
 export const BLD_MAX = 5;

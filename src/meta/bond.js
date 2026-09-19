@@ -1,9 +1,9 @@
 // F7: bonds with the farm - animal names, daily love tour, album pages, pets.
 import { save, persist, addCoins, addGems } from './save.js';
-import { zoneOpen } from './zones.js';
 
 export const PETS = { kopek: { emoji: '🐶', name: 'Köpek' }, kedi: { emoji: '🐱', name: 'Kedi' } };
-export const petsOpen = () => zoneOpen('sol');
+// F7 v2: side regions removed — pets arrive at level 5 or with the first side plot
+export const petsOpen = () => (save.level || 1) >= 5 || ((save.farm || {}).plots || []).length > 0;
 const F = () => save.farm;
 const today = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
 

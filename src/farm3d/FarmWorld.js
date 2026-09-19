@@ -50,7 +50,7 @@ const ISL = [12, 10]; // ana ada yarı boyutları
 
 // Low-end: <=4 cores or <=3GB RAM -> no shadows, lower pixel ratio, no MSAA
 export const LOW_END = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3 || /[?&]low=1/.test(location.search);
-function url(n) { return 'assets3d/' + n + '.glb'; }
+function url(n) { return 'assets3d/' + n + (n.startsWith('kaykit/') ? '.gltf' : '.glb'); }
 
 // Fantasy Town modüler bina tarifleri. Birim hücre = 1; duvar parçası hücrenin
 // +x kenarında durur → kenar dönüşleri: E 0, N π/2, W π, S -π/2.
@@ -86,13 +86,14 @@ export class FarmWorld {
     this.R.shadowMap.enabled = !LOW_END; this.R.shadowMap.type = T.PCFSoftShadowMap;
     this.R.toneMapping = T.ACESFilmicToneMapping; this.R.outputColorSpace = T.SRGBColorSpace;
     const S = this.S = new T.Scene();
+    this.skyBase = 0xa8dcf2;
     S.background = new T.Color(0xa8dcf2); S.fog = new T.Fog(0xa8dcf2, 34, 62);
     this.C = new T.PerspectiveCamera(34, 540 / 960, 0.1, 200);
     this.target = new T.Vector3(0, 0, 0.6); this.zoom = 1;
     S.add(new T.HemisphereLight(0xffffff, 0x6a8f4a, 1.25));
     const sun = this.sun = new T.DirectionalLight(0xfff0d0, 2.2);
     sun.position.set(8, 14, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006;
-    Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 13, bottom: -13 }); S.add(sun);
+    Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22 }); S.add(sun);
     this.loader = new GLTFLoader(); this.cache = {};
     this.items = {}; this.movers = []; this.tickers = []; this.running = false;
     this.ray = new T.Raycaster();
@@ -162,14 +163,33 @@ export class FarmWorld {
     if (Math.abs(d.y) < 1e-4) return null;
     const k = -o.y / d.y; return [o.x + d.x * k, o.z + d.z * k];
   }
-  // F14: extra grass ring around the island per land level
-  setLand(n) {
-    this.land = n;
-    if (this._landN === n) return; this._landN = n;
-    if (this._landG) this.S.remove(this._landG);
-    const g = this._landG = new T.Group(); this.S.add(g);
-    if (n > 0) this.island(0, ISL[0] + 2 * n, ISL[1] + 2 * n, [], g);
+  // F7: side plots (ARSA). Owned → grass; locked → dirt + a tappable "for sale" sign ('arsa:<id>').
+  setPlots(list) {
+    const sig = JSON.stringify(list.map((a) => [a.id, a.owned]));
+    if (this._plotSig === sig) return; this._plotSig = sig;
+    if (this._plotG) this.S.remove(this._plotG);
+    for (const k in this.items) if (k.startsWith('arsa:')) delete this.items[k];
+    const g = this._plotG = new T.Group(); this.S.add(g);
+    const M = new T.MeshStandardMaterial({ color: 0x9a6b44, roughness: 1 });
+    for (const a of list) {
+      const [x0, z0, x1, z1] = a.rect;
+      for (let x = x0 + 1; x < x1; x += 2) for (let z = z0 + 1; z < z1; z += 2) this.put(a.owned ? 'ground_grass' : 'ground_pathTile', x, z, { s: 2, parent: g });
+      const b = new T.Mesh(new T.BoxGeometry(x1 - x0 - 0.02, 0.9, z1 - z0 - 0.02), M);
+      b.position.set((x0 + x1) / 2, -0.58, (z0 + z1) / 2); b.receiveShadow = true; g.add(b);
+      if (a.owned) continue;
+      const sg = new T.Group(); sg.userData.id = 'arsa:' + a.id; g.add(sg);
+      this.put('sign', (x0 + x1) / 2, (z0 + z1) / 2, { h: 1.6, parent: sg });
+      this.items['arsa:' + a.id] = { g: sg, sig: 'arsa', state: 'owned', at: [(x0 + x1) / 2, (z0 + z1) / 2] };
+    }
     g.position.y = -0.02;
+  }
+  // F7: theme = sky tint + a backdrop "dress" of models behind the island (z < -10)
+  setTheme(th) {
+    this.skyBase = th.skyBase || 0xa8dcf2; this.daylight();
+    if (this._dressId === th.id) return; this._dressId = th.id;
+    if (this._dressG) this.S.remove(this._dressG);
+    const g = this._dressG = new T.Group(); this.S.add(g);
+    for (const [m, x, z, h, ry = 0] of th.dress || []) this.put(m, x, z, { h, ry, parent: g });
   }
 
   island(cx, hw, hd, water = [], parent = this.S) {
@@ -273,6 +293,7 @@ export class FarmWorld {
 
   // world anchor of an item (top of its model) for overlays
   anchor(id, lift = 0) {
+    if (this.items[id]?.at) return this.project(this.items[id].at[0], 1 + lift, this.items[id].at[1]);
     const L = LAYOUT[id]; if (!L) return null;
     let x, z, y = (L.h || 0.3) + lift;
     const m = L.area && this.movers.find((a) => a.id === id);
@@ -280,7 +301,7 @@ export class FarmWorld {
     return this.project(x, y, z);
   }
   project(x, y, z) {
-    const v = new T.Vector3(x, y, z).project(this.C);
+    this.C.updateMatrixWorld(); const v = new T.Vector3(x, y, z).project(this.C);
     return { x: (v.x + 1) / 2 * 540, y: (1 - v.y) / 2 * 960, vis: v.z < 1 };
   }
 
@@ -295,69 +316,13 @@ export class FarmWorld {
     return best;
   }
 
-  // ---- F5: side regions in the same world ----
-  // obstacle 2D layout (Zone.js coords, 540x960) -> region-local world coords
-  static regionCenter(z) { return z === 'sol' ? -26 : z === 'sag' ? 26 : 0; }
-  async buildRegion(z, obstacles) {
-    this.regions = this.regions || {};
-    if (this.regions[z]) return this.regions[z];
-    const cx = FarmWorld.regionCenter(z), q0 = cx / 2, g = new T.Group(); this.S.add(g);
-    const R = this.regions[z] = { g, obs: {}, fog: null };
-    const tasks = [];
-    this.island(cx, 9, 9, z === 'sag' ? [[6, -6], [6, -4], [6, -2], [6, 0], [6, 2]] : [], g);
-    // köprü: ana adaya bağlanır
-    const bx = cx > 0 ? cx - 10.5 : cx + 10.5;
-    for (const dx of [-1, 0, 1]) tasks.push(this.put('bridge_wood', bx + dx * 1.2, 1, { s: 1.4, ry: Math.PI / 2, parent: g }));
-    const deco = z === 'sol'
-      ? [['tree_pineRoundC', -6, -5, 2.4], ['tree_pineRoundC', -3, -6, 2.8], ['tree_pineRoundC', 1, -6.5, 2.5], ['tree_pineRoundC', 5, -5.5, 2.6], ['tree_pineTallA', -7, 2, 3], ['mushroom_tanGroup', -4, 3, 0.4], ['log', 5, 4, 0.4]]
-      : [['tree_detailed', -5, -5.5, 2.2], ['tree_fat_fall', 0, -6.5, 2], ['tree_oak', 4, -6.5, 2.2], ['lily_small', 6, 1, 0.1], ['flower_redB', -3, 5, 0.4]];
-    for (const [n, dx, dz, h] of deco) tasks.push(this.put(n, cx + dx, dz, { h: h || undefined, ry: Math.random() * 6, parent: g }));
-    for (const o of obstacles) {
-      const x = cx + (o.x - 270) / 55, zz = (o.y - 600) / 60, og = new T.Group(); og.userData.id = 'obs:' + o.id; g.add(og);
-      R.obs[o.id] = { g: og, x, z: zz, kind: o.kind, h: o.kind === 'rock' ? 1.1 : o.kind === 'bush' ? 0.9 : 0.55 };
-      if (o.kind === 'bush') tasks.push(this.put('plant_bushLarge', x, zz, { h: 0.9, ry: Math.random() * 6, parent: og }));
-      else if (o.kind === 'rock') tasks.push(this.put('rock_largeB', x, zz, { h: 1.1, ry: Math.random() * 6, parent: og }));
-      else {
-        // kütük: prosedürel silindir + halka üstü
-        const bark = new T.Mesh(new T.CylinderGeometry(0.42, 0.5, 0.55, 10), new T.MeshStandardMaterial({ color: 0x7a4a26, roughness: 0.9 }));
-        const top = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.02, 10), new T.MeshStandardMaterial({ color: 0xd9b27a }));
-        bark.position.set(x, 0.27, zz); top.position.set(x, 0.56, zz); bark.castShadow = true; og.add(bark, top);
-      }
-    }
-    await Promise.all(tasks);
-    return R;
-  }
-  // locked region: soft fog dome
-  setRegionFog(z, on) {
-    const R = this.regions && this.regions[z]; if (!R) return;
-    if (on && !R.fog) {
-      R.fog = new T.Mesh(new T.CylinderGeometry(9.5, 9.5, 6, 24, 1, true), new T.MeshBasicMaterial({ color: 0xf2f6f7, transparent: true, opacity: 0.72, side: T.DoubleSide, depthWrite: false }));
-      const cap = new T.Mesh(new T.CircleGeometry(9.5, 24), R.fog.material); cap.rotation.x = -Math.PI / 2; cap.position.y = 3; R.fog.add(cap);
-      R.fog.position.set(FarmWorld.regionCenter(z), 3, 0); this.S.add(R.fog);
-    } else if (!on && R.fog) { this.S.remove(R.fog); R.fog = null; }
-  }
-  setObstacle(z, id, st) {
-    const o = this.regions && this.regions[z] && this.regions[z].obs[id]; if (!o) return;
-    o.g.visible = st !== 'done';
-    o.g.traverse((m) => { if (m.isMesh) { if (!m.userData.m0) { m.material = m.material.clone(); m.userData.m0 = 1; } m.material.transparent = st === 'clearing'; m.material.opacity = st === 'clearing' ? 0.55 : 1; } });
-  }
-  obstacleAnchor(z, id, lift = 0) { const o = this.regions[z].obs[id]; return this.project(o.x, o.h + lift, o.z); }
-  pickObstacle(z, px, py) {
-    let best = null, bd = 70;
-    for (const id in this.regions[z].obs) { const o = this.regions[z].obs[id]; if (!o.g.visible) continue; const a = this.project(o.x, o.h / 2, o.z), d = Math.hypot(a.x - px, a.y - py); if (d < bd) { bd = d; best = id; } }
-    return best;
-  }
-  // smooth camera glide to a region center
-  glideTo(cx, ms = 700) {
-    this.cx = cx; const x0 = this.target.x, z0 = this.target.z, t0 = performance.now();
-    const tick = (t) => { const k = Math.min(1, (t - t0) / ms), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2; this.target.x = x0 + (cx - x0) * e; this.target.z = z0 + (0.6 - z0) * e; this.sun.position.x = this.target.x + 8; this.sun.target.position.x = this.target.x; if (k >= 1) this.tickers = this.tickers.filter((f) => f !== tick); };
-    this.tickers.push(tick);
-  }
+
 
   pan(dx, dy) {
     const k = 0.028 * this.zoom;
-    const cx = this.cx || 0, e = 7 + 2 * (this.land || 0); this.target.x = Math.max(cx - e, Math.min(cx + e, this.target.x - dx * k));
-    this.target.z = Math.max(-e + 1, Math.min(e - 1, this.target.z - dy * k));
+    // F7: fixed bounds — main island + side plots; the camera never glides to other regions
+    this.target.x = Math.max(-18, Math.min(18, this.target.x - dx * k));
+    this.target.z = Math.max(-8, Math.min(9, this.target.z - dy * k));
   }
   zoomBy(f) { this.zoom = Math.max(0.55, Math.min(1.35, this.zoom * f)); }
 
@@ -391,7 +356,7 @@ export class FarmWorld {
   daylight(h = new Date().getHours() + new Date().getMinutes() / 60) {
     const day = Math.max(0, Math.sin((h - 6) / 12 * Math.PI));          // 0 night .. 1 noon
     const warm = Math.max(0, 1 - Math.abs(h - 18.5) / 2) + Math.max(0, 1 - Math.abs(h - 6.5) / 2);
-    const sky = new T.Color(0x2c3e66).lerp(new T.Color(0xa8dcf2), 0.35 + 0.65 * day).lerp(new T.Color(0xffb88a), warm * 0.35);
+    const sky = new T.Color(0x2c3e66).lerp(new T.Color(this.skyBase), 0.35 + 0.65 * day).lerp(new T.Color(0xffb88a), warm * 0.35);
     this.S.background.copy(sky); this.S.fog.color.copy(sky);
     this.sun.intensity = 0.9 + 1.3 * day;
     this.sun.color.set(0xfff0d0).lerp(new T.Color(0xff9a5a), warm * 0.6);

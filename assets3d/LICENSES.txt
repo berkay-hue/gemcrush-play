@@ -1,0 +1,11 @@
+GemCrush — 3D asset licenses
+============================
+
+All 3D models in this folder are free assets released under CC0 1.0 (public domain).
+No attribution is required, but we gladly credit the authors:
+
+- Kenney (kenney.nl) — Nature Kit, Farm/Survival pieces — CC0 1.0
+- Quaternius (quaternius.com) — Farm / Animals packs (q_* models) — CC0 1.0
+- KayKit by Kay Lousberg (kaylousberg.com) — Medieval Hexagon pack (kaykit/*) — CC0 1.0
+
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
