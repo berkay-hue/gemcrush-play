@@ -14,7 +14,7 @@ import { t, getLang } from '../i18n.js';
 import { showRewarded, maybeInterstitial } from '../monetize/ads.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
-import { txt, button, modal } from '../ui/widgets.js';
+import { txt, button, modal, FONT } from '../ui/widgets.js';
 import { currentTheme } from '../meta/themes.js';
 
 let OX = 14, OY = 210; // board origin (create() ortalar)
@@ -60,7 +60,7 @@ export class Game extends Phaser.Scene {
     }
     hud.fillStyle(0x3a2412, 0.55); hud.fillRoundedRect(width / 2 - 90, 8, 180, 30, 15);
     button(this, 40, 40, 60, 44, '✕', () => this.quit(), 0x2a333a, '#fff', 20);
-    this.add.text(width / 2, 22, `${t('level')} ${this.level.id}`, { fontFamily: 'system-ui', fontSize: '20px', color: '#ffe8b0', fontStyle: 'bold' }).setOrigin(0.5);
+    this.add.text(width / 2, 22, `${t('level')} ${this.level.id}`, { fontFamily: FONT, fontSize: '20px', color: '#ffe8b0', fontStyle: 'bold' }).setOrigin(0.5);
     txt(this, 130, 90, t('moves'), 16, '#8a5a2b'); this.movesTxt = txt(this, 130, 125, '', 40, '#3a2412');
     txt(this, width - 130, 90, t('score'), 16, '#8a5a2b'); this.scoreTxt = txt(this, width - 130, 125, '0', 34, '#c0620a');
     this.objTxt = this.add.container(width / 2, 108);

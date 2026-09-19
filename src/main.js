@@ -8,6 +8,7 @@ import { initAds } from './monetize/ads.js';
 import { initIap } from './monetize/iap.js';
 import { flush } from './analytics.js';
 import { sfx } from './sound.js';
+import { fadeIn } from './ui/widgets.js';
 
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 initAds().catch(() => {});
@@ -24,4 +25,9 @@ window.__game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 2 },
   scene: [Boot, Farm, Zone, MapScene, Game],
+});
+
+// her sahne açılışında yumuşak geçiş (Boot hariç)
+window.__game.events.once('ready', () => {
+  window.__game.scene.scenes.forEach((s) => { if (s.scene.key !== 'Boot') s.events.on('create', () => fadeIn(s)); });
 });

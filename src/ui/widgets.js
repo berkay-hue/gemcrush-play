@@ -1,7 +1,7 @@
 // Small shared UI helpers for Phaser scenes.
 import { sfx } from '../sound.js';
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+export const FONT = '"Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 export function txt(scene, x, y, s, size = 22, color = '#ffffff', extra = {}) {
   return scene.add.text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, fontStyle: 'bold', align: 'center', ...extra }).setOrigin(0.5);
@@ -20,8 +20,11 @@ export function button(scene, x, y, w, h, label, onClick, color = 0xffb71b, text
   const t = txt(scene, 0, -1, label, size, textColor).setShadow(0, 2, 'rgba(0,0,0,0.35)', 2, true, true);
   c.add([g, t]);
   c.setSize(w, h).setInteractive({ useHandCursor: true });
-  c.on('pointerdown', () => { sfx.click(); scene.tweens.add({ targets: c, scale: 0.94, duration: 60, yoyo: true }); });
-  c.on('pointerup', () => onClick && onClick());
+  const to = (scale, duration) => { scene.tweens.killTweensOf(c); scene.tweens.add({ targets: c, scale, duration, ease: 'Quad.Out' }); };
+  c.on('pointerover', () => to(1.04, 110));
+  c.on('pointerout', () => to(1, 110));
+  c.on('pointerdown', () => { sfx.click(); to(0.93, 60); });
+  c.on('pointerup', () => { scene.tweens.killTweensOf(c); c.setScale(0.93); scene.tweens.add({ targets: c, scale: 1, duration: 220, ease: 'Back.Out' }); onClick && onClick(); });
   c.label = t;
   return c;
 }
@@ -41,15 +44,18 @@ export function modal(scene, w, h) {
   const { width, height } = scene.scale;
   const cam = scene.cameras.main;
   const c = scene.add.container(cam.scrollX, cam.scrollY).setDepth(1000); // kaydırılmış haritada da ekranda kalsın
-  const dim = scene.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7).setInteractive();
+  const dim = scene.add.rectangle(width / 2, height / 2, width * 1.4, height * 1.4, 0x000000, 0.7).setInteractive();
   c.add(dim);
   c.add(panel(scene, width / 2, height / 2, w, h));
-  const closeFn = () => { if (!c.active) return; dim.disableInteractive(); scene.tweens.add({ targets: c, alpha: 0, duration: 150, onComplete: () => c.destroy() }); };
-  const x = scene.add.text(width / 2 + w / 2 - 26, height / 2 - h / 2 + 26, '✕', { fontFamily: 'sans-serif', fontSize: '26px', color: '#fff', fontStyle: 'bold' })
+  // ölçek ekran ortasından: konteyner (0,0)'da, çocuklar mutlak koordinatlı
+  const pop = { s: 1 };
+  const applyPop = () => { c.setScale(pop.s); c.x = cam.scrollX + (width / 2) * (1 - pop.s); c.y = cam.scrollY + (height / 2) * (1 - pop.s); };
+  const closeFn = () => { if (!c.active) return; dim.disableInteractive(); scene.tweens.add({ targets: pop, s: 0.92, duration: 150, ease: 'Quad.In', onUpdate: applyPop }); scene.tweens.add({ targets: c, alpha: 0, duration: 150, onComplete: () => c.destroy() }); };
+  const x = scene.add.text(width / 2 + w / 2 - 26, height / 2 - h / 2 + 26, '✕', { fontFamily: 'system-ui, sans-serif', fontSize: '26px', color: '#fff', fontStyle: 'bold' })
     .setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true }).on('pointerup', closeFn);
   c.add(x);
   c.setAlpha(0); scene.tweens.add({ targets: c, alpha: 1, duration: 180 });
-  const inner = c.list[1]; inner.setScale(0.8); scene.tweens.add({ targets: inner, scale: 1, duration: 260, ease: 'Back.Out' });
+  pop.s = 0.85; applyPop(); scene.tweens.add({ targets: pop, s: 1, duration: 280, ease: 'Back.Out', onUpdate: applyPop });
   return { c, close: closeFn };
 }
 
@@ -57,3 +63,6 @@ export function fmtMs(ms) {
   const s = Math.ceil(ms / 1000), m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
+
+// Sahne girişinde yumuşak açılış (main.js tüm sahnelere bağlar)
+export function fadeIn(scene) { scene.cameras.main.fadeIn(240, 10, 15, 13); }
