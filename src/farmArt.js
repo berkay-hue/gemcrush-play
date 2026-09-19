@@ -71,14 +71,19 @@ function corn(x, s) {
     x.fillStyle = '#c98a2e'; x.beginPath(); x.moveTo(21, base - H); x.lineTo(16, base - H - 8); x.lineTo(21, base - H - 4); x.lineTo(26, base - H - 8); x.fill();
   }
 }
-export function buildFarmArt(scene) {
-  for (let f = 0; f < 3; f++) { tex(scene, `chick${f}`, 120, 110, (x) => chicken(x, f)); tex(scene, `roost${f}`, 120, 110, (x) => chicken(x, f, true)); }
-  tex(scene, 'soil', 150, 96, (x) => soil(x, 150, 96));
-  for (let s = 0; s < 4; s++) tex(scene, `corn${s}`, 44, 70, (x) => corn(x, s));
+// F17: orak 3D modda da lazım (hasat) — buildFarmArt'tan bağımsız
+export function sickleTex(scene) {
   tex(scene, 'sickle', 48, 48, (x) => {
     x.strokeStyle = '#7a4a1e'; x.lineWidth = 6; x.beginPath(); x.moveTo(10, 42); x.lineTo(20, 28); x.stroke();
     x.strokeStyle = '#cfd6dc'; x.lineWidth = 5; x.beginPath(); x.arc(28, 20, 14, Math.PI * 0.9, Math.PI * 2.1); x.stroke();
   });
+}
+
+export function buildFarmArt(scene) {
+  for (let f = 0; f < 3; f++) { tex(scene, `chick${f}`, 120, 110, (x) => chicken(x, f)); tex(scene, `roost${f}`, 120, 110, (x) => chicken(x, f, true)); }
+  tex(scene, 'soil', 150, 96, (x) => soil(x, 150, 96));
+  for (let s = 0; s < 4; s++) tex(scene, `corn${s}`, 44, 70, (x) => corn(x, s));
+  sickleTex(scene);
 }
 // chickens wander inside a rect, flip, peck; returns nothing (tweens own them)
 export function spawnChickens(scene, n, area, rooster = false) {

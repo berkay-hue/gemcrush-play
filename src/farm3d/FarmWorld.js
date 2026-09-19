@@ -157,6 +157,7 @@ export class FarmWorld {
     this.island(0, ...ISL, POND);
     for (const [n, [x, z], h, ry, s] of DECOR) this.put(n, x, z, h ? { h, ry } : { s, ry });
     this.mascot(-7.3, 1.1);
+    this.signboard(1.3, 6.7);
   }
 
   // F16c: maskot Kuzi 3D — çiftçi tulumlu, hasır şapkalı, yabalı kuzu (prosedürel)
@@ -209,6 +210,41 @@ export class FarmWorld {
       fork.rotation.z = -0.12 + Math.sin(t / 900) * 0.05;
     });
     this.mascotPos = [x, z];
+  }
+
+
+  // PR-A: çiftlik adı tahta tabelası (iki direk + tahta, yüzü CanvasTexture)
+  signboard(x, z) {
+    const g = new T.Group(), M = (c, r = 0.9) => new T.MeshStandardMaterial({ color: c, roughness: r });
+    const wood = M(0x8a5a32), dark = M(0x5e3b1e);
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 176;
+    const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 4;
+    const face = new T.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+    const add = (geo, m, px, py, pz) => { const o = new T.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
+    for (const sx of [-1.15, 1.15]) { add(new T.BoxGeometry(0.16, 1.9, 0.16), dark, sx, 0.95, 0); add(new T.ConeGeometry(0.13, 0.2, 4), dark, sx, 1.99, 0).rotation.y = Math.PI / 4; }
+    add(new T.BoxGeometry(2.7, 0.92, 0.14), [wood, wood, wood, wood, face, wood], 0, 1.3, 0.06);
+    add(new T.BoxGeometry(2.86, 0.08, 0.2), dark, 0, 1.8, 0.06);
+    for (const [px, pz] of [[-0.6, 0.35], [0.7, 0.3]]) add(new T.SphereGeometry(0.16, 8, 6), M(0x6fae4a, 1), px, 0.1, pz).scale.set(1.3, 0.7, 1.1); // çimen öbeği
+    const draw = (text) => {
+      const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+      c.fillStyle = '#9a6a3c'; c.fillRect(0, 0, W, H);
+      for (let i = 0; i < 3; i++) { c.fillStyle = i % 2 ? '#a8784a' : '#8f6034'; c.fillRect(0, i * H / 3, W, H / 3 - 3); c.fillStyle = '#6b4424'; c.fillRect(0, (i + 1) * H / 3 - 3, W, 3); }
+      c.strokeStyle = 'rgba(70,40,15,.28)'; c.lineWidth = 2;
+      for (let i = 0; i < 14; i++) { const y = (i * 37) % H; c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(W * 0.3, y + 6, W * 0.6, y - 6, W, y + 3); c.stroke(); }
+      c.fillStyle = '#4a2d14'; for (const [nx, ny] of [[18, 18], [W - 18, 18], [18, H - 18], [W - 18, H - 18]]) { c.beginPath(); c.arc(nx, ny, 6, 0, 7); c.fill(); }
+      let fs = 70; const font = (n) => `800 ${n}px "Baloo 2", system-ui, sans-serif`;
+      c.font = font(fs); while (c.measureText(text).width > W - 70 && fs > 26) c.font = font(fs -= 2);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = 'rgba(40,20,5,.55)'; c.fillText(text, W / 2 + 2, H / 2 + 5);
+      c.fillStyle = '#fff3cf'; c.fillText(text, W / 2, H / 2 + 2);
+      tex.needsUpdate = true;
+    };
+    this.setSignText = (text) => { this._signText = text; draw(text); if (document.fonts) document.fonts.ready.then(() => this._signText === text && draw(text)); };
+    this.setSignText(this._signText || 'Çiftliğim');
+    g.position.set(x, 0, z); g.rotation.y = -0.12; this.S.add(g);
+    this.signPos = [x, z]; this.signG = g;
+    let wig = 0; this.signWiggle = () => { wig = 1; };
+    this.tickers.push((t, dt) => { if (wig > 0) { wig = Math.max(0, wig - (dt || 0.016) / 0.6); g.rotation.z = Math.sin(wig * 18) * 0.05 * wig; } });
   }
 
   // F13: live position of an item (save override via this.posOf, else layout)
@@ -311,6 +347,7 @@ export class FarmWorld {
   colliders() {
     const C = [];
     for (const [n, [x, z]] of DECOR) { const r = DECOR_R(n); if (r) C.push([x, z, r]); }
+    if (this.signPos) C.push([...this.signPos, 1.3]);
     for (const id in LAYOUT) {
       const it = this.items[id], L = LAYOUT[id];
       if (!it || it.state !== 'owned' || L.area) continue;

@@ -28,6 +28,7 @@ import { getWorld, LAYOUT } from '../farm3d/FarmWorld.js';
 import { RegionMixin } from './farmRegions.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
 import { BridgeMixin, isSickAnimal } from './farmBridge.js';
+import { HandsMixin } from './farmHands.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
 
@@ -77,7 +78,7 @@ export class Farm extends Phaser.Scene {
     this.coinsTxt = soft(txt(this, width - 100, 34, '', 19, '#ffe7a3').setOrigin(0, 0.5));
     this.gemsTxt = soft(txt(this, width - 128, 73, '', 15, '#cdefff').setOrigin(0, 0.5));
     this.titleTxt = txt(this, width / 2, 28, '', 21, '#f5f4eb').setAlpha(0.92).setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
-    this.titleTxt.setInteractive({ useHandCursor: true }).on('pointerup', () => renameBox((ok) => { if (ok) { this.drawTitle(); this.toast(`✏️ ${this.titleTxt.text}`); } }));
+    this.titleTxt.setInteractive({ useHandCursor: true }).on('pointerup', () => renameBox((ok) => { if (ok) { this.drawTitle(); this.w3 && this.w3.setSignText && this.w3.setSignText(farmTitle()); this.toast(`✏️ ${this.titleTxt.text}`); } }));
     this.starsTxt = soft(txt(this, width / 2 - 8, 54, '', 15, '#ffe7a3').setOrigin(1, 0.5).setAlpha(0.9));
     this.hud.add([heart, this.livesTxt, this.lifeTimer, coin, this.coinsTxt, this.gemsTxt, this.titleTxt, this.starsTxt]);
     this.drawTitle();
@@ -203,7 +204,7 @@ export class Farm extends Phaser.Scene {
     // drag = pan, pinch/wheel = zoom, short tap = raycast pick
     const pad = this.add.zone(0, 0, this.scale.width, this.scale.height).setOrigin(0).setInteractive().setDepth(-10);
     let down = null, pinch = 0;
-    pad.on('pointerdown', (p) => { down = { x: p.x, y: p.y, lx: p.x, ly: p.y, t: Date.now(), moved: false }; });
+    pad.on('pointerdown', (p) => { down = { x: p.x, y: p.y, lx: p.x, ly: p.y, t: Date.now(), moved: false }; this.harvestStart(p, down); });
     this.input.on('pointermove', (p) => {
       const a = this.input.pointer1, b = this.input.pointer2;
       if (a && b && a.isDown && b.isDown) {
@@ -211,13 +212,16 @@ export class Farm extends Phaser.Scene {
         if (pinch) w.zoomBy(pinch / d); pinch = d; if (down) down.moved = true; return;
       }
       pinch = 0;
-      if (!down || !p.isDown) return;
+      if (!down || !p.isDown || this.bucketDrag) return;
+      if (down.harvest) { this.harvestAt(p, down); down.moved = true; return; }
       w.pan(p.x - down.lx, p.y - down.ly); down.lx = p.x; down.ly = p.y;
       if (Math.hypot(p.x - down.x, p.y - down.y) > 12) down.moved = true;
     });
     pad.on('pointerup', (p) => {
+      if (down && down.harvest) { this.harvestEnd(down); down = null; pinch = 0; return; }
       if (down && !down.moved && Date.now() - down.t < 500 && this.placing) this.placeTap(p);
       else if (down && !down.moved && Date.now() - down.t < 500 && this.editing) { const id = w.pick(p.x, p.y); if (id && MOVABLE(id)) this.placeStart(id, true); }
+      else if (down && !down.moved && Date.now() - down.t < 500 && this.signHit(p)) this.signTap();
       else if (down && !down.moved && Date.now() - down.t < 500 && !this.plotSignTap(p)) {
         const vis = w.visitors.pick(p.x, p.y);
         const id = vis ? null : w.pick(p.x, p.y);
@@ -230,7 +234,8 @@ export class Farm extends Phaser.Scene {
       down = null; pinch = 0;
     });
     this.input.on('wheel', (_p, _o, _dx, dy) => w.zoomBy(dy > 0 ? 1.08 : 0.93));
-    this.input.on('pointerupoutside', () => { down = null; });
+    this.input.on('pointerupoutside', () => { if (down && down.harvest) this.harvestEnd(down); down = null; });
+    this.setupHands();
     // F16c: maskot kuzu artık 3D (FarmWorld.mascot); burada yalnız görünmez dokunma alanı
     const [LX, LZ] = w.mascotPos || [-7.3, 1.1];
     const lamb = this.add.zone(0, 0, 60, 90).setOrigin(0.5, 1).setDepth(1).setInteractive({ useHandCursor: true });
@@ -304,17 +309,7 @@ export class Farm extends Phaser.Scene {
       return;
     }
     if (st === 'ready') {
-      const r = harvest(id); if (!r) return;
-      const coins = r.coins;
-      sfx.harvest(); this.w3.burst(id); track('crop_harvest', { plot: id, coins, good: r.good, n: r.n });
-      const sk = this.add.image(c.x - 60, c.y - 10, 'sickle').setDepth(900);
-      this.tweens.add({ targets: sk, x: c.x + 60, angle: 360, duration: 450, onComplete: () => sk.destroy() });
-      for (let i = 0; i < 5; i++) {
-        const f = txt(this, c.x - 40 + i * 20, c.y, it.emoji, 28).setDepth(901);
-        this.tweens.add({ targets: f, x: this.scale.width - 140, y: 40, scale: 0.4, delay: 200 + i * 80, duration: 650, ease: 'Cubic.In', onComplete: () => f.destroy() });
-      }
-      this.time.delayedCall(260, () => { this.drawCrop(c, it); this.refreshHud(); });
-      this.toast([r.n ? `+${r.n} ${it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : ''].filter(Boolean).join('  ·  '));
+      this.harvestPlot(id);
       return;
     }
     // growing: info + rush + go play to speed up
@@ -962,4 +957,4 @@ export class Farm extends Phaser.Scene {
     this.preLevel(lv);
   }
 }
-Object.assign(Farm.prototype, RegionMixin, BridgeMixin);
+Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin);
