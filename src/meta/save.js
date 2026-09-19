@@ -15,6 +15,7 @@ const def = () => ({
   daily: { last: 0, streak: 0 },
   removeAds: false,
   sound: true,
+  music: true,                    // F40: arka plan müziği
   lang: null,
   levelsPlayed: 0,
   tutorialDone: false,

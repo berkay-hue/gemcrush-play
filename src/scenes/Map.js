@@ -5,6 +5,7 @@ import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
+import { musicOn, setMusic } from '../music.js';
 import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine, awning, signBoard } from '../ui/widgets.js';
 import { authForm } from '../ui/authForm.js';
 import { nameBox, codeBox } from '../ui/farmTitle.js';
@@ -327,14 +328,15 @@ export class Map extends Phaser.Scene {
 
   settings() {
     const { width, height } = this.scale;
-    const { c, close } = modal(this, 400, 400);
-    c.add(txt(this, width / 2, height / 2 - 150, t('settings'), 30, '#ffb71b'));
+    const { c, close } = modal(this, 400, 470);
+    c.add(txt(this, width / 2, height / 2 - 185, t('settings'), 30, '#ffb71b'));
     const pr = save.profile || {};
-    const pb = button(this, width / 2, height / 2 - 80, 300, 56, `${pr.avatar || '👤'} ${pr.name || t('profile')}`, () => { close(); this.profile(); }, 0x2ee06a, '#04220e');
-    const sb = button(this, width / 2, height / 2 - 10, 300, 56, `${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`, () => { save.sound = !save.sound; persist(); sb.label.setText(`${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`); }, 0x2a333a, '#ffffff');
-    const lb = button(this, width / 2, height / 2 + 60, 300, 56, `${t('lang')}: ${getLang().toUpperCase()}`, () => { const l = getLang() === 'tr' ? 'en' : 'tr'; setLang(l); save.lang = l; persist(); close(); this.scene.restart({}); }, 0x2a333a, '#ffffff');
-    const pp = txt(this, width / 2, height / 2 + 130, t('privacy'), 16, '#8fe3ff').setInteractive({ useHandCursor: true }).on('pointerup', () => window.open(CONFIG.privacyUrl, '_blank'));
-    c.add([pb, sb, lb, pp]);
+    const pb = button(this, width / 2, height / 2 - 120, 300, 56, `${pr.avatar || '👤'} ${pr.name || t('profile')}`, () => { close(); this.profile(); }, 0x2ee06a, '#04220e');
+    const sb = button(this, width / 2, height / 2 - 50, 300, 56, `${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`, () => { save.sound = !save.sound; persist(); sb.label.setText(`${t('sound')}: ${save.sound ? 'ON' : 'OFF'}`); }, 0x2a333a, '#ffffff');
+    const mb = button(this, width / 2, height / 2 + 20, 300, 56, `🎵 ${t('music')}: ${musicOn() ? 'ON' : 'OFF'}`, () => { setMusic(!musicOn()); mb.label.setText(`🎵 ${t('music')}: ${musicOn() ? 'ON' : 'OFF'}`); }, 0x2a333a, '#ffffff');
+    const lb = button(this, width / 2, height / 2 + 90, 300, 56, `${t('lang')}: ${getLang().toUpperCase()}`, () => { const l = getLang() === 'tr' ? 'en' : 'tr'; setLang(l); save.lang = l; persist(); close(); this.scene.restart({}); }, 0x2a333a, '#ffffff');
+    const pp = txt(this, width / 2, height / 2 + 160, t('privacy'), 16, '#8fe3ff').setInteractive({ useHandCursor: true }).on('pointerup', () => window.open(CONFIG.privacyUrl, '_blank'));
+    c.add([pb, sb, mb, lb, pp]);
   }
 
   // ---- Kayıt alanı: profil, kayıt kodu, veri silme ----

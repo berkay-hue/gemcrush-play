@@ -1,7 +1,7 @@
 // Tiny WebAudio synth: no audio files needed.
 import { save } from './meta/save.js';
 let ctx = null;
-function ac() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ctx && ctx.state === 'suspended') ctx.resume(); return ctx; }
+export function ac() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (ctx && ctx.state === 'suspended') ctx.resume(); return ctx; }
 function tone(freq, dur, type = 'sine', gain = 0.15, slide = 0) {
   if (!save.sound) return; const a = ac(); if (!a) return;
   const o = a.createOscillator(), g = a.createGain();

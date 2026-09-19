@@ -10,10 +10,11 @@ import { initIap } from './monetize/iap.js';
 import { flush } from './analytics.js';
 import { initNotify } from './meta/notify.js';
 import { sfx } from './sound.js';
+import { music, trackFor } from './music.js';
 import { fadeIn } from './ui/widgets.js';
 import { irisOpen } from './ui/cinema.js';
 
-window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
+window.addEventListener('pointerdown', () => { sfx.unlock(); music.unlock(); }, { once: true });
 initAds().catch(() => {});
 initIap().catch(() => {});
 try { initNotify(); } catch {}
@@ -30,6 +31,8 @@ window.__game = new Phaser.Game({
   input: { activePointers: 2 },
   scene: [Boot, Farm, Zone, MapScene, Game, Visit],
 });
+// F40: her sahne açılışında uygun parça (giriş/çiftlik ↔ bölüm) yumuşak geçişle
+window.__game.events.once('ready', () => window.__game.scene.scenes.forEach((s) => s.events.on('start', () => music.play(trackFor(s.scene.key)))));
 
 // F16b: yalnız BİZİM DOM panellerimiz (shield() ile işaretli) girdiyi kapatır; eklenti/tarayıcı öğeleri kapatmaz
 const overlayOpen = () => !!document.querySelector('body > [data-gc-overlay]:not([style*="display: none"])');
