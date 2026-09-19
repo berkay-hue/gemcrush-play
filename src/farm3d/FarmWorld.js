@@ -545,8 +545,8 @@ export class FarmWorld {
   zoomBy(f) { this.zoom = Math.max(0.55, Math.min(1.35, this.zoom * f)); }
 
   placeCamera() {
-    const d = 26 * this.zoom;
-    this.C.position.set(this.target.x, this.target.y + d * 0.72, this.target.z + d * 0.69);
+    const d = 26 * this.zoom, o = this.orbit || 0;
+    this.C.position.set(this.target.x + Math.sin(o) * d * 0.69, this.target.y + d * 0.72, this.target.z + Math.cos(o) * d * 0.69);
     this.C.lookAt(this.target);
   }
 
@@ -678,8 +678,8 @@ export class FarmWorld {
     }
     for (const f of this.tickers) f(t, dt);
     if (this._intro && this.zoomEnd) {             // F10 intro camera flight
-      const k = Math.min(1, (t - this._intro) / 1600), e = 1 - Math.pow(1 - k, 3);
-      this.zoom = this.zoomEnd * (1.7 - 0.7 * e); if (k >= 1) this.zoomEnd = 0;
+      const k = Math.min(1, (t - this._intro) / 2400), e = 1 - Math.pow(1 - k, 3);
+      this.zoom = this.zoomEnd * (1.7 - 0.7 * e); this.orbit = 0.55 * (1 - e); if (k >= 1) { this.zoomEnd = 0; this.orbit = 0; }
     }
     if ((this._n || 0) % 120 === 0) this.daylight();
     this.clouds(dt); this.sparks(dt);

@@ -14,6 +14,7 @@ import { SLOTS, refreshOrders, canDeliver, deliver, skip, readyCount, xpProgress
 import { energy, E_MAX } from '../meta/energy.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
+import { CineMixin } from './farmCine.js';
 import { txt, button, modal, fmtMs, card, iconSlot, chip, goldText, iconLabel } from '../ui/widgets.js';
 import { buildIcons } from '../ui/icons.js';
 import { flyCoins, countUp, haptic } from '../ui/juice.js';
@@ -118,11 +119,13 @@ export class Farm extends Phaser.Scene {
     if (data.cropCut !== undefined && ftueDone('play')) this.time.delayedCall(2200, () => { ftueDone('reward'); this.drawHint(); });
     this.events.once('shutdown', () => this.events.off('update', this.fingerFollow, this));
     this.drawHint();
-    if (!Farm._greeted) { Farm._greeted = true; this.time.delayedCall(700, () => this.greet()); }
+    const cine = !Farm._cine; if (cine) { Farm._cine = true; this.opening(); }
+    if (!Farm._greeted) { Farm._greeted = true; this.time.delayedCall(cine ? 3000 : 700, () => this.greet()); }
     button(this, 50, 230, 80, 40, `📖 ${this.bookCount()}`, () => this.book(), 0x2a333a, '#fff', 16);
     button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
     this.inboxBadge(width - 16, 264);
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
+    button(this, width - 50, 380, 80, 40, '📸', () => this.snap(), 0x2a333a, '#fff', 20);
     this.taskBadge(width - 16, 314);
     this.ordBtn = button(this, 50, 280, 80, 40, '📋', () => this.orders(), 0x2a333a, '#fff', 18);
     button(this, 50, 330, 80, 40, '🌾', () => this.festival(), festActive() ? 0xc9761b : 0x2a333a, '#fff', 20);
@@ -961,4 +964,4 @@ export class Farm extends Phaser.Scene {
     this.preLevel(lv);
   }
 }
-Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin);
+Object.assign(Farm.prototype, RegionMixin, BridgeMixin, HandsMixin, LambMixin, CineMixin);

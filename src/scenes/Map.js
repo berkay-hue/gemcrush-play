@@ -56,6 +56,16 @@ export class Map extends Phaser.Scene {
         this.path.add(sg); this.path.add(txt(this, sx, sy - 8, `${t('chapter')} ${Math.floor((lv.id - 101) / 10) + 2}`, 13, '#ffe58a'));
         this.path.add(txt(this, sx, sy + 10, lv.chapter, 18, '#ffffff'));
       }
+      if (lv.id % 10 === 0) { // F21: her 10 bölümde bir simge yapı
+        const LM = ['🏰', '🌋', '🗼', '⛲', '🌉', '🏯', '🎡', '🗿', '⛩', '🏝'];
+        const mx = xFor(i) > width / 2 ? x - 118 : x + 118, done = lv.id < save.level;
+        const sh = this.add.circle(mx, y + 2, 44, done ? 0xffb71b : 0x000000, done ? 0.22 : 0.3).setStrokeStyle(3, done ? 0xffb71b : 0x6b7a70, 0.8);
+        const ic = txt(this, mx, y, LM[(lv.id / 10 - 1) % LM.length], 58, '#ffffff').setAlpha(done ? 1 : 0.55);
+        if (!done) ic.setTint(0xb0b0b0);
+        const tag = txt(this, mx, y + 58, done ? '✔' : `${lv.id}`, 13, done ? '#7dff9b' : '#ffe58a');
+        this.path.add(sh); this.path.add(ic); this.path.add(tag);
+        if (done) this.tweens.add({ targets: ic, y: y - 6, yoyo: true, repeat: -1, duration: 1100 + (i % 3) * 150, ease: 'Sine.InOut' });
+      }
       const circ = this.add.circle(0, 0, 30, unlocked ? (lv.boss ? 0x9b4dff : lv.wall ? 0xff3b5c : 0xffb71b) : 0x2a333a);
       circ.setStrokeStyle(4, current ? 0xffffff : 0x000000, current ? 1 : 0.4);
       c.add(circ); c.add(this.add.circle(0, -9, 18, 0xffffff, unlocked ? 0.22 : 0.06));

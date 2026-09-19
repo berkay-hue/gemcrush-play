@@ -11,6 +11,7 @@ import { flush } from './analytics.js';
 import { initNotify } from './meta/notify.js';
 import { sfx } from './sound.js';
 import { fadeIn } from './ui/widgets.js';
+import { irisOpen } from './ui/cinema.js';
 
 window.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
 initAds().catch(() => {});
@@ -44,5 +45,5 @@ setInterval(() => { const g = window.__game; if (g && g.input && !g.input.enable
 
 // her sahne açılışında yumuşak geçiş (Boot hariç)
 window.__game.events.once('ready', () => {
-  window.__game.scene.scenes.forEach((s) => { if (s.scene.key !== 'Boot') s.events.on('create', () => fadeIn(s)); });
+  window.__game.scene.scenes.forEach((s) => { if (s.scene.key !== 'Boot') s.events.on('create', () => { if (window.__lastScene && window.__lastScene !== s.scene.key) irisOpen(); else fadeIn(s); window.__lastScene = s.scene.key; }); });
 });
