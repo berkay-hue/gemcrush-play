@@ -223,6 +223,38 @@ export function buildTextures(scene) {
   make('jelly2', (ctx) => drawJelly(ctx, s, true));
   make('rock1', (ctx) => drawRock(ctx, s, false));
   make('rock2', (ctx) => drawRock(ctx, s, true));
+  // F13 engelleri
+  for (const lv of [1, 2]) make(`ice${lv}`, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, s, s);
+    g.addColorStop(0, `rgba(225,248,255,${lv > 1 ? 0.78 : 0.6})`); g.addColorStop(0.5, `rgba(150,215,245,${lv > 1 ? 0.62 : 0.45})`); g.addColorStop(1, `rgba(90,170,225,${lv > 1 ? 0.75 : 0.55})`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(s * 0.04, s * 0.04, s * 0.92, s * 0.92, s * 0.16); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = s * 0.045; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.beginPath(); ctx.moveTo(s * 0.14, s * 0.2); ctx.lineTo(s * 0.42, s * 0.12); ctx.lineTo(s * 0.18, s * 0.42); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = s * 0.02; ctx.beginPath();
+    ctx.moveTo(s * 0.62, s * 0.62); ctx.lineTo(s * 0.82, s * 0.86); ctx.moveTo(s * 0.62, s * 0.62); ctx.lineTo(s * 0.88, s * 0.58);
+    if (lv > 1) { ctx.moveTo(s * 0.3, s * 0.72); ctx.lineTo(s * 0.5, s * 0.55); ctx.lineTo(s * 0.46, s * 0.86); }
+    ctx.stroke();
+  });
+  make('fence', (ctx) => {
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(s * 0.06, s * 0.84, s * 0.88, s * 0.08);
+    const plank = (x) => {
+      const g = ctx.createLinearGradient(x, 0, x + s * 0.2, 0); g.addColorStop(0, '#c98a4a'); g.addColorStop(0.5, '#e7b06c'); g.addColorStop(1, '#9a5f2a');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x, s * 0.22); ctx.lineTo(x + s * 0.1, s * 0.08); ctx.lineTo(x + s * 0.2, s * 0.22); ctx.lineTo(x + s * 0.2, s * 0.88); ctx.lineTo(x, s * 0.88); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#5b3414'; ctx.lineWidth = s * 0.025; ctx.stroke();
+    };
+    for (const x of [0.08, 0.4, 0.72]) plank(s * x);
+    for (const y of [0.34, 0.66]) { ctx.fillStyle = '#8a531f'; ctx.fillRect(s * 0.04, s * y, s * 0.92, s * 0.1); ctx.strokeStyle = '#5b3414'; ctx.strokeRect(s * 0.04, s * y, s * 0.92, s * 0.1);
+      ctx.fillStyle = '#d9d9d9'; for (const x of [0.18, 0.5, 0.82]) { ctx.beginPath(); ctx.arc(s * x, s * (y + 0.05), s * 0.022, 0, 7); ctx.fill(); } }
+  });
+  make('mud', (ctx) => {
+    const g = ctx.createRadialGradient(s * 0.42, s * 0.38, s * 0.05, s * 0.5, s * 0.5, s * 0.5);
+    g.addColorStop(0, '#8a5a32'); g.addColorStop(0.7, '#5e3a1c'); g.addColorStop(1, '#3d2410');
+    ctx.fillStyle = g; ctx.beginPath();
+    for (let i = 0; i <= 12; i++) { const a = (i / 12) * Math.PI * 2, rr = s * (0.4 + (i % 2 ? 0.05 : -0.02)); const x = s * 0.5 + Math.cos(a) * rr, y = s * 0.52 + Math.sin(a) * rr * 0.9; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,190,.35)'; for (const [x, y, r] of [[0.36, 0.34, 0.07], [0.6, 0.3, 0.04], [0.66, 0.6, 0.05]]) { ctx.beginPath(); ctx.arc(s * x, s * y, s * r, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#2e1a0a'; for (const [x, y, r] of [[0.46, 0.64, 0.05], [0.3, 0.56, 0.03]]) { ctx.beginPath(); ctx.arc(s * x, s * y, s * r, 0, 7); ctx.fill(); }
+  });
   make('lock', (ctx) => {
     // hafif karartma: kilitli taş "donmuş" görünsün
     ctx.fillStyle = 'rgba(20,28,40,.22)'; ctx.beginPath(); ctx.roundRect(s * 0.04, s * 0.04, s * 0.92, s * 0.92, s * 0.14); ctx.fill();

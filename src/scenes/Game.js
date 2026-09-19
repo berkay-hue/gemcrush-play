@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { Board } from '../engine/board.js';
+import { Board, BOSS_EVERY } from '../engine/board.js';
 import { bestMove } from '../engine/bot.js';
 import { CELL, gemKey } from '../textures.js';
 import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife } from '../meta/save.js';
@@ -70,6 +70,7 @@ export class Game extends Phaser.Scene {
     this.barBg = this.add.rectangle(width / 2, 178, 400, 14, 0x000000, 0.5).setOrigin(0.5).setStrokeStyle(2, 0xffffff, 0.15);
     this.bar = this.add.rectangle(width / 2 - 200, 178, 0, 10, 0xffb71b).setOrigin(0, 0.5);
     this.starMarks = [1, 2, 3].map((i) => this.add.image(width / 2 - 200 + 400 * i / 3 - (i === 3 ? 10 : 0), 178, 'stargray').setScale(0.45));
+    if (this.level.boss) this.buildBoss();
     this.refreshHud();
 
     // boosters bar
@@ -97,6 +98,7 @@ export class Game extends Phaser.Scene {
     this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!this.busy && !this.ended && !this.mode) { this.idle++; if (this.idle === 5) this.showHint(); } } });
 
     if (this.level.id === 1 && !save.tutorialDone) this.tutorial();
+    else if (this.level.id >= 6) this.preLevel();
     // level intro toast
     this.toast(this.level.boss ? `💀 ${t('hardLevel')} 💀` : (this.level.name || `${t('level')} ${this.level.id}`), this.level.boss ? 36 : 30);
     const q = currentQuest(); if (q) this.time.delayedCall(1400, () => { if (!this.ended) this.toast(`📜 ${t('questNext')}: ${q.text[getLang()] || q.text.tr}`, 20); });
@@ -168,6 +170,8 @@ export class Game extends Phaser.Scene {
   overlayKey(r, c) {
     const b = this.board;
     if (b.rock[r][c]) return b.rock[r][c] >= 2 ? 'rock2' : 'rock1';
+    if (b.fence[r][c]) return 'fence';
+    if (b.mud[r][c]) return 'mud';
     if (b.jelly[r][c]) return b.jelly[r][c] >= 2 ? 'jelly2' : 'jelly1';
     return null;
   }
@@ -182,8 +186,9 @@ export class Game extends Phaser.Scene {
       if (ok && ok.startsWith('jelly')) this.overlays[r * 100 + c] = this.add.image(px(c), py(r), ok); // jelly under gem
       const g = b.cells[r][c];
       if (g) this.sprites[r * 100 + c] = this.mkGem(r, c, g);
-      if (ok && ok.startsWith('rock')) this.overlays[r * 100 + c] = this.add.image(px(c), py(r), ok);
+      if (ok && !ok.startsWith('jelly')) this.overlays[r * 100 + c] = this.add.image(px(c), py(r), ok);
       if (g && g.locked && g.type >= 0) { const l = this.add.image(px(c), py(r), 'lock'); this.overlays[(r * 100 + c) + 10000] = l; }
+      if (g && b.ice[r][c]) this.overlays[(r * 100 + c) + 20000] = this.add.image(px(c), py(r), `ice${Math.min(2, b.ice[r][c])}`);
     }
     this.children.bringToTop(this.fx);
   }
@@ -212,6 +217,7 @@ export class Game extends Phaser.Scene {
     if ((b.moves > 5 || b.moves === 0) && this.movesPulse) { this.movesPulse.stop(); this.movesPulse = null; this.movesTxt.setScale(1); }
     this.scoreTxt.setText(String(b.score));
     this.tweens.add({ targets: this.bar, width: 400 * b.objFrac(), duration: 250, ease: 'Cubic.Out' });
+    if (this.bossBar) { const hp = Math.max(0, 1 - b.objFrac()); this.tweens.add({ targets: this.bossBar, width: 196 * hp, duration: 300 }); this.bossTurn.setText(`⚡${BOSS_EVERY - (b.used % BOSS_EVERY)}`); }
     const st = b.stars();
     this.starMarks.forEach((m, i) => {
       const on = st >= i + 1;
@@ -231,6 +237,9 @@ export class Game extends Phaser.Scene {
       else if (p.kind === 'jelly') icon = this.add.image(0, 0, 'jelly2').setScale(0.6);
       else if (p.kind === 'rock') icon = this.add.image(0, 0, 'rock2').setScale(0.6);
       else if (p.kind === 'lock') icon = this.add.image(0, 0, 'lock').setScale(0.6);
+      else if (p.kind === 'ice') icon = this.add.image(0, 0, 'ice2').setScale(0.6);
+      else if (p.kind === 'fence') icon = this.add.image(0, 0, 'fence').setScale(0.6);
+      else if (p.kind === 'mud') icon = this.add.image(0, 0, 'mud').setScale(0.6);
       else icon = txt(this, 0, 0, '🏆', 28);
       const lbl = txt(this, 0, 34, '', 16, '#fff');
       const check = txt(this, 22, -18, '✔', 18, '#2ee06a').setVisible(false);
@@ -350,6 +359,15 @@ export class Game extends Phaser.Scene {
         }
         case 'rock_hit': { sfx.rock(); this.updOverlay(e.at); this.shake(e.at); break; }
         case 'jelly_hit': { this.updOverlay(e.at); break; }
+        case 'fence_hit': case 'mud_hit': { sfx.rock(); this.updOverlay(e.at); break; }
+        case 'ice_hit': { sfx.rock(); this.updIce(e.at); break; }
+        case 'mud_spread': {
+          const k = e.at[0] * 100 + e.at[1]; const s = this.sprites[k];
+          if (s) { delete this.sprites[k]; this.tweens.add({ targets: s, scale: 0, duration: 200, onComplete: () => s.destroy() }); }
+          const m = this.add.image(px(e.at[1]), py(e.at[0]), 'mud').setScale(0.2); this.overlays[k] = m;
+          this.tweens.add({ targets: m, scale: 1, duration: 260, ease: 'Back.Out' }); await this.wait(260); break;
+        }
+        case 'boss_attack': { await this.bossAttackFx(e.cells); break; }
         case 'unlock': { const l = this.overlays[e.at[0] * 100 + e.at[1] + 10000]; if (l) { this.tweens.add({ targets: l, alpha: 0, scale: 1.5, duration: 200, onComplete: () => l.destroy() }); delete this.overlays[e.at[0] * 100 + e.at[1] + 10000]; }
           const s = this.sprites[e.at[0] * 100 + e.at[1]]; const g = this.board.cells[e.at[0]][e.at[1]]; if (s && g) s.setTexture(gemKey(g)); break; }
         case 'clear': {
@@ -580,6 +598,22 @@ export class Game extends Phaser.Scene {
     }
   }
   shake(at) { const o = this.overlays[at[0] * 100 + at[1]]; if (o) this.tweens.add({ targets: o, x: o.x + 4, duration: 40, yoyo: true, repeat: 3 }); }
+  updIce(at) {
+    const k = at[0] * 100 + at[1] + 20000; const o = this.overlays[k]; if (o) { o.destroy(); delete this.overlays[k]; }
+    const lv = this.board.ice[at[0]][at[1]];
+    if (lv) this.overlays[k] = this.add.image(px(at[1]), py(at[0]), `ice${Math.min(2, lv)}`);
+    else this.particles(px(at[1]), py(at[0]), 6);
+  }
+  async bossAttackFx(cells) {
+    if (this.boss) this.tweens.add({ targets: this.boss, scale: 1.35, yoyo: true, duration: 160 });
+    this.toast(t('bossAttack'), 30);
+    for (const [r, c] of cells) {
+      const k = r * 100 + c + 20000; if (this.overlays[k]) this.overlays[k].destroy();
+      const o = this.add.image(px(c), py(r), 'ice1').setScale(2).setAlpha(0); this.overlays[k] = o;
+      this.tweens.add({ targets: o, scale: 1, alpha: 1, duration: 280, ease: 'Quad.In' });
+    }
+    await this.wait(320);
+  }
   updOverlay(at) {
     const k = at[0] * 100 + at[1]; const o = this.overlays[k]; if (o) { o.destroy(); delete this.overlays[k]; }
     const nk = this.overlayKey(at[0], at[1]);
@@ -601,6 +635,65 @@ export class Game extends Phaser.Scene {
   }
   hideHint() { if (this.hintTw) { this.hintTw.stop(); this.hint.forEach((s) => s.active && s.setScale(1)); this.hintTw = null; } }
 
+  // ---------- F13: boss + seviye öncesi güçlendirici ----------
+  buildBoss() {
+    const { width } = this.scale;
+    const x = width / 2 - 80, y = 56;
+    this.add.rectangle(x + 100, y, 200, 14, 0x000000, 0.55).setStrokeStyle(2, 0x9b4dff, 0.9);
+    this.bossBar = this.add.rectangle(x + 2, y, 196, 10, 0xe0203c).setOrigin(0, 0.5);
+    this.boss = txt(this, x - 26, y, '🐺', 34);
+    this.bossTurn = txt(this, x + 226, y, '', 16, '#e7c6ff');
+    this.tweens.add({ targets: this.boss, angle: { from: -8, to: 8 }, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.InOut' });
+  }
+  preLevel() {
+    const { width, height } = this.scale;
+    this.busy = true;
+    const m = modal(this, 560, 430); const cx = width / 2, top = height / 2 - 215;
+    const done = () => { if (!this.ended) this.busy = false; };
+    m.c.list[0].once('pointerup', () => { m.close(); done(); });
+    const origClose = m.close; m.close = () => { origClose(); done(); };
+    m.c.add(txt(this, cx, top + 50, t('preTitle'), 28, '#ffe58a'));
+    m.c.add(txt(this, cx, top + 90, t('preSub'), 16, '#d8e8d0'));
+    const pick = { bomb: false, moves5: false };
+    const items = [['bomb', '💣', t('preBomb')], ['moves5', '+5', t('preMoves')]];
+    items.forEach(([k, ic, label], i) => {
+      const x = cx + (i ? 130 : -130), y = top + 200;
+      const own = save.boosters[k] || 0;
+      const card = this.add.rectangle(x, y, 220, 150, 0x1d4a2a, 1).setStrokeStyle(4, 0x3f7a4d).setInteractive({ useHandCursor: true });
+      const tick = txt(this, x + 88, y - 58, '', 26);
+      m.c.add([card, txt(this, x, y - 30, ic, 44), txt(this, x, y + 18, label, 17), txt(this, x, y + 48, own ? `×${own}` : `🪙 ${CONFIG.preBoosters[k]}`, 16, '#ffe58a'), tick]);
+      card.on('pointerup', () => { pick[k] = !pick[k]; card.setStrokeStyle(4, pick[k] ? 0xffb71b : 0x3f7a4d); tick.setText(pick[k] ? '✅' : ''); });
+    });
+    m.c.add(button(this, cx - 120, top + 350, 210, 64, `📺 ${t('preAd')}`, async () => {
+      const ok = await showRewarded('prelevel');
+      if (!ok) { this.toast(t('adFail') || '—', 22); return; }
+      m.close(); this.applyPre({ bomb: true, moves5: false }, true);
+    }, 0x5b3fa0, '#fff', 18));
+    m.c.add(button(this, cx + 120, top + 350, 210, 64, `▶ ${t('play')}`, () => {
+      if (!this.applyPre(pick, false)) return;
+      m.close();
+    }, 0x2f9e44, '#fff', 22));
+  }
+  applyPre(pick, free) {
+    if (!free) {
+      let coins = 0;
+      for (const k in pick) if (pick[k] && !(save.boosters[k] > 0)) coins += CONFIG.preBoosters[k];
+      if (coins && !spendCoins(coins)) { this.toast(t('notEnoughCoins'), 24); return false; }
+      for (const k in pick) if (pick[k] && save.boosters[k] > 0) save.boosters[k]--;
+      persist();
+    }
+    const used = Object.keys(pick).filter((k) => pick[k]);
+    if (!used.length) return true;
+    track('prelevel_booster', { level: this.level.id, boosters: used.join(','), free });
+    if (pick.moves5) { this.board.moves += 5; sfx.coin(); }
+    if (pick.bomb) {
+      const free2 = this.board.freeGems();
+      if (free2.length) { const [r, c] = free2[Math.floor(Math.random() * free2.length)]; this.board.cells[r][c].special = 'bomb'; sfx.special(); this.syncBoard(); this.burst(px(c), py(r), 0, 'special'); }
+    }
+    this.refreshHud(); this.refreshBoosters();
+    return true;
+  }
+
   // ---------- boosters ----------
   async useBooster(k) {
     if (this.busy || this.ended) return;
@@ -613,7 +706,9 @@ export class Game extends Phaser.Scene {
   }
   setMode(m) { this.mode = m; for (const k in this.boosterBtns) this.boosterBtns[k].setAlpha(m && m !== k ? 0.4 : 1); }
   async applyBoosterAt([r, c]) {
-    const g = this.board.cells[r][c]; if (!g || g.type < 0) return;
+    const g = this.board.cells[r][c];
+    const blk = this.board.blocked(r, c) && this.mode === 'hammer';
+    if (!blk && (!g || g.type < 0)) return;
     const k = this.mode; this.setMode(null);
     if (!this.pendingPay()) return;
     if (k === 'hammer') { const ev = this.board.useHammer(r, c); if (ev) await this.runEvents(ev); }

@@ -12,6 +12,8 @@ export function cloneBoard(b) {
   n.hole = b.hole;
   n.jelly = b.jelly.map((r) => r.slice());
   n.rock = b.rock.map((r) => r.slice());
+  n.ice = b.ice.map((r) => r.slice()); n.fence = b.fence.map((r) => r.slice()); n.mud = b.mud.map((r) => r.slice());
+  n.used = b.used; n.mudHit = 0;
   n.cells = b.cells.map((r) => r.map((g) => (g ? { ...g } : null)));
   // cloned sims use a fixed rng so evaluation is deterministic
   let s = 12345;

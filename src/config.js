@@ -7,6 +7,7 @@ export const CONFIG = {
   lives: { max: 5, regenMs: 30 * 60 * 1000 },
   coins: { start: 100, winReward: 15, threeStar: 30, perMoveLeft: 3 },
   boosters: { hammer: 150, moves5: 200, shuffle: 80, prism: 250 },
+  preBoosters: { bomb: 120, moves5: 200 }, // seviye öncesi (F13)
   ads: {
     interstitialEvery: 3,          // every N level ends (win or lose)
     rewardedExtraMoves: 5,

@@ -16,10 +16,15 @@
 // Layers: jelly[r][c] (0..2, cleared by clearing the cell), rock[r][c] (hp, damaged by
 // adjacent clears or specials), hole[r][c] (no cell), lock on gem (chain; a match unlocks
 // instead of clearing).
+// F13: ice[r][c] (0..2, covers a gem: it cannot move; clearing the cell cracks the ice),
+// fence[r][c] (blocker, broken by specials/boosters or an adjacent special/cascade clear), mud[r][c] (blocker, broken by
+// adjacent clears; spreads onto a neighbour gem after any move that clears no mud).
+// Boss levels: every BOSS_EVERY moves the boss freezes BOSS_ICE random gems.
 
 import { makeRng } from './rng.js';
 
 export const SPECIALS = ['line_h', 'line_v', 'bomb', 'prism'];
+export const BOSS_EVERY = 5, BOSS_ICE = 2;
 
 export class Board {
   constructor(level, seed = 1, perks = null) {
@@ -37,13 +42,18 @@ export class Board {
     this.hole = grid(this.H, this.W, false);
     this.jelly = grid(this.H, this.W, 0);
     this.rock = grid(this.H, this.W, 0);
+    this.ice = grid(this.H, this.W, 0);
+    this.fence = grid(this.H, this.W, 0);
+    this.mud = grid(this.H, this.W, 0);
+    this.used = 0; this.mudHit = 0;
     this.cells = grid(this.H, this.W, null);
     this.applyLayout(level.layout);
     this.fillInitial();
   }
 
   // layout: array of H strings, W chars each.
-  // '.' normal, 'X' hole, 'j' jelly1, 'J' jelly2, 'r' rock1, 'R' rock2, 'l' locked gem
+  // '.' normal, 'X' hole, 'j' jelly1, 'J' jelly2, 'r' rock1, 'R' rock2, 'l' locked gem,
+  // 'i' ice1, 'I' ice2, 'f' fence, 'm' mud
   applyLayout(layout) {
     if (!layout) return;
     for (let r = 0; r < this.H; r++)
@@ -55,13 +65,17 @@ export class Board {
         else if (ch === 'r') this.rock[r][c] = 1;
         else if (ch === 'R') this.rock[r][c] = 2;
         else if (ch === 'l') this.cells[r][c] = { type: -1, special: null, locked: true };
+        else if (ch === 'i') this.ice[r][c] = 1;
+        else if (ch === 'I') this.ice[r][c] = 2;
+        else if (ch === 'f') this.fence[r][c] = 1;
+        else if (ch === 'm') this.mud[r][c] = 1;
       }
   }
 
   fillInitial() {
     for (let r = 0; r < this.H; r++)
       for (let c = 0; c < this.W; c++) {
-        if (this.hole[r][c] || this.rock[r][c]) { this.cells[r][c] = null; continue; }
+        if (this.hole[r][c] || this.blocked(r, c)) { this.cells[r][c] = null; continue; }
         const locked = !!(this.cells[r][c] && this.cells[r][c].locked);
         let t;
         let guard = 0;
@@ -80,6 +94,10 @@ export class Board {
   isPlayable(r, c) {
     return r >= 0 && c >= 0 && r < this.H && c < this.W && !this.hole[r][c];
   }
+  // cell holds no gem (rock / fence / mud)
+  blocked(r, c) { return this.rock[r][c] > 0 || this.fence[r][c] > 0 || this.mud[r][c] > 0; }
+  // gem that cannot move (chain or ice)
+  stuck(r, c) { const g = this.cells[r][c]; return !!(g && (g.locked || this.ice[r][c] > 0)); }
   gem(r, c) {
     return this.isPlayable(r, c) ? this.cells[r][c] : null;
   }
@@ -89,7 +107,7 @@ export class Board {
   canSwap(r1, c1, r2, c2) {
     if (Math.abs(r1 - r2) + Math.abs(c1 - c2) !== 1) return false;
     const a = this.gem(r1, c1), b = this.gem(r2, c2);
-    if (!a || !b || a.locked || b.locked) return false;
+    if (!a || !b || this.stuck(r1, c1) || this.stuck(r2, c2)) return false;
     // any special gem can be swapped in any direction; it fires on its own
     if (a.special || b.special) return true;
     this.swapCells(r1, c1, r2, c2);
@@ -119,7 +137,7 @@ export class Board {
     for (let r = 0; r < this.H; r++)
       for (let c = 0; c < this.W; c++) {
         const g = this.gem(r, c);
-        if (g && !g.locked && !g.special) pool.push(g.type);
+        if (g && !this.stuck(r, c) && !g.special) pool.push(g.type);
       }
     let tries = 0;
     do {
@@ -131,7 +149,7 @@ export class Board {
       for (let r = 0; r < this.H; r++)
         for (let c = 0; c < this.W; c++) {
           const g = this.gem(r, c);
-          if (g && !g.locked && !g.special) g.type = pool[k++];
+          if (g && !this.stuck(r, c) && !g.special) g.type = pool[k++];
         }
       tries++;
     } while (tries < 200 && (this.findMatches().length || !this.findValidMoves().length));
@@ -148,21 +166,65 @@ export class Board {
     this.swapCells(r1, c1, r2, c2);
     this.events.push({ type: 'swap', from: [r1, c1], to: [r2, c2] });
 
+    const mud0 = this.count(this.mud);
+    this.mudHit = 0;
     const comboHandled = this.applySwapCombo(r1, c1, r2, c2, a, b);
     this.resolve(comboHandled ? null : [[r1, c1], [r2, c2]]);
+    this.used++;
+    if (!this.isWon()) {
+      if (mud0 && !this.mudHit) this.spreadMud();
+      if (this.level.boss && this.used % BOSS_EVERY === 0 && this.moves > 0) this.bossAttack();
+    }
     if (!this.findValidMoves().length && !this.isWon()) this.shuffle();
     return this.events;
   }
 
   // Booster: remove one gem (hammer)
   useHammer(r, c) {
-    const g = this.gem(r, c);
-    if (!g) return null;
+    if (!this.isPlayable(r, c) || (!this.cells[r][c] && !this.blocked(r, c))) return null;
     this.events = [];
     this.cascade = 0;
     this.clearSet(new Set([key(r, c)]), 'hammer');
     this.resolve(null);
     return this.events;
+  }
+
+  // plain, free gems (no special / lock / ice / jelly-free not required)
+  freeGems() {
+    const out = [];
+    for (let r = 0; r < this.H; r++)
+      for (let c = 0; c < this.W; c++) {
+        const g = this.gem(r, c);
+        if (g && !g.special && !this.stuck(r, c) && g.type >= 0) out.push([r, c]);
+      }
+    return out;
+  }
+  spreadMud() {
+    const cand = [];
+    for (let r = 0; r < this.H; r++)
+      for (let c = 0; c < this.W; c++) {
+        if (!this.mud[r][c]) continue;
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const rr = r + dr, cc = c + dc, g = this.gem(rr, cc);
+          if (g && !g.special && !this.stuck(rr, cc) && !this.jelly[rr][cc]) cand.push([rr, cc, r, c]);
+        }
+      }
+    if (!cand.length) return;
+    const [r, c, fr, fc] = cand[this.rng.int(cand.length)];
+    this.cells[r][c] = null;
+    this.mud[r][c] = 1;
+    this.events.push({ type: 'mud_spread', at: [r, c], from: [fr, fc] });
+    if (!this.findValidMoves().length) this.shuffle();
+  }
+  bossAttack() {
+    const free = this.freeGems();
+    const hit = [];
+    for (let i = 0; i < BOSS_ICE && free.length; i++) {
+      const [r, c] = free.splice(this.rng.int(free.length), 1)[0];
+      this.ice[r][c] = 1; hit.push([r, c]);
+    }
+    if (hit.length) this.events.push({ type: 'boss_attack', cells: hit });
+    if (!this.findValidMoves().length) this.shuffle();
   }
 
   // ---------- Combos ----------
@@ -374,6 +436,18 @@ export class Board {
       done.add(k);
       const [r, c] = unkey(k);
       if (!this.isPlayable(r, c)) continue;
+      if (this.fence[r][c] > 0) {
+        this.fence[r][c]--;
+        this.events.push({ type: 'fence_hit', at: [r, c], left: 0 });
+        this.score += 40;
+        continue;
+      }
+      if (this.mud[r][c] > 0) {
+        this.mud[r][c]--; this.mudHit++;
+        this.events.push({ type: 'mud_hit', at: [r, c], left: 0 });
+        this.score += 30;
+        continue;
+      }
       // rock: takes damage instead
       if (this.rock[r][c] > 0) {
         this.rock[r][c]--;
@@ -383,6 +457,12 @@ export class Board {
       }
       const g = this.cells[r][c];
       if (!g) continue;
+      if (this.ice[r][c] > 0) {
+        this.ice[r][c]--;
+        this.events.push({ type: 'ice_hit', at: [r, c], left: this.ice[r][c] });
+        this.score += 30;
+        continue;
+      }
       if (g.locked) {
         g.locked = false;
         this.events.push({ type: 'unlock', at: [r, c] });
@@ -422,6 +502,16 @@ export class Board {
           done.add(key(rr, cc));
           this.events.push({ type: 'rock_hit', at: [rr, cc], left: this.rock[rr][cc] });
           this.score += 30;
+        } else if (this.isPlayable(rr, cc) && this.mud[rr][cc] > 0 && !done.has(key(rr, cc))) {
+          this.mud[rr][cc]--; this.mudHit++;
+          done.add(key(rr, cc));
+          this.events.push({ type: 'mud_hit', at: [rr, cc], left: 0 });
+          this.score += 30;
+        } else if (this.isPlayable(rr, cc) && this.fence[rr][cc] > 0 && !done.has(key(rr, cc)) && (fromSpecial || this.cascade > 1)) {
+          this.fence[rr][cc]--;
+          done.add(key(rr, cc));
+          this.events.push({ type: 'fence_hit', at: [rr, cc], left: 0 });
+          this.score += 40;
         }
       }
     }
@@ -436,14 +526,14 @@ export class Board {
     for (let c = 0; c < this.W; c++) {
       let write = this.H - 1;
       for (let r = this.H - 1; r >= 0; r--) {
-        if (this.hole[r][c] || this.rock[r][c]) {
+        if (this.hole[r][c] || this.blocked(r, c)) {
           // barrier: everything above stacks on top of it
           write = r - 1;
           continue;
         }
         const g = this.cells[r][c];
         if (g) {
-          if (g.locked) { write = r - 1; continue; } // locked gems do not fall
+          if (g.locked || this.ice[r][c]) { write = r - 1; continue; } // locked / frozen gems do not fall
           if (write !== r) {
             this.cells[write][c] = g;
             this.cells[r][c] = null;
@@ -458,7 +548,7 @@ export class Board {
     for (let c = 0; c < this.W; c++) {
       let above = 0;
       for (let r = 0; r < this.H; r++) {
-        if (this.hole[r][c] || this.rock[r][c]) { above = 0; continue; }
+        if (this.hole[r][c] || this.blocked(r, c)) { above = 0; continue; }
         if (!this.cells[r][c]) {
           const t = this.rng.int(this.types);
           this.cells[r][c] = { type: t, special: null, locked: false };
@@ -488,6 +578,9 @@ export class Board {
       const total = this.count(this.rock);
       out.push({ kind: 'rock', target: obj.rock, current: obj.rock - total });
     }
+    if (obj.ice) out.push({ kind: 'ice', target: obj.ice, current: Math.max(0, obj.ice - this.count(this.ice)) });
+    if (obj.fence) out.push({ kind: 'fence', target: obj.fence, current: Math.max(0, obj.fence - this.count(this.fence)) });
+    if (obj.mud) out.push({ kind: 'mud', target: obj.mud, current: Math.max(0, obj.mud - this.count(this.mud)) });
     if (obj.lock) {
       let left = 0;
       for (let r = 0; r < this.H; r++) for (let c = 0; c < this.W; c++) if (this.cells[r][c] && this.cells[r][c].locked) left++;
