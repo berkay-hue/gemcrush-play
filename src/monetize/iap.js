@@ -1,0 +1,52 @@
+// In-app purchases. Native: cordova-plugin-purchase (CdvPurchase) via Capacitor.
+// Web/dev: simulated purchase (grants immediately) so the shop flow is testable.
+import { CONFIG } from '../config.js';
+import { save, addCoins, addGems, persist } from '../meta/save.js';
+import { track } from '../analytics.js';
+
+let store = null;
+
+export async function initIap() {
+  const CdvPurchase = window.CdvPurchase;
+  if (!CdvPurchase) return; // web fallback
+  store = CdvPurchase.store;
+  const platform = CdvPurchase.Platform[window.Capacitor?.getPlatform?.() === 'ios' ? 'APPLE_APPSTORE' : 'GOOGLE_PLAY'];
+  for (const p of CONFIG.iap.products) {
+    store.register({ id: p.id, type: p.removeAds ? CdvPurchase.ProductType.NON_CONSUMABLE : CdvPurchase.ProductType.CONSUMABLE, platform });
+  }
+  store.when().approved((tx) => tx.verify()).verified((r) => { grant(r.productId); r.finish(); });
+  await store.initialize([platform]);
+}
+
+function grant(productId) {
+  const p = CONFIG.iap.products.find((x) => x.id === productId);
+  if (!p) return;
+  if (p.removeAds) save.removeAds = true;
+  if (p.coins) addCoins(p.coins);
+  if (p.gems) addGems(p.gems);
+  persist();
+  track('purchase', { product: productId });
+}
+
+export function price(p) {
+  if (store) { const prod = store.get(p.id); if (prod?.pricing?.price) return prod.pricing.price; }
+  return p.priceLabel;
+}
+
+export async function buy(p) {
+  track('purchase_start', { product: p.id });
+  if (store) {
+    const prod = store.get(p.id);
+    if (!prod) return false;
+    await prod.getOffer().order();
+    return true; // grant happens via verified() callback
+  }
+  // web: simulate
+  const ok = window.confirm(`[TEST] Buy ${p.id} for ${p.priceLabel}?`);
+  if (ok) grant(p.id);
+  return ok;
+}
+
+export async function restore() {
+  if (store) await store.restorePurchases();
+}

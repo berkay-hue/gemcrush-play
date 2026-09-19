@@ -1,0 +1,42 @@
+const DICT = {
+  tr: {
+    play: 'OYNA', level: 'Seviye', moves: 'Hamle', score: 'Puan', goal: 'Hedef',
+    win: 'Seviye Tamamlandı!', lose: 'Hamle Bitti', retry: 'Tekrar', next: 'Sonraki', map: 'Harita', farm: 'Çiftliğim', farmOwned: 'Senin! 🎉', farmNeeds: 'Önce gerekli', farmHave: 'sende', farmBuy: 'Satın al', collect: 'Topla', market: 'Pazar', nestEmpty: 'Kuluçka için yumurta topla.', nestReady: 'Civciv çıkmak üzere!', nestWins: 'bölüm kazan', hatch: 'Çıkar', incubate: 'Kuluçkaya koy', rush: 'Hızlandır', book: 'Koleksiyon', seasonOnly: 'Yalnız bu mevsim satışta!', questClaim: 'Al', questAll: 'Tüm görevler bitti! 🎉', questNext: 'Görev', plant: 'Ek', planted: 'ekildi', minShort: 'dk', cropTip: 'Her kazandığın bölüm ekinleri 5 dk hızlandırır!', cropFaster: 'Ekinler hızlandı',
+    farmEarn: 'Yeterli yıldız yok. Seviye geç, yıldız kazan!',
+    extraMoves: '+5 Hamle', watchAd: 'Reklam izle', buy: 'Satın al', coins: 'altın',
+    noLives: 'Canın kalmadı', nextLife: 'Sonraki can', lifeAd: 'Reklam izle, 1 can kazan',
+    shop: 'Mağaza', land: 'Arazi', landHint: 'Genişlet, daha çok yer aç', expand: 'Genişlet', upgrade: 'Yükselt', needCoins: 'Yeterli altın yok', ambarFull: 'Ambar dolu! Sat ya da yükselt', edit: 'Düzenle', editHint: 'Taşımak için bir yapıya dokun', done: 'Bitti', placeHint: 'Yerleştirmek için zemine dokun', place: 'Yerleştir', placeBad: 'Buraya sığmıyor', free: 'Bedava', removeAds: 'Reklamları kaldır', restore: 'Satın alımları geri yükle',
+    daily: 'Günlük Ödül', claim: 'AL', day: 'Gün', streak: 'seri',
+    hammer: 'Çekiç', moves5: '+5 Hamle', shuffle: 'Karıştır', prism: 'Prizma ile başla',
+    objScore: 'puan topla', objCollect: 'topla', objJelly: 'jöleyi temizle', objRock: 'kayayı kır', objLock: 'zinciri kır',
+    tapToContinue: 'Devam etmek için dokun', settings: 'Ayarlar', profile: 'Profil', tapAvatar: 'Değiştirmek için avatara dokun', setName: 'Adını yaz', codeHint: 'Kayıt kodu ile ilerlemeni başka cihaza taşıyabilirsin.', copyCode: 'Kayıt kodunu kopyala', loadCode: 'Kodla ilerleme yükle', copied: 'Kopyalandı!', badCode: 'Geçersiz kod', wipe: 'Hesabımı ve verilerimi sil', wipeConfirm: 'Tüm ilerlemen kalıcı olarak silinecek. Emin misin?', privacy: 'Gizlilik politikası', sound: 'Ses', lang: 'Dil',
+    stars: 'yıldız', bonus: 'Kalan hamle bonusu', combo: 'KOMBO!', great: 'Harika!', amazing: 'Muhteşem!', legendary: 'Efsane!',
+    tut1: 'Yan yana 3 mücevheri eşle', tut2: '4\'lü = Işın, L/T = Bomba, 5\'li = Prizma', tut3: 'İki özeli takas et: KOMBO',
+    outOfMoves: 'Hamle kalmadı. Devam et?', continueFor: 'Devam et', notEnoughCoins: 'Yeterli altın yok',
+    lives: 'Can', full: 'DOLU', farmStars: 'çiftlik yıldızı',
+  },
+  en: {
+    play: 'PLAY', level: 'Level', moves: 'Moves', score: 'Score', goal: 'Goal',
+    win: 'Level Complete!', lose: 'Out of Moves', retry: 'Retry', next: 'Next', map: 'Map', farm: 'My Farm', farmOwned: 'Yours! 🎉', farmNeeds: 'Requires', farmHave: 'you have', farmBuy: 'Buy', collect: 'Collect', market: 'Market', nestEmpty: 'Collect an egg to incubate.', nestReady: 'A chick is about to hatch!', nestWins: 'levels won', hatch: 'Hatch', incubate: 'Incubate', rush: 'Rush', book: 'Collection', seasonOnly: 'On sale this season only!', questClaim: 'Claim', questAll: 'All quests done! 🎉', questNext: 'Quest', plant: 'Plant', planted: 'planted', minShort: 'min', cropTip: 'Every level you win makes crops grow 5 min faster!', cropFaster: 'Crops sped up',
+    farmEarn: 'Not enough stars. Beat levels to earn more!',
+    extraMoves: '+5 Moves', watchAd: 'Watch ad', buy: 'Buy', coins: 'coins',
+    noLives: 'No lives left', nextLife: 'Next life in', lifeAd: 'Watch ad, get 1 life',
+    shop: 'Shop', land: 'Land', landHint: 'Expand to get more room', expand: 'Expand', upgrade: 'Upgrade', needCoins: 'Not enough coins', ambarFull: 'Barn full! Sell or upgrade', edit: 'Edit', editHint: 'Tap a building to move it', done: 'Done', placeHint: 'Tap the ground to place', place: 'Place', placeBad: 'Does not fit here', free: 'Free', removeAds: 'Remove ads', restore: 'Restore purchases',
+    daily: 'Daily Reward', claim: 'CLAIM', day: 'Day', streak: 'streak',
+    hammer: 'Hammer', moves5: '+5 Moves', shuffle: 'Shuffle', prism: 'Start with Prism',
+    objScore: 'score', objCollect: 'collect', objJelly: 'clear jelly', objRock: 'break rocks', objLock: 'break chains',
+    tapToContinue: 'Tap to continue', settings: 'Settings', profile: 'Profile', tapAvatar: 'Tap the avatar to change it', setName: 'Enter your name', codeHint: 'Use your save code to move progress to another device.', copyCode: 'Copy save code', loadCode: 'Load progress from code', copied: 'Copied!', badCode: 'Invalid code', wipe: 'Delete my account & data', wipeConfirm: 'All progress will be permanently deleted. Are you sure?', privacy: 'Privacy policy', sound: 'Sound', lang: 'Language',
+    stars: 'stars', bonus: 'Leftover moves bonus', combo: 'COMBO!', great: 'Great!', amazing: 'Amazing!', legendary: 'Legendary!',
+    tut1: 'Match 3 gems in a row', tut2: '4 = Beam, L/T = Bomb, 5 = Prism', tut3: 'Swap two specials: COMBO',
+    outOfMoves: 'Out of moves. Continue?', continueFor: 'Continue for', notEnoughCoins: 'Not enough coins',
+    lives: 'Lives', full: 'FULL', farmStars: 'farm stars',
+  },
+};
+let lang = 'en';
+export function setLang(l) { lang = DICT[l] ? l : 'en'; }
+export function getLang() { return lang; }
+export function detectLang() {
+  const n = (navigator.language || 'en').toLowerCase();
+  return n.startsWith('tr') ? 'tr' : 'en';
+}
+export const t = (k) => DICT[lang][k] ?? DICT.en[k] ?? k;

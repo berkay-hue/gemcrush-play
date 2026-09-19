@@ -1,0 +1,2744 @@
+[
+ {
+  "id": 1,
+  "name": "Seviye 1",
+  "gemTypes": 5,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "score": 2500
+  },
+  "stars": [
+   0,
+   6500,
+   7900
+  ],
+  "seed": 1001,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 2,
+  "name": "Seviye 2",
+  "gemTypes": 5,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "score": 2500
+  },
+  "stars": [
+   0,
+   6900,
+   9100
+  ],
+  "seed": 1002,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 3,
+  "name": "Seviye 3",
+  "gemTypes": 5,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "score": 2500
+  },
+  "stars": [
+   0,
+   6200,
+   8400
+  ],
+  "seed": 1003,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 4,
+  "name": "Seviye 4",
+  "gemTypes": 5,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "2": 12
+   }
+  },
+  "stars": [
+   0,
+   5300,
+   7500
+  ],
+  "seed": 1004,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 5,
+  "name": "Seviye 5",
+  "gemTypes": 5,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "1": 12
+   }
+  },
+  "stars": [
+   0,
+   6000,
+   9300
+  ],
+  "seed": 1005,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 6,
+  "name": "Seviye 6",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "3": 12
+   }
+  },
+  "stars": [
+   0,
+   4700,
+   6200
+  ],
+  "seed": 1006,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 7,
+  "name": "Seviye 7",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "3": 12
+   }
+  },
+  "stars": [
+   0,
+   5000,
+   6400
+  ],
+  "seed": 1007,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 8,
+  "name": "Seviye 8",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "0": 12
+   }
+  },
+  "stars": [
+   0,
+   5400,
+   7100
+  ],
+  "seed": 1008,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 1
+ },
+ {
+  "id": 9,
+  "name": "Seviye 9",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   6300,
+   8400
+  ],
+  "seed": 1009,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 0.9
+ },
+ {
+  "id": 10,
+  "name": "Seviye 10",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   6200,
+   9000
+  ],
+  "seed": 1010,
+  "targetWin": 0.9,
+  "wall": false,
+  "botWin": 0.95
+ },
+ {
+  "id": 11,
+  "name": "Seviye 11",
+  "gemTypes": 6,
+  "moves": 16,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5200,
+   6700
+  ],
+  "seed": 1011,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 12,
+  "name": "Seviye 12",
+  "gemTypes": 6,
+  "moves": 16,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   6400,
+   7700
+  ],
+  "seed": 1012,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.7
+ },
+ {
+  "id": 13,
+  "name": "Seviye 13",
+  "gemTypes": 6,
+  "moves": 17,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5700,
+   8300
+  ],
+  "seed": 1013,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.7
+ },
+ {
+  "id": 14,
+  "name": "Seviye 14",
+  "gemTypes": 6,
+  "moves": 8,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2300,
+   3100
+  ],
+  "seed": 1014,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.9
+ },
+ {
+  "id": 15,
+  "name": "Seviye 15",
+  "gemTypes": 6,
+  "moves": 14,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "4": 15
+   }
+  },
+  "stars": [
+   0,
+   4400,
+   5800
+  ],
+  "seed": 1015,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 16,
+  "name": "Seviye 16",
+  "gemTypes": 6,
+  "moves": 15,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   4700,
+   6800
+  ],
+  "seed": 1016,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 17,
+  "name": "Seviye 17",
+  "gemTypes": 6,
+  "moves": 26,
+  "layout": [
+   "........",
+   ".l....l.",
+   "........",
+   "..llll..",
+   "..llll..",
+   "........",
+   ".l....l.",
+   "........"
+  ],
+  "objectives": {
+   "lock": 12
+  },
+  "stars": [
+   0,
+   6300,
+   8200
+  ],
+  "seed": 1017,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 18,
+  "name": "Seviye 18",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   5600,
+   8700
+  ],
+  "seed": 1018,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 19,
+  "name": "Seviye 19",
+  "gemTypes": 6,
+  "moves": 35,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   13700,
+   18300
+  ],
+  "seed": 1019,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 20,
+  "name": "Seviye 20",
+  "gemTypes": 6,
+  "moves": 15,
+  "layout": null,
+  "objectives": {
+   "score": 3200
+  },
+  "stars": [
+   0,
+   4800,
+   6300
+  ],
+  "seed": 1020,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.65
+ },
+ {
+  "id": 21,
+  "name": "Seviye 21",
+  "gemTypes": 6,
+  "moves": 9,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "4": 18
+   }
+  },
+  "stars": [
+   0,
+   3600,
+   5600
+  ],
+  "seed": 1021,
+  "targetWin": 0.65,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 22,
+  "name": "Seviye 22",
+  "gemTypes": 6,
+  "moves": 17,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5200,
+   7600
+  ],
+  "seed": 1022,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 23,
+  "name": "Seviye 23",
+  "gemTypes": 6,
+  "moves": 17,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   4700,
+   7700
+  ],
+  "seed": 1023,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 24,
+  "name": "Seviye 24",
+  "gemTypes": 6,
+  "moves": 9,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2200,
+   3400
+  ],
+  "seed": 1024,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.7
+ },
+ {
+  "id": 25,
+  "name": "Seviye 25",
+  "gemTypes": 6,
+  "moves": 15,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "0": 18
+   }
+  },
+  "stars": [
+   0,
+   3600,
+   5500
+  ],
+  "seed": 1025,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.75
+ },
+ {
+  "id": 26,
+  "name": "Seviye 26",
+  "gemTypes": 6,
+  "moves": 28,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   9000,
+   11800
+  ],
+  "seed": 1026,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.6
+ },
+ {
+  "id": 27,
+  "name": "Seviye 27",
+  "gemTypes": 6,
+  "moves": 26,
+  "layout": [
+   "........",
+   ".l....l.",
+   "........",
+   "..llll..",
+   "..llll..",
+   "........",
+   ".l....l.",
+   "........"
+  ],
+  "objectives": {
+   "lock": 12
+  },
+  "stars": [
+   0,
+   6000,
+   8700
+  ],
+  "seed": 1027,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.65
+ },
+ {
+  "id": 28,
+  "name": "Seviye 28",
+  "gemTypes": 6,
+  "moves": 19,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6600,
+   8300
+  ],
+  "seed": 1028,
+  "targetWin": 0.65,
+  "wall": true,
+  "botWin": 0.3
+ },
+ {
+  "id": 29,
+  "name": "Seviye 29",
+  "gemTypes": 6,
+  "moves": 36,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   15100,
+   19300
+  ],
+  "seed": 1029,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.3
+ },
+ {
+  "id": 30,
+  "name": "Seviye 30",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "score": 3900
+  },
+  "stars": [
+   0,
+   5300,
+   7800
+  ],
+  "seed": 1030,
+  "targetWin": 0.65,
+  "wall": false,
+  "botWin": 0.7
+ },
+ {
+  "id": 31,
+  "name": "Seviye 31",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "collect": {
+    "0": 21,
+    "1": 21
+   }
+  },
+  "stars": [
+   0,
+   5400,
+   7200
+  ],
+  "seed": 1031,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.6
+ },
+ {
+  "id": 32,
+  "name": "Seviye 32",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   8500,
+   11000
+  ],
+  "seed": 1032,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 33,
+  "name": "Seviye 33",
+  "gemTypes": 6,
+  "moves": 13,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5200,
+   7100
+  ],
+  "seed": 1033,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 34,
+  "name": "Seviye 34",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "........",
+   "........",
+   "........",
+   "rrrrrrrr",
+   "RRRRRRRR",
+   "........",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "rock": 24
+  },
+  "stars": [
+   0,
+   6700,
+   8800
+  ],
+  "seed": 1034,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 35,
+  "name": "Seviye 35",
+  "gemTypes": 6,
+  "moves": 16,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "collect": {
+    "0": 21,
+    "1": 21
+   }
+  },
+  "stars": [
+   0,
+   4800,
+   6600
+  ],
+  "seed": 1035,
+  "targetWin": 0.5,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 36,
+  "name": "Seviye 36",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   9300,
+   12500
+  ],
+  "seed": 1036,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 37,
+  "name": "Seviye 37",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".l....l.",
+   "........",
+   "..llll..",
+   "..llll..",
+   "........",
+   ".l....l.",
+   "........"
+  ],
+  "objectives": {
+   "lock": 12
+  },
+  "stars": [
+   0,
+   6700,
+   8000
+  ],
+  "seed": 1037,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 38,
+  "name": "Seviye 38",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6200,
+   8800
+  ],
+  "seed": 1038,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 39,
+  "name": "Seviye 39",
+  "gemTypes": 6,
+  "moves": 35,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   15600,
+   19100
+  ],
+  "seed": 1039,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 40,
+  "name": "Seviye 40",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "XXX..XXX",
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX",
+   "XXX..XXX"
+  ],
+  "objectives": {
+   "score": 4600
+  },
+  "stars": [
+   0,
+   5500,
+   7100
+  ],
+  "seed": 1040,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 41,
+  "name": "Seviye 41",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "4": 24,
+    "5": 24
+   }
+  },
+  "stars": [
+   0,
+   6100,
+   7900
+  ],
+  "seed": 1041,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 42,
+  "name": "Seviye 42",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   9000,
+   10500
+  ],
+  "seed": 1042,
+  "targetWin": 0.5,
+  "wall": true,
+  "botWin": 0.3
+ },
+ {
+  "id": 43,
+  "name": "Seviye 43",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   7800,
+   10500
+  ],
+  "seed": 1043,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 44,
+  "name": "Seviye 44",
+  "gemTypes": 6,
+  "moves": 9,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2300,
+   3000
+  ],
+  "seed": 1044,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 45,
+  "name": "Seviye 45",
+  "gemTypes": 6,
+  "moves": 20,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "3": 24,
+    "5": 24
+   }
+  },
+  "stars": [
+   0,
+   5900,
+   8000
+  ],
+  "seed": 1045,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 46,
+  "name": "Seviye 46",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   8300,
+   9900
+  ],
+  "seed": 1046,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 47,
+  "name": "Seviye 47",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "........",
+   ".l....l.",
+   "........",
+   "..llll..",
+   "..llll..",
+   "........",
+   ".l....l.",
+   "........"
+  ],
+  "objectives": {
+   "lock": 12
+  },
+  "stars": [
+   0,
+   6300,
+   7800
+  ],
+  "seed": 1047,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 48,
+  "name": "Seviye 48",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6000,
+   9200
+  ],
+  "seed": 1048,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 49,
+  "name": "Seviye 49",
+  "gemTypes": 6,
+  "moves": 28,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   10800,
+   19200
+  ],
+  "seed": 1049,
+  "targetWin": 0.5,
+  "wall": true,
+  "botWin": 0.2
+ },
+ {
+  "id": 50,
+  "name": "Seviye 50",
+  "gemTypes": 6,
+  "moves": 25,
+  "layout": [
+   "XXX..XXX",
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX",
+   "XXX..XXX"
+  ],
+  "objectives": {
+   "score": 5300
+  },
+  "stars": [
+   0,
+   5700,
+   7000
+  ],
+  "seed": 1050,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 51,
+  "name": "Seviye 51",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "0": 27,
+    "2": 27
+   }
+  },
+  "stars": [
+   0,
+   7000,
+   8600
+  ],
+  "seed": 1051,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 52,
+  "name": "Seviye 52",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   7100,
+   9500
+  ],
+  "seed": 1052,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.6
+ },
+ {
+  "id": 53,
+  "name": "Seviye 53",
+  "gemTypes": 6,
+  "moves": 20,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   7500,
+   9600
+  ],
+  "seed": 1053,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.6
+ },
+ {
+  "id": 54,
+  "name": "Seviye 54",
+  "gemTypes": 6,
+  "moves": 8,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2300,
+   3700
+  ],
+  "seed": 1054,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 55,
+  "name": "Seviye 55",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "3": 27,
+    "4": 27
+   }
+  },
+  "stars": [
+   0,
+   5700,
+   7100
+  ],
+  "seed": 1055,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 56,
+  "name": "Seviye 56",
+  "gemTypes": 6,
+  "moves": 10,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5700,
+   7400
+  ],
+  "seed": 1056,
+  "targetWin": 0.5,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 57,
+  "name": "Seviye 57",
+  "gemTypes": 6,
+  "moves": 25,
+  "layout": [
+   "XX....XX",
+   "X.llll.X",
+   ".ljjjjl.",
+   ".ljJJjl.",
+   ".ljJJjl.",
+   ".ljjjjl.",
+   "X.llll.X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "lock": 16,
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   8000,
+   10100
+  ],
+  "seed": 1057,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 58,
+  "name": "Seviye 58",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6600,
+   8800
+  ],
+  "seed": 1058,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 59,
+  "name": "Seviye 59",
+  "gemTypes": 6,
+  "moves": 36,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   13900,
+   17900
+  ],
+  "seed": 1059,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 60,
+  "name": "Seviye 60",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "score": 6000
+  },
+  "stars": [
+   0,
+   7000,
+   9400
+  ],
+  "seed": 1060,
+  "targetWin": 0.5,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 61,
+  "name": "Seviye 61",
+  "gemTypes": 6,
+  "moves": 26,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "1": 30,
+    "4": 30,
+    "5": 30
+   }
+  },
+  "stars": [
+   0,
+   6900,
+   8600
+  ],
+  "seed": 1061,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 62,
+  "name": "Seviye 62",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   7600,
+   8900
+  ],
+  "seed": 1062,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 63,
+  "name": "Seviye 63",
+  "gemTypes": 6,
+  "moves": 9,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5200,
+   7200
+  ],
+  "seed": 1063,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 64,
+  "name": "Seviye 64",
+  "gemTypes": 6,
+  "moves": 8,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2000,
+   3200
+  ],
+  "seed": 1064,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.55
+ },
+ {
+  "id": 65,
+  "name": "Seviye 65",
+  "gemTypes": 6,
+  "moves": 24,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "3": 30,
+    "4": 30,
+    "5": 30
+   }
+  },
+  "stars": [
+   0,
+   6800,
+   9000
+  ],
+  "seed": 1065,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 66,
+  "name": "Seviye 66",
+  "gemTypes": 6,
+  "moves": 11,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   4400,
+   6100
+  ],
+  "seed": 1066,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 67,
+  "name": "Seviye 67",
+  "gemTypes": 6,
+  "moves": 30,
+  "layout": [
+   "XX....XX",
+   "X.llll.X",
+   ".ljjjjl.",
+   ".ljJJjl.",
+   ".ljJJjl.",
+   ".ljjjjl.",
+   "X.llll.X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "lock": 16,
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   7700,
+   11200
+  ],
+  "seed": 1067,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 68,
+  "name": "Seviye 68",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   5900,
+   7600
+  ],
+  "seed": 1068,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 69,
+  "name": "Seviye 69",
+  "gemTypes": 6,
+  "moves": 31,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   13900,
+   17400
+  ],
+  "seed": 1069,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 70,
+  "name": "Seviye 70",
+  "gemTypes": 6,
+  "moves": 29,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "score": 6700
+  },
+  "stars": [
+   0,
+   7400,
+   10600
+  ],
+  "seed": 1070,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.25
+ },
+ {
+  "id": 71,
+  "name": "Seviye 71",
+  "gemTypes": 6,
+  "moves": 26,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "collect": {
+    "3": 33,
+    "4": 33,
+    "5": 33
+   }
+  },
+  "stars": [
+   0,
+   9200,
+   13400
+  ],
+  "seed": 1071,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 72,
+  "name": "Seviye 72",
+  "gemTypes": 6,
+  "moves": 10,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   5200,
+   7000
+  ],
+  "seed": 1072,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 73,
+  "name": "Seviye 73",
+  "gemTypes": 6,
+  "moves": 23,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   7200,
+   9100
+  ],
+  "seed": 1073,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 74,
+  "name": "Seviye 74",
+  "gemTypes": 6,
+  "moves": 8,
+  "layout": [
+   "........",
+   ".r....r.",
+   "........",
+   "...rr...",
+   "...rr...",
+   "........",
+   ".r....r.",
+   "........"
+  ],
+  "objectives": {
+   "rock": 8
+  },
+  "stars": [
+   0,
+   2400,
+   3300
+  ],
+  "seed": 1074,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.7
+ },
+ {
+  "id": 75,
+  "name": "Seviye 75",
+  "gemTypes": 6,
+  "moves": 26,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "1": 33,
+    "2": 33,
+    "5": 33
+   }
+  },
+  "stars": [
+   0,
+   10400,
+   12900
+  ],
+  "seed": 1075,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 76,
+  "name": "Seviye 76",
+  "gemTypes": 6,
+  "moves": 10,
+  "layout": [
+   "........",
+   "........",
+   "..jjjj..",
+   "..jJJj..",
+   "..jJJj..",
+   "..jjjj..",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   4600,
+   8300
+  ],
+  "seed": 1076,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 77,
+  "name": "Seviye 77",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "XX....XX",
+   "X.llll.X",
+   ".ljjjjl.",
+   ".ljJJjl.",
+   ".ljJJjl.",
+   ".ljjjjl.",
+   "X.llll.X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "lock": 16,
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   7200,
+   8400
+  ],
+  "seed": 1077,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.3
+ },
+ {
+  "id": 78,
+  "name": "Seviye 78",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6900,
+   9500
+  ],
+  "seed": 1078,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 79,
+  "name": "Seviye 79",
+  "gemTypes": 6,
+  "moves": 28,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   13300,
+   18900
+  ],
+  "seed": 1079,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 80,
+  "name": "Seviye 80",
+  "gemTypes": 6,
+  "moves": 25,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "score": 7400
+  },
+  "stars": [
+   0,
+   8700,
+   11500
+  ],
+  "seed": 1080,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 81,
+  "name": "Seviye 81",
+  "gemTypes": 6,
+  "moves": 32,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "0": 36,
+    "3": 36,
+    "5": 36
+   }
+  },
+  "stars": [
+   0,
+   7900,
+   10600
+  ],
+  "seed": 1081,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 82,
+  "name": "Seviye 82",
+  "gemTypes": 6,
+  "moves": 20,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   5800,
+   8300
+  ],
+  "seed": 1082,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 83,
+  "name": "Seviye 83",
+  "gemTypes": 6,
+  "moves": 24,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   8600,
+   11500
+  ],
+  "seed": 1083,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 84,
+  "name": "Seviye 84",
+  "gemTypes": 6,
+  "moves": 18,
+  "layout": [
+   "........",
+   "........",
+   "........",
+   "rrrrrrrr",
+   "RRRRRRRR",
+   "........",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "rock": 24
+  },
+  "stars": [
+   0,
+   4200,
+   5600
+  ],
+  "seed": 1084,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 85,
+  "name": "Seviye 85",
+  "gemTypes": 6,
+  "moves": 31,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "collect": {
+    "0": 36,
+    "4": 36,
+    "5": 36
+   }
+  },
+  "stars": [
+   0,
+   8700,
+   11200
+  ],
+  "seed": 1085,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 86,
+  "name": "Seviye 86",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   "jjjjjjjj",
+   "........",
+   "JJJJJJJJ",
+   "........",
+   "jjjjjjjj",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 32
+  },
+  "stars": [
+   0,
+   7200,
+   9500
+  ],
+  "seed": 1086,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 87,
+  "name": "Seviye 87",
+  "gemTypes": 6,
+  "moves": 25,
+  "layout": [
+   "XX....XX",
+   "X.llll.X",
+   ".ljjjjl.",
+   ".ljJJjl.",
+   ".ljJJjl.",
+   ".ljjjjl.",
+   "X.llll.X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "lock": 16,
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   8500,
+   10700
+  ],
+  "seed": 1087,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 88,
+  "name": "Seviye 88",
+  "gemTypes": 6,
+  "moves": 22,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   7400,
+   9100
+  ],
+  "seed": 1088,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 89,
+  "name": "Seviye 89",
+  "gemTypes": 6,
+  "moves": 34,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   15800,
+   21600
+  ],
+  "seed": 1089,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.3
+ },
+ {
+  "id": 90,
+  "name": "Seviye 90",
+  "gemTypes": 6,
+  "moves": 36,
+  "layout": [
+   "XXX..XXX",
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX",
+   "XXX..XXX"
+  ],
+  "objectives": {
+   "score": 8100
+  },
+  "stars": [
+   0,
+   9600,
+   11200
+  ],
+  "seed": 1090,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.15
+ },
+ {
+  "id": 91,
+  "name": "Seviye 91",
+  "gemTypes": 6,
+  "moves": 30,
+  "layout": [
+   "........",
+   "..X..X..",
+   "........",
+   "........",
+   "........",
+   "........",
+   "..X..X..",
+   "........"
+  ],
+  "objectives": {
+   "collect": {
+    "0": 39,
+    "1": 39,
+    "2": 39
+   }
+  },
+  "stars": [
+   0,
+   7900,
+   9500
+  ],
+  "seed": 1091,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.2
+ },
+ {
+  "id": 92,
+  "name": "Seviye 92",
+  "gemTypes": 6,
+  "moves": 20,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6500,
+   8000
+  ],
+  "seed": 1092,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.4
+ },
+ {
+  "id": 93,
+  "name": "Seviye 93",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6200,
+   9500
+  ],
+  "seed": 1093,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 94,
+  "name": "Seviye 94",
+  "gemTypes": 6,
+  "moves": 19,
+  "layout": [
+   "........",
+   "........",
+   "........",
+   "rrrrrrrr",
+   "RRRRRRRR",
+   "........",
+   "........",
+   "........"
+  ],
+  "objectives": {
+   "rock": 24
+  },
+  "stars": [
+   0,
+   5300,
+   6600
+  ],
+  "seed": 1094,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 95,
+  "name": "Seviye 95",
+  "gemTypes": 6,
+  "moves": 27,
+  "layout": null,
+  "objectives": {
+   "collect": {
+    "0": 39,
+    "2": 39,
+    "5": 39
+   }
+  },
+  "stars": [
+   0,
+   10100,
+   13000
+  ],
+  "seed": 1095,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 96,
+  "name": "Seviye 96",
+  "gemTypes": 6,
+  "moves": 21,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   7500,
+   9500
+  ],
+  "seed": 1096,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.35
+ },
+ {
+  "id": 97,
+  "name": "Seviye 97",
+  "gemTypes": 6,
+  "moves": 25,
+  "layout": [
+   "XX....XX",
+   "X.llll.X",
+   ".ljjjjl.",
+   ".ljJJjl.",
+   ".ljJJjl.",
+   ".ljjjjl.",
+   "X.llll.X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "lock": 16,
+   "jelly": 20
+  },
+  "stars": [
+   0,
+   7400,
+   9600
+  ],
+  "seed": 1097,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.5
+ },
+ {
+  "id": 98,
+  "name": "Seviye 98",
+  "gemTypes": 6,
+  "moves": 17,
+  "layout": [
+   "........",
+   ".jjjjjj.",
+   ".jRrrRj.",
+   ".jr..rj.",
+   ".jr..rj.",
+   ".jRrrRj.",
+   ".jjjjjj.",
+   "........"
+  ],
+  "objectives": {
+   "jelly": 20,
+   "rock": 16
+  },
+  "stars": [
+   0,
+   6300,
+   8000
+  ],
+  "seed": 1098,
+  "targetWin": 0.4,
+  "wall": true,
+  "botWin": 0.4
+ },
+ {
+  "id": 99,
+  "name": "Seviye 99",
+  "gemTypes": 6,
+  "moves": 36,
+  "layout": [
+   "jjjjjjjj",
+   "jjjjjjjj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jJJJJJJj",
+   "jjjjjjjj",
+   "jjjjjjjj"
+  ],
+  "objectives": {
+   "jelly": 88
+  },
+  "stars": [
+   0,
+   14500,
+   19400
+  ],
+  "seed": 1099,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.45
+ },
+ {
+  "id": 100,
+  "name": "Seviye 100",
+  "gemTypes": 6,
+  "moves": 31,
+  "layout": [
+   "XX....XX",
+   "X......X",
+   "........",
+   "........",
+   "........",
+   "........",
+   "X......X",
+   "XX....XX"
+  ],
+  "objectives": {
+   "score": 8800
+  },
+  "stars": [
+   0,
+   9600,
+   11400
+  ],
+  "seed": 1100,
+  "targetWin": 0.4,
+  "wall": false,
+  "botWin": 0.4
+ }
+]
