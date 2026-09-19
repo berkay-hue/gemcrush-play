@@ -32,6 +32,7 @@ import { rareOwned, rareCount, RARE_PITY } from '../meta/rare.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
+import { HAVA, hava, forecast, havaTick, msToNextSlot } from '../meta/hava.js';
 import { comboOf, beeNear, neighbors, flowersNearHive, COMBO_STEP } from '../meta/combo.js';
 import { PESTS, SCARE, pestAt, shoo, scareStatus, buyScarecrow, hasScarecrow, pestSig } from '../meta/pests.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
@@ -148,6 +149,7 @@ export class Farm extends Phaser.Scene {
     button(this, 50, 380, 80, 40, '🎟️', () => this.seasonPass(), 0x2a333a, '#fff', 20);
     this.passBadge(86, 364);
     button(this, 50, 430, 80, 40, mevsim().emoji, () => this.seasonModal(), 0x2a333a, '#fff', 20); // F31: mevsimler
+    this.havaBtn = button(this, 50, 480, 80, 40, hava().emoji, () => this.havaModal(), 0x2a333a, '#fff', 20); // F35: hava kartları
     // Faz 6: harvest animation - product flies from the animal to the market basket
     if (data.harvest && this.nodes[data.harvest] && PRODUCTS[data.harvest]) {
       const n = this.nodes[data.harvest];
@@ -1169,6 +1171,34 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, 0, 0, String(Math.min(n, 9)), 14, '#fff'));
   }
   // F31: haftalık mevsim döngüsü — sahne rengi + parçacık + mevsim tohumlarına bonus
+  // F35: yeni hava dilimi ekinlere dokundu → kısa bildirim
+  havaHits(hh) {
+    const en = getLang() === 'en', w = hh[hh.length - 1][1].replace('-guard', ''), H = HAVA[w]; if (!H) return;
+    const hit = hh.filter((x) => !x[1].endsWith('-guard')).length, safe = hh.length - hit;
+    this.toast(`${H.emoji} ${H[en ? 'en' : 'tr']}: ${H.fx[en ? 'en' : 'tr']}` + (hit ? ` (${hit} 🌱)` : '') + (safe ? `  ·  ${safe} ${H.guard === 'sera' ? '🏡' : '💦'} ${en ? 'protected' : 'korundu'}` : ''));
+  }
+  havaModal() {
+    const en = getLang() === 'en', L = en ? 'en' : 'tr', F = forecast(Date.now(), 4), H = HAVA[F[0].id], mins = Math.ceil(msToNextSlot() / 60000);
+    const { width, height } = this.scale, cx = width / 2, cy = height / 2; const { c, close } = modal(this, 480, 540);
+    c.add(txt(this, cx, cy - 225, `${H.emoji} ${H[L]}`, 34, '#ffb71b'));
+    c.add(txt(this, cx, cy - 188, H.fx[L], 16, '#cfe8d8'));
+    c.add(txt(this, cx, cy - 162, en ? `Changes in ${Math.floor(mins / 60)}h ${mins % 60}m · a new card every 3 hours` : `${Math.floor(mins / 60)} sa ${mins % 60} dk sonra değişir · 3 saatte bir yeni kart`, 14, '#9fb3a8'));
+    c.add(txt(this, cx, cy - 122, en ? 'Forecast' : 'Tahmin', 18, '#fff'));
+    F.slice(1).forEach((f, i) => {
+      const x = cx + (i - 1.5) * 104, W = HAVA[f.id], hh = new Date(f.at).getHours();
+      const bad = !!W.guard, g = this.add.graphics(); g.fillStyle(bad ? 0x5a3a3a : 0x3d7a58, 1); g.fillRoundedRect(x - 46, cy - 100, 92, 100, 14); g.lineStyle(3, bad ? 0xff8a6a : 0x9fe870, 0.9); g.strokeRoundedRect(x - 46, cy - 100, 92, 100, 14); c.add(g);
+      c.add(txt(this, x, cy - 82, `${String(hh).padStart(2, '0')}:00`, 13, '#cfe8d8'));
+      c.add(txt(this, x, cy - 50, W.emoji, 32));
+      c.add(txt(this, x, cy - 16, W[L], 13, '#fff'));
+    });
+    const own = Object.keys(this.nodes).filter((id) => /^tarla/.test(id) && owns(id)), ns = own.filter((id) => hasLayer(id, 'sera')).length, nf = own.filter((id) => hasLayer(id, 'fiskiye')).length;
+    c.add(txt(this, cx, cy + 35, en ? 'Your shields' : 'Korumaların', 18, '#fff'));
+    c.add(txt(this, cx, cy + 68, `🏡 ${en ? 'Greenhouse' : 'Sera'} ${ns}/${own.length} → 🌨️   ·   💦 ${en ? 'Sprinkler' : 'Fıskiye'} ${nf}/${own.length} → 🔥`, 15, '#cfe8d8'));
+    c.add(txt(this, cx, cy + 100, en ? '🌧️ Rain speeds every growing crop' : '🌧️ Yağmur büyüyen her ekini hızlandırır', 14, '#9fe870'));
+    const next = F.slice(1).find((f) => HAVA[f.id].guard), weak = next && own.find((id) => !hasLayer(id, HAVA[next.id].guard));
+    if (next) c.add(txt(this, cx, cy + 128, en ? `⚠️ ${HAVA[next.id].emoji} ${HAVA[next.id].en} coming — ${HAVA[next.id].guard === 'sera' ? 'greenhouse' : 'sprinkler'} protects` : `⚠️ ${HAVA[next.id].emoji} ${HAVA[next.id].tr} geliyor — ${HAVA[next.id].guard === 'sera' ? 'sera' : 'fıskiye'} korur`, 14, '#ff8a6a'));
+    c.add(button(this, cx, cy + 190, 260, 46, weak ? (en ? '🛡️ Add a shield' : '🛡️ Koruma kur') : (en ? '👍 Got it' : '👍 Tamam'), () => { close(); if (weak) this.layersModal(weak); }, 0x5aa83a, '#fff', 18));
+  }
   seasonModal() {
     const en = getLang() === 'en', L = en ? 'en' : 'tr', M = mevsim(), N = nextMevsim(), d = daysLeft();
     const { width, height } = this.scale, cx = width / 2, cy = height / 2; const { c, close } = modal(this, 480, 500);
@@ -1235,6 +1265,8 @@ export class Farm extends Phaser.Scene {
     }
     this.gemsTxt.setText(`💎 ${save.gems}`);
     this.starsTxt.setText(`⭐ ${starBalance()}`);
+    const hh = havaTick(); if (hh.length) this.havaHits(hh);
+    if (this.havaBtn) this.havaBtn.label.setText(hava().emoji);
     if (this.nodes) this.tickCrops();
     if (this.ordBtn) { const n = readyCount(); this.ordBtn.label.setText(n ? `📋 ✓${n}` : '📋'); }
   }

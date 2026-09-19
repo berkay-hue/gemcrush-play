@@ -9,6 +9,7 @@ import { inSeason, SPEED, PRICE } from './mevsim.js';
 import { pestAt, PEST_CUT } from './pests.js';
 import { comboOf, comboMul, beeSpeed } from './combo.js';
 import { isRare, useRare, rollRare, RARE } from './rare.js';
+import { HAIL_CUT } from './hava.js';
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -85,16 +86,16 @@ export function plant(id, now = Date.now(), seed = seedOf(id)) {
 export function harvest(id, now = Date.now()) {
   if (cropState(id, now) !== 'ready') return null;
   const info = cropInfo(id), seed = seedOf(id);
-  const sez = !!F()[id].sez, pest = pestAt(id, now), combo = comboOf(id), cm = comboMul(id); // F33: kombo komşu başına +%10 // F32: kovulmamış zararlı ürünün %30'unu yer
+  const sez = !!F()[id].sez, dolu = !!F()[id].dolu, pest = pestAt(id, now), combo = comboOf(id), cm = comboMul(id); // F33: kombo komşu başına +%10 // F32: kovulmamış zararlı ürünün %30'unu yer
   delete F()[id]; if (save.farm.pests) delete save.farm.pests[id]; save.farm.harvests = (save.farm.harvests || 0) + 1;
-  const n0 = cropYield(id) * (bereketLeft(now) ? 2 : 1), n = pest && n0 > 1 ? Math.max(1, Math.round(n0 * PEST_CUT)) : n0, good = info.good || null;
+  const n0 = cropYield(id) * (bereketLeft(now) ? 2 : 1), cut = (pest ? PEST_CUT : 1) * (dolu ? HAIL_CUT : 1), n = cut < 1 && n0 > 1 ? Math.max(1, Math.round(n0 * cut)) : n0, good = info.good || null;
   const put = good ? stash(good, n) : 0; // ambar doluysa kalan paraya döner
-  const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (pest && n0 === n ? PEST_CUT : 1) * cm); if (coins) addCoins(coins);
+  const coins = Math.round(Math.round(info.price * (sez ? PRICE : 1)) * (n - put) * (cut < 1 && n0 === n ? cut : 1) * cm); if (coins) addCoins(coins);
   const gem = (RARE[seed] && RARE[seed].gem) || 0; if (gem) save.gems = (save.gems || 0) + gem;
   const rare = rollRare(seed); // F34
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, combo, rare, gem };
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, dolu, combo, rare, gem };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {
