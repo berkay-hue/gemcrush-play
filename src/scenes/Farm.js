@@ -1,6 +1,7 @@
 // Farm hub (Faz 1): the home screen. Stars earned in match-3 buy buildings,
 // animals and fields. The OYNA sign starts the next level.
 import { CONFIG } from '../config.js';
+import { GUBRE, bags, bestBag, colorFor, fertilize, bagsLine } from '../meta/gubre.js';
 import { save, tickLives, msToNextLife, starBalance } from '../meta/save.js';
 import { SEASONS, currentSeason, decor, buySeasonal } from '../meta/season.js';
 import { MEVSIM, ORDER, mevsim, nextMevsim, daysLeft, inSeason, SPEED } from '../meta/mevsim.js';
@@ -86,6 +87,7 @@ export class Farm extends Phaser.Scene {
     // live chickens wander around the coop
     if (!this.w3 && owns('tavuk')) spawnChickens(this, 2 + (owns('horoz') ? 2 : 0), { x: 40, y: 400, w: 200, h: 110 }, owns('horoz'));
     if (data.cropCut) this.toast(`🌽 −${Math.round(WIN_CUT / 60000) * data.cropCut} ${t('minShort')}!`);
+    if (data.gubre && Object.keys(data.gubre).length) this.time.delayedCall(data.cropCut ? 1600 : 0, () => this.toast(`🧪 ${bagsLine(data.gubre)} ${getLang() === 'en' ? 'fertilizer' : 'gübre'}`));
 
     // HUD
     // F8: sade üst bar — koyu şerit yok; sahneye yedirilmiş yarı saydam haplar + "<isim>'ın Çiftliği"
@@ -347,7 +349,7 @@ export class Farm extends Phaser.Scene {
       return;
     }
     // growing: info + rush + go play to speed up
-    const { width, height } = this.scale; const { c: m, close } = modal(this, 440, 430);
+    const { width, height } = this.scale; const { c: m, close } = modal(this, 440, 540);
     m.add(txt(this, width / 2, height / 2 - 125, cropInfo(id).emoji, 60));
     m.add(txt(this, width / 2, height / 2 - 70, `${this.itemName(it)} · ${cropInfo(id).name[getLang()] || cropInfo(id).name.tr}`, 26, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
@@ -361,6 +363,12 @@ export class Farm extends Phaser.Scene {
     m.add(button(this, width / 2 - 100, height / 2 + 125, 180, 48, `💎 ${cost} ${t('rush')}`, () => { if (cropRush(id)) { track('crop_rush', { plot: id, via: 'gems' }); done(); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 17));
     m.add(button(this, width / 2 + 100, height / 2 + 125, 180, 48, `📺 ${t('rush')}`, async () => { if (await showRewarded('crop_rush') && cropRush(id, true)) { track('crop_rush', { plot: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 17));
     m.add(button(this, width / 2, height / 2 + 180, 300, 44, `🧱 ${getLang() === 'en' ? 'Field layers' : 'Tarla katmanları'}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 17));
+    // F39: taştan gelen gübre — renk tohuma uyar (kırmızı→çilek/domates…), su her ekine
+    { const en = getLang() === 'en', k = bestBag(id), col = GUBRE[colorFor(id)];
+      m.add(button(this, width / 2, height / 2 + 230, 300, 44, k ? `${GUBRE[k].emoji} ${en ? 'Fertilize' : 'Gübrele'} ×${bags(k)} (−${GUBRE[k].cut / 60000} ${t('minShort')})` : `${col.emoji} ${en ? 'No fertilizer' : 'Gübre yok'}`, () => {
+        if (k && fertilize(id, k)) { track('fertilize', { plot: id, k }); done(); return; }
+        this.toast(en ? `Win levels: ${col.emoji} gems → ${col.name.en}` : `Bölüm kazan: ${col.emoji} taşlar → ${col.name.tr}`);
+      }, k ? 0x9b6bff : 0x2a333a, k ? '#fff' : '#bbb', 17)); }
   }
   // F23: boş tarlaya dokununca tohum seç — 3×3 kart; kilitli tohum seviyesini, fiyatlı tohum parasını gösterir
   seedPicker(id) {

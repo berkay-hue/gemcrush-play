@@ -5,6 +5,7 @@ import { CELL, gemKey } from '../textures.js';
 import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife } from '../meta/save.js';
 import { perks, sheepOnLoss } from '../meta/farm.js';
 import { winCut, WIN_CUT } from '../meta/crops.js';
+import { gemsToBags, bagsLine } from '../meta/gubre.js';
 import { zoneCut } from '../meta/zones.js';
 import { addEnergy } from '../meta/energy.js';
 import { startBereket } from '../meta/bereket.js';
@@ -818,7 +819,8 @@ export class Game extends Phaser.Scene {
     const cut = winCut(); this.cropCut = cut.length + zoneCut(); const en = stars === 3 ? 3 : 2; addEnergy(en);
     if (stars === 3) startBereket();
     if (this.vetFor) cure(this.vetFor);
-    this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor };
+    const got = gemsToBags(this.board.collected); // F39: toplanan taş rengi → gübre torbası
+    this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor, gubre: got };
     track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
     if (fr) track('event_win', { n: fest, all: !!fr.all });
     const { width, height } = this.scale;
@@ -836,7 +838,7 @@ export class Game extends Phaser.Scene {
     if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); const coinT = txt(this, width / 2 + 10, height / 2 + 60, '+0', 26, '#ffe58a'); c.add(coinT);
     this.time.delayedCall(900, () => flyCoins(this, width / 2, height / 2 - 90, width / 2 - 40, height / 2 + 60, Math.ceil(coins / 15), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { const o = { v: 0 }; this.tweens.add({ targets: o, v: coins, duration: 500, ease: 'Quad.Out', onUpdate: () => coinT.setText(`+${Math.round(o.v)}`), onComplete: () => { coinT.setText(`+${coins}`); this.tweens.add({ targets: coinT, scale: 1.3, duration: 90, yoyo: true }); } }); }));
-    const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : ''].filter(Boolean).join('  ·  ');
+    const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : '', bagsLine(got)].filter(Boolean).join('  ·  ');
     c.add(txt(this, width / 2, height / 2 + 95, extra, 19, '#ffb71b'));
     if (cut.length) c.add(txt(this, width / 2, height / 2 - 140, `🌽 ${t('cropFaster')} −${WIN_CUT / 60000} ${t('minShort')}`, 18, '#9dffb8'));
     const nf = fest ? festNext() : 0;
