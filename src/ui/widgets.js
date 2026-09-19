@@ -129,6 +129,9 @@ export function modal(scene, w, h) {
   const hit = scene.add.circle(bx, by, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
   hit.on('pointerdown', () => xb.setScale(0.9)).on('pointerout', () => xb.setScale(1)).on('pointerup', closeFn);
   c.add([xb, x, hit]);
+  // F41: sonradan eklenen tente/tabela ✕'i örtmesin — her kare en üstte tut
+  const keepTop = () => { if (!c.active) return scene.events.off('postupdate', keepTop); if (c.list[c.list.length - 1] !== hit) { c.bringToTop(xb); c.bringToTop(x); c.bringToTop(hit); } };
+  scene.events.on('postupdate', keepTop); c.once('destroy', () => scene.events.off('postupdate', keepTop));
   c.setAlpha(0); scene.tweens.add({ targets: c, alpha: 1, duration: 180 });
   pop.s = 0.85; applyPop(); scene.tweens.add({ targets: pop, s: 1, duration: 280, ease: 'Back.Out', onUpdate: applyPop });
   return { c, close: closeFn };

@@ -40,7 +40,10 @@ export const trackFor = (sceneKey) => (sceneKey === 'Game' ? 'game' : 'farm');
 export const musicOn = () => save.music !== false;
 export function setMusic(on) { save.music = !!on; persist(); if (on) music.play(want); else music.stop(); }
 
-let want = 'farm', cur = null, bus = null, fx = null, timer = 0, bar = 0, nextAt = 0;
+let want = 'farm', cur = null, bus = null, fx = null, timer = 0;
+// F41: her parçanın kendi kanalı; hızlı gir-çıkta parça sıfırdan sessizce yeniden başlamaz,
+// sönmekte olan kanal kaldığı ölçüden geri açılır (kesinti yok)
+const lanes = {}; // name -> { bus, bar, nextAt, until }
 
 function chain(a) {
   if (fx) return fx;
@@ -82,29 +85,44 @@ function schedBar(a, tr, t0, n) {
   });
 }
 function tick() {
-  const a = ac(); if (!a || !cur || !bus) return;
-  const tr = TRACKS[cur], b = 60 / tr.bpm;
-  if (nextAt < a.currentTime) nextAt = a.currentTime + 0.1;
-  while (nextAt < a.currentTime + 1.6) { schedBar(a, tr, nextAt, bar++); nextAt += 4 * b; }
+  const a = ac(); if (!a) return;
+  if (a.state === 'suspended') a.resume().catch(() => {});
+  for (const [name, L] of Object.entries(lanes)) {
+    if (name !== cur && a.currentTime > L.until + 3) { try { L.bus.disconnect(); } catch {} delete lanes[name]; continue; }
+    const tr = TRACKS[name], b = 60 / tr.bpm;
+    bus = L.bus;
+    if (L.nextAt < a.currentTime) L.nextAt = a.currentTime + 0.1;
+    while (L.nextAt < a.currentTime + 1.6 && (name === cur || L.nextAt < L.until)) { schedBar(a, tr, L.nextAt, L.bar++); L.nextAt += 4 * b; }
+  }
+  if (!cur && !Object.keys(lanes).length) { clearInterval(timer); timer = 0; }
 }
-function fadeOut(a, g, s = 1.4) { if (!g) return; g.gain.cancelScheduledValues(a.currentTime); g.gain.setValueAtTime(g.gain.value, a.currentTime); g.gain.linearRampToValueAtTime(0, a.currentTime + s); setTimeout(() => { try { g.disconnect(); } catch {} }, s * 1000 + 3000); }
+function ramp(a, g, to, s) { g.gain.cancelScheduledValues(a.currentTime); g.gain.setValueAtTime(g.gain.value, a.currentTime); g.gain.linearRampToValueAtTime(to, a.currentTime + s); }
+function fade(a, name, s) { const L = lanes[name]; if (!L) return; ramp(a, L.bus, 0, s); L.until = a.currentTime + s; }
 
 export const music = {
   // sahne sadece hangi parçayı istediğini söyler; ses ancak ilk dokunuştan sonra başlar
   play(name) {
     want = name || want;
     if (!musicOn() || !unlocked || document.hidden) return;
-    if (cur === want && bus) return;
     const a = ac(); if (!a) return;
-    fadeOut(a, bus);
-    cur = want; bar = 0; nextAt = a.currentTime + 0.15;
-    bus = a.createGain(); bus.gain.setValueAtTime(0, a.currentTime); bus.gain.linearRampToValueAtTime(TRACKS[cur].peak, a.currentTime + 2.5);
-    bus.connect(chain(a));
-    clearInterval(timer); timer = setInterval(tick, 250); tick();
+    if (cur === want && lanes[cur] && timer) return;
+    if (cur && cur !== want) fade(a, cur, 1.4);
+    cur = want;
+    const L = lanes[cur];
+    if (L) { L.until = Infinity; ramp(a, L.bus, TRACKS[cur].peak, 1.2); } // sönen kanalı geri aç, baştan başlatma
+    else {
+      const g = a.createGain(); g.gain.setValueAtTime(0, a.currentTime); g.gain.linearRampToValueAtTime(TRACKS[cur].peak, a.currentTime + 2.5); g.connect(chain(a));
+      lanes[cur] = { bus: g, bar: 0, nextAt: a.currentTime + 0.15, until: Infinity };
+    }
+    if (!timer) timer = setInterval(tick, 250);
+    tick();
   },
-  stop() { const a = ac(); clearInterval(timer); timer = 0; if (a) fadeOut(a, bus, 0.8); bus = null; cur = null; },
+  stop() { const a = ac(); if (a) Object.keys(lanes).forEach((n) => fade(a, n, 0.8)); cur = null; },
   unlock() { unlocked = true; music.play(want); },
   get playing() { return cur; },
+  get lanes() { return Object.keys(lanes); },
 };
 let unlocked = false;
+// F41: her dokunuşta askıya alınmış sesi uyandır (iOS/Chrome arka plandan dönüşte bağlamı askıya alabiliyor)
+if (typeof document !== 'undefined') document.addEventListener('pointerdown', () => { if (!unlocked) return; const a = ac(); if (a && a.state === 'suspended') a.resume().catch(() => {}); if (!cur) music.play(want); }, true);
 if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) music.stop(); else music.play(want); });

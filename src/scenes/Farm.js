@@ -62,6 +62,7 @@ export class Farm extends Phaser.Scene {
 
   create(data = {}) {
     this._data = data;
+    this._coinShown = null; this._coinAnim = false; // F41: yeniden girişte altın sayısı boş kalmasın
     const { width, height } = this.scale;
     this.levels = this.cache.json.get('levels');
     tickLives();
@@ -95,17 +96,26 @@ export class Farm extends Phaser.Scene {
     this.hud = this.add.container(0, 0).setDepth(5);
     const chip = (x, y, w, h) => { const g = this.add.graphics(); g.fillStyle(0x0f1f17, 0.38).fillRoundedRect(x, y, w, h, h / 2); g.lineStyle(1, 0xf5f4eb, 0.18).strokeRoundedRect(x + 0.5, y + 0.5, w - 1, h - 1, h / 2); this.hud.add(g); };
     const soft = (o) => o.setShadow(0, 1, 'rgba(10,15,13,0.55)', 3, false, true);
-    chip(12, 14, 132, 40); chip(width - 144, 14, 132, 40); chip(width - 144, 58, 132, 30);
+    chip(12, 14, 132, 40); chip(width - 164, 14, 152, 40); chip(width - 164, 58, 152, 30);
     const heart = this.add.image(36, 34, 'ic-heart').setDisplaySize(28, 28);
     this.livesTxt = soft(txt(this, 58, 34, '', 19, '#f5f4eb').setOrigin(0, 0.5));
     this.lifeTimer = soft(txt(this, 134, 35, '', 13, '#f5f4eb').setOrigin(1, 0.5).setAlpha(0.75));
-    const coin = this.add.image(width - 120, 34, 'ic-coin').setDisplaySize(28, 28);
-    this.coinsTxt = goldText(this, width - 100, 34, '', 20).setOrigin(0, 0.5);
-    this.gemsTxt = iconLabel(this, width - 134, 73, '💎 0', 15, { gold: false, color: '#dff6ff' });
+    const coin = this.add.image(width - 140, 34, 'ic-coin').setDisplaySize(28, 28);
+    this.coinsTxt = goldText(this, width - 120, 34, '', 20).setOrigin(0, 0.5);
+    this.gemsTxt = iconLabel(this, width - 154, 73, '💎 0', 15, { gold: false, color: '#dff6ff' });
     this.titleTxt = txt(this, width / 2, 28, '', 21, '#f5f4eb').setAlpha(0.92).setShadow(0, 2, 'rgba(10,15,13,0.6)', 6, false, true);
     this.titleTxt.setInteractive({ useHandCursor: true }).on('pointerup', () => renameBox((ok) => { if (ok) { this.drawTitle(); this.w3 && this.w3.setSignText && this.w3.setSignText(farmTitle()); this.toast(`✏️ ${this.titleTxt.text}`); } }));
     this.starsTxt = iconLabel(this, width / 2 - 8, 55, '⭐ 0', 15, { align: 'right' });
     this.hud.add([heart, this.livesTxt, this.lifeTimer, coin, this.coinsTxt, this.gemsTxt, this.titleTxt, this.starsTxt]);
+    // F41: altın/elmas yanında "+" — dokununca elmas & altın paketleri açılır
+    const plus = (y, r, kind) => {
+      const b = this.add.circle(width - 32, y, r, 0x2ee06a).setStrokeStyle(2, 0xeaffef);
+      const p = this.add.text(width - 32, y - 1, '+', { fontFamily: 'system-ui, sans-serif', fontSize: `${Math.round(r * 1.6)}px`, color: '#04220e', fontStyle: 'bold' }).setOrigin(0.5);
+      const hit = this.add.circle(width - 32, y, 22, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => b.setScale(0.88)).on('pointerout', () => b.setScale(1)).on('pointerup', () => { b.setScale(1); sfx.click && sfx.click(); track('hud_plus', { kind }); this.scene.start('Map', { shop: true }); });
+      this.hud.add([b, p, hit]);
+    };
+    plus(34, 13, 'coin'); plus(73, 11, 'gem');
     this.drawTitle();
     button(this, width - 50, 180, 80, 40, `🧺 ${t('market')}`, () => this.market(), 0xffb71b, '#1a1200', 16);
     const hs = hatchState();
@@ -1368,7 +1378,7 @@ export class Farm extends Phaser.Scene {
       if (to > from) {
         this._coinAnim = true;
         const { width, height } = this.scale, src = this.coinFrom || { x: width / 2, y: height / 2 }; this.coinFrom = null;
-        flyCoins(this, src.x, src.y, width - 116, 34, Math.ceil((to - from) / 10), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { this._coinAnim = false; countUp(this, this.coinsTxt, from, to, 450); });
+        flyCoins(this, src.x, src.y, width - 136, 34, Math.ceil((to - from) / 10), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { this._coinAnim = false; countUp(this, this.coinsTxt, from, to, 450); });
       } else countUp(this, this.coinsTxt, from, to, 300);
     }
     this.gemsTxt.setText(`💎 ${save.gems}`);
