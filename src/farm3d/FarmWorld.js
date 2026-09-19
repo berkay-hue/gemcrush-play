@@ -428,7 +428,7 @@ export class FarmWorld {
     if (this._dressId === th.id) return; this._dressId = th.id;
     // F9: tema tüm çiftliği boyar — çimen, yapraklar, orman tabanı ve orman ağaçları
     this.th = th;
-    this.floor.material.color.set(th.ground || 0x5f9e3c); this._floor0 = this.floor.material.color.getHex(); this.floorSez();
+    this.floor.material.color.set(th.ground || 0x5f9e3c); this._floor0 = this.floor.material.color.getHex(); this.floorSez(); this.sezFx();
     const seen = new Set();
     this.S.traverse((m) => { if (m.isMesh && m.material && !seen.has(m.material)) { seen.add(m.material); this.tint(m.material); } });
     this.forest(th);
@@ -441,12 +441,16 @@ export class FarmWorld {
   setSeason(m) {
     this.sez = m; const seen = new Set();
     this.S.traverse((o) => { if (o.isMesh && o.material && !seen.has(o.material)) { seen.add(o.material); this.tint(o.material); } });
-    this.amb?.setFx(m && m.fx); this.floorSez();
+    this.sezFx(); this.floorSez();
   }
+  // F42: satın alınan tema mevsimi ezer (kış haftasında tema değiştirince çiftlik karda kalmasın);
+  // mevsim görünümü yalnız varsayılan temada, satın alınmış temanın kendi parçacığı (th.fx) olur
+  get vsez() { return !this.th || this.th.id === 'meadow' ? this.sez : null; }
+  sezFx() { const v = this.vsez; this.amb?.setFx(v ? v.fx : (this.th && this.th.fx) || null); }
   floorSez() {
     if (!this.floor) return; const c = this.floor.material.color;
     c.setHex(this._floor0 ?? c.getHex()); this._floor0 = c.getHex();
-    if (this.sez) c.lerp(new T.Color(this.sez.grass[0]), Math.min(0.85, this.sez.grass[1] * 1.6));
+    const v = this.vsez; if (v) c.lerp(new T.Color(v.grass[0]), Math.min(0.85, v.grass[1] * 1.6));
   }
   // F9: Kenney malzemeleri ada göre: 'grass' → tema çimeni, 'leafs*' → tema yaprağı (önbellekte paylaşılır)
   tint(mat) {
@@ -454,7 +458,7 @@ export class FarmWorld {
     const n = mat && mat.name || '', th = this.th || {};
     const [c, k] = n === 'grass' ? (th.grassTint || []) : n.startsWith('leafs') ? (th.leafTint || []) : [];
     // F31: mevsim rengi temanın üstüne ikinci kat olarak biner
-    const sz = this.sez ? (n === 'grass' ? this.sez.grass : n.startsWith('leafs') ? this.sez.leaf : null) : null;
+    const vs = this.vsez, sz = vs ? (n === 'grass' ? vs.grass : n.startsWith('leafs') ? vs.leaf : null) : null;
     if (!n || mat.transparent || (mat.userData.base === undefined && k === undefined && !sz)) return;
     if (mat.userData.base === undefined) mat.userData.base = mat.color.getHex();   // sayı: clone() JSON kopyasında bozulmaz
     mat.color.setHex(mat.userData.base); if (k) mat.color.lerp(new T.Color(c), k);
