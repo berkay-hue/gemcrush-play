@@ -34,9 +34,9 @@ export class Boot extends Phaser.Scene {
         .setScale(Phaser.Math.FloatBetween(0.35, 0.7)).setAlpha(Phaser.Math.FloatBetween(0.25, 0.6)).setAngle(Phaser.Math.Between(-20, 20));
       this.tweens.add({ targets: gem, y: gem.y - Phaser.Math.Between(20, 50), angle: gem.angle + Phaser.Math.Between(-15, 15), duration: Phaser.Math.Between(1800, 3200), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
-    const logo = txt(this, width / 2, height * 0.42, 'GEM CRUSH', 68, '#ffb71b')
+    const logo = txt(this, width / 2, height * 0.42, 'FARMTASTIC\nGEMS', 60, '#ffb71b', { lineSpacing: -14 })
       .setStroke('#5a3500', 10).setShadow(0, 6, '#000000', 10, true, true).setScale(0.6).setAlpha(0);
-    const sub = txt(this, width / 2, height * 0.42 + 62, t('splashTag'), 22, '#f5f4eb').setAlpha(0);
+    const sub = txt(this, width / 2, height * 0.42 + 92, t('splashTag'), 22, '#f5f4eb').setAlpha(0);
     // yükleme çubuğu
     const bw = Math.min(260, width * 0.6), by = height * 0.72;
     const bar = this.add.graphics();

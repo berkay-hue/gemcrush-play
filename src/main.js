@@ -15,8 +15,12 @@ import { fadeIn } from './ui/widgets.js';
 import { irisOpen } from './ui/cinema.js';
 
 window.addEventListener('pointerdown', () => { sfx.unlock(); music.unlock(); }, { once: true });
-initAds().catch(() => {});
 initIap().catch(() => {});
+// F44: ATT (izleme izni) ekranı Apple kuralınca uygulama içeriği göründükten SONRA çıkmalı —
+// AdMob.initialize izni kendisi ister, o yüzden reklam motorunu ilk sahne çizilince başlatıyoruz.
+let adsStarted = false;
+const startAds = () => { if (adsStarted) return; adsStarted = true; setTimeout(() => initAds().catch(() => {}), 800); };
+setTimeout(startAds, 6000); // emniyet: sahne açılmasa da reklamlar başlasın
 try { initNotify(); } catch {}
 document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
@@ -48,5 +52,5 @@ setInterval(() => { const g = window.__game; if (g && g.input && !g.input.enable
 
 // her sahne açılışında yumuşak geçiş (Boot hariç)
 window.__game.events.once('ready', () => {
-  window.__game.scene.scenes.forEach((s) => { if (s.scene.key !== 'Boot') s.events.on('create', () => { if (window.__lastScene && window.__lastScene !== s.scene.key) irisOpen(); else fadeIn(s); window.__lastScene = s.scene.key; }); });
+  window.__game.scene.scenes.forEach((s) => { if (s.scene.key !== 'Boot') s.events.on('create', () => { startAds(); if (window.__lastScene && window.__lastScene !== s.scene.key) irisOpen(); else fadeIn(s); window.__lastScene = s.scene.key; }); });
 });

@@ -60,10 +60,10 @@ export async function postcard(w3, game) {
   x.save(); x.translate(W - pad - 120, pad + ph + 110); x.rotate(-0.18);
   x.strokeStyle = '#ffb71b'; x.lineWidth = 6; x.setLineDash([10, 7]); x.beginPath(); x.arc(0, 0, 92, 0, Math.PI * 2); x.stroke();
   x.setLineDash([]); x.lineWidth = 3; x.beginPath(); x.arc(0, 0, 74, 0, Math.PI * 2); x.stroke();
-  x.fillStyle = '#e0971a'; x.textAlign = 'center'; x.font = font(30); x.fillText('GemCrush', 0, -4); x.font = font(22, 700); x.fillText('🐑 ' + L('ÇİFTLİK', 'FARM'), 0, 28);
+  x.fillStyle = '#e0971a'; x.textAlign = 'center'; x.font = font(26); x.fillText('Farmtastic', 0, -4); x.font = font(22, 700); x.fillText('🐑 ' + L('ÇİFTLİK', 'FARM'), 0, 28);
   x.restore();
   const blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.9));
-  const name = 'gemcrush-kartpostal.jpg';
+  const name = 'farmtastic-kartpostal.jpg';
   try {
     const file = new File([blob], name, { type: 'image/jpeg' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: farmTitle(), text: L('Çiftliğime bak! 🐑', 'Check out my farm! 🐑') }); return 'shared'; }
