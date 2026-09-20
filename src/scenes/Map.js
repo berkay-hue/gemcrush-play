@@ -107,7 +107,7 @@ export class Map extends Phaser.Scene {
     const setBtn = button(this, width - 40, 110, 56, 40, '⚙', () => this.settings(), 0x2a333a, '#ffffff', 22); this.hud.add(setBtn);
     const themeBtn = button(this, width - 40, 162, 56, 40, '🎨', () => this.themes(), 0x7a4dff, '#ffffff', 20); this.hud.add(themeBtn);
     const lbBtn = button(this, width - 40, 214, 56, 40, '🏆', () => this.ranks(), 0xffb71b, '#1a1200', 20); this.hud.add(lbBtn);
-    this.hud.add(txt(this, width / 2, 36, 'GEM CRUSH', 26, '#ffb71b'));
+    this.hud.add(txt(this, width / 2, 36, 'FARMTASTIC GEMS', 24, '#ffb71b'));
     this.starsTxt = txt(this, width / 2, 72, '', 20, '#ffe58a'); this.hud.add(this.starsTxt);
 
     const playBtn = button(this, width / 2, height - 60, 260, 70, `${t('play')}  ▶  ${t('level')} ${Math.min(save.level, total)}`, () => this.tryStart(this.levels[Math.min(save.level, total) - 1]), 0x2ee06a, '#04220e', 24);
