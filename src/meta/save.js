@@ -386,7 +386,7 @@ export function openGiftBox(now = gameNow(), rnd = Math.random) {
   const x = rnd();
   let r;
   if (x < 0.15) { r = { gems: 1 }; save.gems += 1; }
-  else if (x < 0.4) { r = { life: 1 }; save.lives = Math.min(GIFT_LIFE_CAP, save.lives + 1); }
+  else if (x < 0.4) { r = { life: 1 }; save.lives = Math.max(save.lives, Math.min(GIFT_LIFE_CAP, save.lives + 1)); } // F405 (uygulamadaki F175): 10'un üstündeki canlar kırpılmasın
   else { r = { coins: 60 + Math.floor(rnd() * 10) * 10 }; save.coins += r.coins; }
   persist();
   return r;
