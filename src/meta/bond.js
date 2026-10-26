@@ -1,11 +1,12 @@
 // F7: bonds with the farm - animal names, daily love tour, album pages, pets.
 import { save, persist, addCoins, addGems } from './save.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const PETS = { kopek: { emoji: '🐶', name: 'Köpek' }, kedi: { emoji: '🐱', name: 'Kedi' } };
 // F7 v2: side regions removed — pets arrive at level 5 or with the first side plot
 export const petsOpen = () => (save.level || 1) >= 5 || ((save.farm || {}).plots || []).length > 0;
 const F = () => save.farm;
-const today = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
+const today = (now = gameNow()) => new Date(now).toISOString().slice(0, 10);
 
 // ---- names ----
 export const nameOf = (id) => (F().names || {})[id] || '';
@@ -16,12 +17,12 @@ export function setName(id, n) {
 
 // ---- daily love tour: pet 3 different animals -> reward once a day ----
 export const LOVE_N = 3, LOVE_COINS = 30, LOVE_GEMS = 1;
-export function loveState(now = Date.now()) {
+export function loveState(now = gameNow()) {
   let l = F().love;
   if (!l || l.day !== today(now)) l = F().love = { day: today(now), pets: [], done: false };
   return l;
 }
-export function lovePet(id, now = Date.now()) {
+export function lovePet(id, now = gameNow()) {
   const l = loveState(now);
   if (l.done || l.pets.includes(id)) return { n: l.pets.length, reward: null };
   l.pets.push(id);

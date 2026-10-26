@@ -3,6 +3,7 @@
 import * as T from '../../vendor/three/three.module.min.js';
 import { save, persist, addCoins } from '../meta/save.js';
 import { owns } from '../meta/farm.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 export const KINDS = {
   sincap: { emoji: '🐿', name: 'Sincap', h: 0.35, v: 1.3, w: 3, lure: 'findik' },
@@ -13,7 +14,7 @@ export const KINDS = {
   kelebek: { emoji: '🦋', name: 'Kelebek', h: 0.3, v: 0.8, w: 2.5, fly: 1.0 },
 };
 const DAILY_GREETS = 8, REWARD = 5;
-const day = () => new Date().toISOString().slice(0, 10);
+const day = () => new Date(gameNow()).toISOString().slice(0, 10);
 const box = (w, h, d, c, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), new T.MeshStandardMaterial({ color: c, flatShading: true })); m.position.set(x, y, z); m.castShadow = true; return m; };
 
 // procedural cube squirrel: body, head, ears, big fluffy tail, a hazelnut

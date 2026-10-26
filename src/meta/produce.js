@@ -3,6 +3,7 @@ import { save, persist, addCoins, spendGems } from './save.js';
 import { owns, ambarCap, animalCount } from './farm.js';
 import { honeyMul } from './combo.js';
 import { LIVESTOCK, isSick } from './animals.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const H = 3600000;
 export const PRODUCTS = {
@@ -47,11 +48,11 @@ const P = () => {
 };
 export function readyAt(id) {
   const f = P();
-  if (!f.prod[id]) { f.prod[id] = Date.now() + PRODUCTS[id].ms; persist(); }
+  if (!f.prod[id]) { f.prod[id] = gameNow() + PRODUCTS[id].ms; persist(); }
   return f.prod[id];
 }
-export function isReady(id, now = Date.now()) { return !!PRODUCTS[id] && owns(id) && now >= readyAt(id); }
-export function collect(id, now = Date.now()) {
+export function isReady(id, now = gameNow()) { return !!PRODUCTS[id] && owns(id) && now >= readyAt(id); }
+export function collect(id, now = gameNow()) {
   if (!isReady(id, now) || (LIVESTOCK.includes(id) && isSick(id, now)) || ambarFull()) return null; // F276: hasta hayvan ürün vermez
   const f = P(); const pr = PRODUCTS[id];
   // F24: her hayvan 1 ürün verir, ambarda yer kadar
@@ -91,8 +92,8 @@ export function hatch() {
 }
 
 // Faz 5: skip a product timer with diamonds (1 per started hour) or a rewarded ad
-export function rushCost(id, now = Date.now()) { return Math.max(1, Math.ceil((readyAt(id) - now) / H)); }
-export function rush(id, viaAd = false, now = Date.now()) {
+export function rushCost(id, now = gameNow()) { return Math.max(1, Math.ceil((readyAt(id) - now) / H)); }
+export function rush(id, viaAd = false, now = gameNow()) {
   if (!PRODUCTS[id] || !owns(id) || isReady(id, now)) return false;
   if (!viaAd && !spendGems(rushCost(id, now))) return false;
   P().prod[id] = now; persist(); return true;

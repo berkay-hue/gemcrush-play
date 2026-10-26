@@ -2,11 +2,12 @@
 // Hava gerçek saate bağlı ve deterministik (3 saatlik dilimler); test: ?hava=yagmur|ruzgar|acik, ?saat=22
 import * as T from '../../vendor/three/three.module.min.js';
 import { havaAt } from '../meta/hava.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 const Q = () => new URLSearchParams(location.search);
-export function hourNow() { const q = Q().get('saat'); if (q != null && q !== '') return +q; const d = new Date(); return d.getHours() + d.getMinutes() / 60; }
+export function hourNow() { const q = Q().get('saat'); if (q != null && q !== '') return +q; const d = new Date(gameNow()); return d.getHours() + d.getMinutes() / 60; }
 // F35: hava kartlarından (meta/hava.js) gelir; görsel olarak dolu→yağmur, kuraklık→açık
-export function weatherNow(d = new Date()) { const w = havaAt(+d); return w === 'dolu' ? 'yagmur' : w === 'kurak' ? 'acik' : w; }
+export function weatherNow(d = new Date(gameNow())) { const w = havaAt(+d); return w === 'dolu' ? 'yagmur' : w === 'kurak' ? 'acik' : w; }
 
 function glowTex(inner = 'rgba(255,230,140,1)') {
   const c = document.createElement('canvas'); c.width = c.height = 64;

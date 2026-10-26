@@ -5,6 +5,7 @@ import { account, myFriendCode, friendList, friendAdd, friendRemove, friendReqs,
 import { track } from '../analytics.js';
 import { authForm } from './authForm.js';
 import { shield } from './widgets.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // F311: cok_istek limit'ten önce — sunucu kota hatasını eski sürümler için 'cok_istek limit' yazar, ilk eşleşen kazanır
@@ -124,7 +125,7 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     let r;
     try { r = await friendLb(); } catch { box.innerHTML = `<div style="text-align:center;color:#ff8a80;padding:12px">${t('rkOffline')}</div>`; return; }
     if (!wrap.isConnected || tab !== 'lb') return;
-    const left = Math.max(0, (r.ends || 0) - Date.now()), dd = Math.floor(left / 86400000), hh = Math.floor(left / 3600000) % 24;
+    const left = Math.max(0, (r.ends || 0) - gameNow()), dd = Math.floor(left / 86400000), hh = Math.floor(left / 3600000) % 24;
     box.innerHTML = `<div style="text-align:center;font-size:13px;color:#9fb3a8">⭐ ${t('frWeekHint')} · ⏳ ${dd}${t('dayShort')} ${hh}${t('hourShort')}</div>` + (r.list || []).map((f, i) => `
       <div style="display:flex;align-items:center;gap:8px;background:${f.me ? '#3a3212' : i % 2 ? '#1b2420' : '#222d28'};border-radius:12px;padding:8px 10px">
         <div style="width:28px;text-align:center;font-weight:800;font-size:18px;color:#ffb71b">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>

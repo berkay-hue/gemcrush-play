@@ -4,6 +4,7 @@
 import { save, persist, addCoins, addGems, spendCoins } from './save.js';
 import { LIVESTOCK, feed, isSick } from './animals.js';
 import { spendEnergy } from './energy.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const H = 3600000;
 export const CARE = {
@@ -17,15 +18,15 @@ const C = (id) => { const f = save.farm; f.care = f.care || {}; return f.care[id
 // besleme zamanı: ahır hayvanında açlık sistemininki, diğerlerinde kendi kaydı
 const lastOf = (id, k) => (k === 'feed' && LIVESTOCK.includes(id) ? (save.farm.an && save.farm.an[id] && save.farm.an[id].fedAt) || 0 : C(id)[k] || 0);
 const part = (id, k, now) => Math.max(0, 1 - (now - lastOf(id, k)) / FADE);
-export function happiness(id, now = Date.now()) {
+export function happiness(id, now = gameNow()) {
   if (LIVESTOCK.includes(id) && isSick(id, now)) return 0;
   return Math.round((100 / 3) * (part(id, 'feed', now) + part(id, 'pet', now) + part(id, 'clean', now)));
 }
-export const careLeft = (id, k, now = Date.now()) => Math.max(0, lastOf(id, k) + CARE[k].cd - now);
+export const careLeft = (id, k, now = gameNow()) => Math.max(0, lastOf(id, k) + CARE[k].cd - now);
 // F338 (uygulamadaki F262): yalnız ileri bir günde açılır (saat geri alınınca yeniden açılmaz)
-export const goldReady = (id, now = Date.now()) => day(now) > (C(id).gold ?? -1);
+export const goldReady = (id, now = gameNow()) => day(now) > (C(id).gold ?? -1);
 // { ok, err: 'cd'|'coins'|'energy'|'sick', gold }
-export function doCare(id, k, now = Date.now(), rnd = Math.random) {
+export function doCare(id, k, now = gameNow(), rnd = Math.random) {
   if (!CARE[k]) return { ok: false, err: 'x' };
   if (k === 'feed' && LIVESTOCK.includes(id)) { const e = feed(id, now); if (e) return { ok: false, err: e }; }
   else {
@@ -42,7 +43,7 @@ export function doCare(id, k, now = Date.now(), rnd = Math.random) {
   persist(); return { ok: true, gold };
 }
 // kovayla besleme de altın yumurta şansı verir
-export function rollGold(id, now = Date.now(), rnd = Math.random) {
+export function rollGold(id, now = gameNow(), rnd = Math.random) {
   if (happiness(id, now) < GOLD_AT || !goldReady(id, now) || rnd() >= GOLD_CHANCE) return false;
   C(id).gold = day(now); save.farm.goldEggs = (save.farm.goldEggs || 0) + 1;
   addGems(GOLD.gems); addCoins(GOLD.coins); persist(); return true;

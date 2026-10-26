@@ -2,6 +2,7 @@
 // renkli gübre yalnız o renkteki ekini hızlandırır, su (mavi/buz/gümüş) her ekine yarım etki eder.
 import { save, persist } from './save.js';
 import { cropState, seedOf } from './crops.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const M = 60000;
 export const PER_BAG = 25, BAG_MAX = 20;
@@ -33,7 +34,7 @@ export function gemsToBags(collected = {}) {
 export const fits = (k, id) => cropState(id) === 'growing' && (!GUBRE[k].seeds || GUBRE[k].seeds.includes(seedOf(id)));
 export const bestBag = (id) => ['r', 'g', 'y', 'w'].find((k) => bags(k) > 0 && fits(k, id)) || null;
 export const colorFor = (id) => ['r', 'g', 'y'].find((k) => GUBRE[k].seeds.includes(seedOf(id))) || 'w';
-export function fertilize(id, k = bestBag(id), now = Date.now()) {
+export function fertilize(id, k = bestBag(id), now = gameNow()) {
   if (!k || !bags(k) || !fits(k, id)) return false;
   const c = save.farm.crops[id]; c.readyAt = Math.max(now, c.readyAt - GUBRE[k].cut);
   B()[k] = bags(k) - 1; persist(); return k;

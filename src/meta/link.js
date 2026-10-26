@@ -1,8 +1,9 @@
 // F36: canlı çiftlik linki — linkten gelen her sulama sahibine 🪙 + büyüyen ekinlere 10 dk kazandırır
 import { save, persist, addCoins, account, waterClaimRaw } from './save.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const WATER = { coins: 15, cut: 10 * 60000, max: 20 };
-export function applyWater(n, now = Date.now()) {
+export function applyWater(n, now = gameNow()) {
   n = Math.max(0, Math.min(WATER.max * 7, n | 0));
   if (!n) return null;
   const coins = n * WATER.coins, cut = Math.min(n, WATER.max) * WATER.cut, crops = (save.farm && save.farm.crops) || {};
@@ -11,7 +12,7 @@ export function applyWater(n, now = Date.now()) {
   addCoins(coins); save.farm.watered = (save.farm.watered || 0) + n; persist();
   return { n, coins, hit };
 }
-export async function claimWater(now = Date.now()) { if (!account()) return null; return applyWater(await waterClaimRaw(), now); }
+export async function claimWater(now = gameNow()) { if (!account()) return null; return applyWater(await waterClaimRaw(), now); }
 // ?ciftlik=KOD (yalnız harf/rakam)
 export function linkCode(search = (typeof location !== 'undefined' ? location.search : '')) {
   const c = new URLSearchParams(search).get('ciftlik');

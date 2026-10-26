@@ -1,6 +1,7 @@
 // F32: zararlılar — büyüyen ekine 2 saatte bir şansla karga 🐦‍⬛ ya da tırtıl 🐛 konar.
 // Dokunup kovarsın (+5 🪙); kovmadan hasat edersen ürünün %30'u gider. Korkuluk kargayı hiç yaklaştırmaz.
 import { save, persist, spendCoins, addCoins } from './save.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const SLOT = 2 * 3600e3, CHANCE = 0.3;
 export const SCARE = { cost: 150, lvl: 2, emoji: '🧑‍🌾' };
@@ -24,7 +25,7 @@ export const hasScarecrow = (id) => !!st().scare[id];
 const crop = (id) => (save.farm && save.farm.crops || {})[id];
 
 // aktif zararlı: 'crow' | 'bug' | null. Ekimden sonraki ilk dilimden itibaren; kovulan dilim temiz kalır.
-export function pestAt(id, now = Date.now()) {
+export function pestAt(id, now = gameNow()) {
   const c = crop(id); if (!c || !c.ms) return null;
   const planted = c.readyAt - c.ms, slot = Math.floor(now / SLOT);
   if (slot <= Math.floor(planted / SLOT)) return null;
@@ -37,7 +38,7 @@ export function pestAt(id, now = Date.now()) {
   if (kind === 'crow' && hasScarecrow(id)) return null;
   return kind;
 }
-export function shoo(id, now = Date.now()) {
+export function shoo(id, now = gameNow()) {
   const k = pestAt(id, now); if (!k) return null;
   const c = crop(id), slot = Math.min(Math.floor(now / SLOT), Math.floor(c.readyAt / SLOT));
   st().pests[id] = slot; addCoins(SHOO); save.farm.shooed = (save.farm.shooed || 0) + 1; persist();
@@ -56,4 +57,4 @@ export function buyScarecrow(id) {
   st().scare[id] = 1; persist(); return 'ok';
 }
 // 3D imzası: k = korkuluk, C = karga, B = tırtıl
-export const pestSig = (id, now = Date.now()) => (hasScarecrow(id) ? 'k' : '') + ({ crow: 'C', bug: 'B' }[pestAt(id, now)] || '');
+export const pestSig = (id, now = gameNow()) => (hasScarecrow(id) ? 'k' : '') + ({ crow: 'C', bug: 'B' }[pestAt(id, now)] || '');

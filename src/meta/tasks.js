@@ -2,10 +2,11 @@
 // Sayaçlar analytics.track() olaylarından beslenir (bump). Görev ilerlemesi = sayaç − gün/hafta başı anlık görüntüsü.
 import { save, persist } from './save.js';
 import { THEMES } from './themes.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const DAY = 86400000;
-export const dayIdx = (now = Date.now()) => Math.floor(now / DAY);
-export const weekIdx = (now = Date.now()) => Math.floor((dayIdx(now) + 3) / 7); // Pazartesi başlar
+export const dayIdx = (now = gameNow()) => Math.floor(now / DAY);
+export const weekIdx = (now = gameNow()) => Math.floor((dayIdx(now) + 3) / 7); // Pazartesi başlar
 
 // olay adı -> [sayaç, artış (sayı ya da props alanı)]
 const MAP = {
@@ -59,7 +60,7 @@ function pick(pool, seed, k = 3) {
   return a.slice(0, k);
 }
 const snap = () => ({ ...stats() });
-function T(now = Date.now()) {
+function T(now = gameNow()) {
   let t = save.tasks;
   if (!t || typeof t !== 'object') t = save.tasks = {};
   const d = dayIdx(now), w = weekIdx(now);
@@ -79,14 +80,14 @@ const rows = (kind, now) => {
 export const dailyTasks = (now) => rows('d', now);
 export const weeklyTasks = (now) => rows('w', now);
 
-export function claimTask(kind, id, now = Date.now()) {
+export function claimTask(kind, id, now = gameNow()) {
   const q = rows(kind, now).find((r) => r.id === id);
   if (!q || !q.done || q.claimed) return 0;
   (kind === 'd' ? save.tasks.dDone : save.tasks.wDone).push(id);
   save.coins += q.coins; persist(); return q.coins;
 }
 export const chestReady = (kind, now) => { const t = T(now); return rows(kind, now).every((r) => r.claimed) && !(kind === 'd' ? t.dChest : t.wChest); };
-export function openChest(kind, now = Date.now(), rnd = Math.random) {
+export function openChest(kind, now = gameNow(), rnd = Math.random) {
   if (!chestReady(kind, now)) return null;
   const c = CHEST[kind], t = save.tasks;
   if (kind === 'd') t.dChest = true; else t.wChest = true;

@@ -3,6 +3,7 @@ import { save, persist, dailyStatus, claimDaily, addGems } from './save.js';
 import { CROPS, SEEDS } from './crops.js';
 import { PRODUCTS, isReady } from './produce.js';
 import { owns } from './farm.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const FTUE = [
   { id: 'play', text: '👆 İlk bölümü oyna, yıldız kazan' },
@@ -26,14 +27,14 @@ export function ftueDone(id) {
 
 // Daily: 7th day of a streak also gives a gem.
 export function farmDaily() { return dailyStatus(); }
-export function farmClaimDaily() {
-  const s = dailyStatus(); if (!s.available) return null;
-  const coins = claimDaily(); const gems = s.streak === 6 ? 1 : 0; // F361 (uygulamadaki F78): 💎 + 🔨 claimDaily içinde verilir
+export function farmClaimDaily(now = gameNow()) { // F356: durum ve alım aynı oyun saati anıyla
+  const s = dailyStatus(now); if (!s.available) return null;
+  const coins = claimDaily(now); const gems = s.streak === 6 ? 1 : 0; // F361 (uygulamadaki F78): 💎 + 🔨 claimDaily içinde verilir
   return { coins, gems, streak: s.streak + 1 };
 }
 
 // Away summary: what finished since the last session (min 10 min away).
-export function awaySummary(now = Date.now()) {
+export function awaySummary(now = gameNow()) {
   const last = save.lastSeen || 0;
   save.lastSeen = now; persist();
   if (!last || now - last < 10 * 60000) return null;
@@ -44,4 +45,4 @@ export function awaySummary(now = Date.now()) {
   const h = Math.floor((now - last) / 3600000), m = Math.floor((now - last) / 60000) % 60;
   return { away: h ? `${h} sa ${m} dk` : `${m} dk`, lines };
 }
-export function touchSeen() { save.lastSeen = Date.now(); persist(); }
+export function touchSeen() { save.lastSeen = gameNow(); persist(); }

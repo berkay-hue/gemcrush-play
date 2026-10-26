@@ -52,6 +52,7 @@ import { look } from '../meta/wardrobe.js';
 import { ftueCurrent, ftueDone, farmDaily, farmClaimDaily, awaySummary } from '../meta/onboard.js';
 import { CARE, happiness, careLeft, doCare, goldReady, GOLD, GOLD_AT } from '../meta/care.js';
 import { PETS, petsOpen, nameOf, setName, lovePet, loveState, LOVE_N, claimPage, pageClaimed, PAGE_REWARD } from '../meta/bond.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 const PLOT_W = 2.1, PLOT_D = 1.9; // F22: tarla ayak izi (2 sıra toprak) — komşu tarla bu kadar ötede
 const ISL_HW = 11, ISL_HD = 9; // ana ada (FarmWorld ISL 12×10, kenar payı)
@@ -391,7 +392,7 @@ export class Farm extends Phaser.Scene {
     m.add(txt(this, width / 2, height / 2 - 200, this.itemName(it), 17, '#cfe8d8'));
     const keys = NORMAL_SEEDS.slice().sort((a, b) => SEEDS[a].lvl - SEEDS[b].lvl || SEEDS[a].ms - SEEDS[b].ms), last = seedOf(id);
     const go = (k) => {
-      if (!plant(id, Date.now(), k)) { this.toast(en ? 'Not enough coins' : 'Yeterli para yok 🪙'); return; }
+      if (!plant(id, gameNow(), k)) { this.toast(en ? 'Not enough coins' : 'Yeterli para yok 🪙'); return; }
       close(); if (ftueDone('plant')) this.drawHint(); sfx.coin && sfx.coin(); track('crop_plant', { plot: id, seed: k });
       this.drawCrop(c, it); this.tweens.add({ targets: c.crop, scaleY: { from: 0.2, to: 1 }, duration: 400, ease: 'Back.Out' });
       this.toast(`${SEEDS[k].emoji} ${t('planted')} · ${fmtMs(cropMs(id))}`);
@@ -800,8 +801,8 @@ export class Farm extends Phaser.Scene {
         if (collect(id)) { sfx.coin(); track('farm_collect', { item: id }); close(); this.scene.restart({ harvest: id }); }
       }, 0x2ee06a, '#04220e', 22));
       else {
-        const left = txt(this, width / 2, height / 2 + 45, `${pr.emoji} ⏳ ${fmtMs(readyAt(id) - Date.now())}`, 22, '#ffe58a'); c.add(left);
-        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!c.active) return tk.remove(); left.setText(`${pr.emoji} ⏳ ${fmtMs(Math.max(0, readyAt(id) - Date.now()))}`); } });
+        const left = txt(this, width / 2, height / 2 + 45, `${pr.emoji} ⏳ ${fmtMs(readyAt(id) - gameNow())}`, 22, '#ffe58a'); c.add(left);
+        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!c.active) return tk.remove(); left.setText(`${pr.emoji} ⏳ ${fmtMs(Math.max(0, readyAt(id) - gameNow()))}`); } });
         const done = () => { sfx.coin(); close(); this.scene.restart(); };
         c.add(button(this, width / 2 - 95, height / 2 + 110, 170, 50, `💎 ${rushCost(id)} ${t('rush')}`, () => { if (rush(id)) { track('farm_rush', { item: id, via: 'gems' }); done(); } }, save.gems >= rushCost(id) ? 0x8fe3ff : 0x2a333a, save.gems >= rushCost(id) ? '#06222e' : '#777', 18));
         c.add(button(this, width / 2 + 95, height / 2 + 110, 170, 50, `📺 ${t('rush')}`, async () => { if (await showRewarded('farm_rush') && rush(id, true)) { track('farm_rush', { item: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 18));
@@ -989,7 +990,7 @@ export class Farm extends Phaser.Scene {
     c.add(iconSlot(this, width / 2 - 185, y + 4, 58, it.emoji || '👕', it.color || 0xffb3d9, 30));
     c.add(txt(this, width / 2 - 145, y - 8, it.name[en ? 'en' : 'tr'], 19, '#fff').setOrigin(0, 0.5));
     const cd = txt(this, width / 2 - 145, y + 18, '', 13, '#ffd1ea').setOrigin(0, 0.5); c.add(cd);
-    const tick = () => { if (!cd.active) return; const d = new Date(), m = new Date(d); m.setHours(24, 0, 0, 0); const q = Math.floor((m - d) / 1000), hh = Math.floor(q / 3600), mm = String(Math.floor(q / 60) % 60).padStart(2, '0'), ss = String(q % 60).padStart(2, '0'); cd.setText(`⏳ ${hh}:${mm}:${ss} · ${cur}${old} → ${cur}${amt}`); };
+    const tick = () => { if (!cd.active) return; const d = new Date(gameNow()), m = new Date(d); m.setHours(24, 0, 0, 0); const q = Math.floor((m - d) / 1000), hh = Math.floor(q / 3600), mm = String(Math.floor(q / 60) % 60).padStart(2, '0'), ss = String(q % 60).padStart(2, '0'); cd.setText(`⏳ ${hh}:${mm}:${ss} · ${cur}${old} → ${cur}${amt}`); };
     tick(); const tm = this.time.addEvent({ delay: 1000, loop: true, callback: () => (cd.active ? tick() : tm.remove()) });
     if (own) { c.add(txt(this, width / 2 + 160, y + 4, en ? 'Owned ✓' : 'Alındı ✓', 18, '#8ff0b0')); return; }
     if (lk) { c.add(button(this, width / 2 + 160, y + 4, 110, 48, `🔒 ${it.lvl}`, () => this.toast(`${t('level')} ${it.lvl}`), 0x2a333a, '#aaa', 18)); return; }
@@ -1196,8 +1197,8 @@ export class Farm extends Phaser.Scene {
       const y = top + 200 + i * 140;
       c.add(this.add.rectangle(width / 2, y, 440, 124, 0x000000, 0.25).setStrokeStyle(2, canDeliver(i) ? 0x2ee06a : 0xffffff, canDeliver(i) ? 0.7 : 0.12));
       if (o.wait) {
-        const w = txt(this, width / 2, y, `🚶 ${t('orderWait')} ${fmtMs(o.wait - Date.now())}`, 19, '#9fb3a8'); c.add(w);
-        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!w.active) return tk.remove(); const ms = o.wait - Date.now(); if (ms <= 0) { tk.remove(); again(); } else w.setText(`🚶 ${t('orderWait')} ${fmtMs(ms)}`); } });
+        const w = txt(this, width / 2, y, `🚶 ${t('orderWait')} ${fmtMs(o.wait - gameNow())}`, 19, '#9fb3a8'); c.add(w);
+        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!w.active) return tk.remove(); const ms = o.wait - gameNow(); if (ms <= 0) { tk.remove(); again(); } else w.setText(`🚶 ${t('orderWait')} ${fmtMs(ms)}`); } });
         return;
       }
       c.add(txt(this, width / 2 - 200, y - 32, `${o.emoji} ${o.name}`, 20, '#fff').setOrigin(0, 0.5));
@@ -1320,7 +1321,7 @@ export class Farm extends Phaser.Scene {
     this.toast(`${H.emoji} ${H[en ? 'en' : 'tr']}: ${H.fx[en ? 'en' : 'tr']}` + (hit ? ` (${hit} 🌱)` : '') + (safe ? `  ·  ${safe} ${H.guard === 'sera' ? '🏡' : '💦'} ${en ? 'protected' : 'korundu'}` : ''));
   }
   havaModal() {
-    const en = getLang() === 'en', L = en ? 'en' : 'tr', F = forecast(Date.now(), 4), H = HAVA[F[0].id], mins = Math.ceil(msToNextSlot() / 60000);
+    const en = getLang() === 'en', L = en ? 'en' : 'tr', F = forecast(gameNow(), 4), H = HAVA[F[0].id], mins = Math.ceil(msToNextSlot() / 60000);
     const { width, height } = this.scale, cx = width / 2, cy = height / 2; const { c, close } = modal(this, 480, 540);
     c.add(txt(this, cx, cy - 225, `${H.emoji} ${H[L]}`, 34, '#ffb71b'));
     c.add(txt(this, cx, cy - 188, H.fx[L], 16, '#cfe8d8'));

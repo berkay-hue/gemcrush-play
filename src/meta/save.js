@@ -1,6 +1,7 @@
 // Player state: localStorage, optional Supabase mirror.
 import { CONFIG } from '../config.js';
 import { getLang, setLang } from '../i18n.js'; // F333
+import { gameNow, learnServerTime, onClockJump } from './clock.js'; // F356
 
 const KEY = 'gemcrush.save.v1';
 const def = () => ({
@@ -10,7 +11,7 @@ const def = () => ({
   best: {},                       // levelId -> score
   coins: CONFIG.coins.start,
   lives: CONFIG.lives.max,
-  lifeTs: Date.now(),             // timestamp of last life regen tick
+  lifeTs: gameNow(),              // timestamp of last life regen tick
   inLevel: 0,                     // oynanan bölüm (kapanırsa açılışta can düşülür)
   boosters: { hammer: 1, moves5: 1, shuffle: 1, prism: 0 },
   daily: { last: 0, streak: 0 },
@@ -138,6 +139,8 @@ async function rpc(fn, body) {
   if (ac) o.signal = ac.signal;
   try {
     const r = await fetch(`${c.url}/rest/v1/rpc/${fn}`, o);
+    // F356 (uygulamadaki F298): sunucunun Date başlığı oyun saatini düzeltir (hata yanıtı da olsa)
+    learnServerTime(r.headers && r.headers.get && r.headers.get('date'));
     let bad = false;
     const j = await r.json().catch(() => { bad = true; return null; });
     // F344: sunucunun mesajla reddi (işlem geri alındı) ile belirsiz hata (ag) ayrılır
@@ -260,7 +263,7 @@ function flush(a, s, b, f) {
 // F312: sekme gizlenirken bekleyen kaydı hemen gönder; geri gelince buluta bak (başka yerde oynandıysa al)
 if (typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('visibilitychange', () => {
-    if (!account()) return;
+    if (!account()) { if (!document.hidden) clockProbe(); return; } // F356: misafir de öne dönüşte sunucu saatini öğrensin
     if (!document.hidden) pushCloud();
     else if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushCloud(); }
   });
@@ -363,8 +366,8 @@ async function claimInbox0() {
 }
 // günlük hediye kutusu (cihazda, günde 1)
 // F338 (uygulamadaki F259): yalnız gün ileri gidince açılır; saati geri alıp düzeltmek kutuyu yeniden açmasın
-export function giftBoxReady(now = Date.now()) { return Math.floor(now / 86400000) > (save.giftBox ?? -1); }
-export function openGiftBox(now = Date.now(), rnd = Math.random) {
+export function giftBoxReady(now = gameNow()) { return Math.floor(now / 86400000) > (save.giftBox ?? -1); }
+export function openGiftBox(now = gameNow(), rnd = Math.random) {
   if (!giftBoxReady(now)) return null;
   save.giftBox = Math.floor(now / 86400000);
   const x = rnd();
@@ -390,6 +393,10 @@ export function logout() {
 // F312: ilerleme eşitse sürümü yeni olan kalır, eşit sürümde bulut — web'deki eski kopya uygulamada
 // yapılan çiftlik/envanter değişikliklerini ezmesin. Açılış bitene kadar başka itme sırada bekler.
 export async function syncOnBoot() { return account() ? pushCloud(true) : false; }
+// F356 (uygulamadaki F298): misafir hiç RPC yapmayabilir; oyun saati için ucuz, yan etkisiz bir sunucu sorusu.
+// Cihaz saati oturum içinde sıçrarsa da sorulur.
+export const clockProbe = () => rpc('gc_app_version', { p_platform: 'web' }).catch(() => null);
+onClockJump(clockProbe);
 export function authError(e) {
   const m = String(e && e.message || '');
   // F365 (uygulamadaki F160/F194): 10 yanlış denemede sunucu 'hatali_kilit' döner; 'hatali'dan önce bakılmazsa
@@ -403,26 +410,26 @@ export function authError(e) {
 // F353: yayındaki sayfada ?dev=1 artık sınırsız can vermez — yalnız yerel geliştirme
 export const DEV = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 // ---- lives ----
-export function tickLives() {
-  if (DEV) { save.lives = CONFIG.lives.max; save.lifeTs = Date.now(); return; }
-  if (save.lives >= CONFIG.lives.max) { save.lifeTs = Date.now(); return; }
-  const gained = Math.floor((Date.now() - save.lifeTs) / CONFIG.lives.regenMs);
+export function tickLives() { // F356: can süresi oyun saatiyle
+  if (DEV) { save.lives = CONFIG.lives.max; save.lifeTs = gameNow(); return; }
+  if (save.lives >= CONFIG.lives.max) { save.lifeTs = gameNow(); return; }
+  const gained = Math.floor((gameNow() - save.lifeTs) / CONFIG.lives.regenMs);
   if (gained > 0) {
     save.lives = Math.min(CONFIG.lives.max, save.lives + gained);
     save.lifeTs += gained * CONFIG.lives.regenMs;
-    if (save.lives >= CONFIG.lives.max) save.lifeTs = Date.now();
+    if (save.lives >= CONFIG.lives.max) save.lifeTs = gameNow();
     persist();
   }
 }
 export function msToNextLife() {
   if (save.lives >= CONFIG.lives.max) return 0;
-  return Math.max(0, CONFIG.lives.regenMs - (Date.now() - save.lifeTs));
+  return Math.max(0, CONFIG.lives.regenMs - (gameNow() - save.lifeTs));
 }
 export function spendLife() {
   tickLives();
   if (DEV) { save.lives = CONFIG.lives.max; return true; }
   if (save.lives <= 0) return false;
-  if (save.lives === CONFIG.lives.max) save.lifeTs = Date.now();
+  if (save.lives === CONFIG.lives.max) save.lifeTs = gameNow();
   save.lives--; persist(); return true;
 }
 // Can yalnız KAYBEDİNCE gider. Bölüm başında "askıda" işaretlenir; kazanınca silinir,
@@ -465,7 +472,7 @@ export function recordWin(levelId, score, stars) {
 export function recordLoss() { save.levelsPlayed++; persist(); }
 
 // ---- daily ----
-export function dailyStatus(now = Date.now()) {
+export function dailyStatus(now = gameNow()) {
   const day = Math.floor(now / 86400000);
   const last = save.daily.last;
   // F338 (uygulamadaki F259): alınan günden önceki bir gün de "alındı" sayılır (saati geri alıp ödülü yeniden almak kapandı)
@@ -473,7 +480,7 @@ export function dailyStatus(now = Date.now()) {
   const streak = last === day - 1 ? save.daily.streak % 7 : 0; // F361 (uygulamadaki F78): seri 7 günde başa döner (takvim + ödül 25..300 döner)
   return { available: true, streak, reward: CONFIG.dailyRewards[Math.min(streak, CONFIG.dailyRewards.length - 1)] };
 }
-export function claimDaily(now = Date.now()) {
+export function claimDaily(now = gameNow()) {
   const s = dailyStatus(now);
   if (!s.available) return 0;
   save.daily = { last: Math.floor(now / 86400000), streak: s.streak + 1 };

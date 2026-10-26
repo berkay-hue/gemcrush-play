@@ -5,6 +5,7 @@ import { energy, E_MAX, msToNextEnergy } from '../meta/energy.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { getLang } from '../i18n.js';
 import { sfx } from '../sound.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 const L = (o) => (getLang() === 'tr' ? o.tr : o.en);
 const S = {
@@ -72,7 +73,7 @@ export class Zone extends Phaser.Scene {
     this.refresh();
   }
   refresh() {
-    const now = Date.now(), e = energy(now);
+    const now = gameNow(), e = energy(now);
     this.hud.setText(`⚡${e}/${E_MAX}${e < E_MAX ? ` (+1 ${fmtMs(msToNextEnergy(now))})` : ''}   🪙${save.coins}   ⭐${starBalance()}`);
     for (const it of this.items) {
       const st = obstState(this.z, it.o.id), k = OBST[it.o.kind];
