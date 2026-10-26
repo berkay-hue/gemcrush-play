@@ -15,6 +15,8 @@ import { farmTitle, renameBox } from '../ui/farmTitle.js';
 import { t } from '../i18n.js';
 
 const hhmm = (ms) => { const m = Math.ceil(ms / 60000); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+// F387 (uygulamadaki F288): hasat özeti; tek dokunuş ve sürükle-hasat aynı parçaları gösterir (ambar dolu, fıskiye, kesinti, kombo, elmas)
+const harvestNote = ({ k = 1, n, em, coins, full, replant, cuts = [], combo, gem }) => [k > 1 ? `✋ ×${k}` : '', n ? `+${n} ${em} → 🏚️` : '', coins ? `+🪙${coins}` : '', full ? t('ambarFull') : '', replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : '', ...cuts.map((c) => c + ' −%30'), combo ? `🔗×${combo} +%${combo * 10}` : '', gem ? `+💎${gem}` : ''].filter(Boolean).join('  ·  ');
 
 export const HandsMixin = {
   setupHands() {
@@ -63,9 +65,10 @@ export const HandsMixin = {
     }
     if (coins && !this.coinFrom) this.coinFrom = { x: cx, y: cy };
     this.time.delayedCall(260, () => { if (c) this.drawCrop(c, it); this.refreshHud(); });
-    if (!quiet) this.toast([r.n ? `+${r.n} ${r.emoji || it.emoji} → 🏚️` : '', coins ? `+🪙${coins}` : '', r.good && coins ? t('ambarFull') : '', r.replant ? '💦 ' + (getLang() === 'en' ? 'replanted' : 'yeniden ekildi') : '', r.cutHit && r.pest ? (r.pest === 'crow' ? '🐦‍⬛' : '🐛') + ' −%30' : '', r.cutHit && r.dolu ? '🌨️ −%30' : '', r.combo ? `🔗×${r.combo} +%${r.combo * 10}` : '', r.gem ? `+💎${r.gem}` : ''].filter(Boolean).join('  ·  '));
+    const full = !!(r.good && coins), cuts = [r.cutHit && r.pest ? (r.pest === 'crow' ? '🐦‍⬛' : '🐛') : '', r.cutHit && r.dolu ? '🌨️' : ''].filter(Boolean);
+    if (!quiet) this.toast(harvestNote({ ...r, em: r.emoji || it.emoji, full, cuts }));
     if (r.rare) this.rareDrop(r.rare, cx, cy);
-    return { ...r, emoji: r.emoji || it.emoji };
+    return { ...r, emoji: r.emoji || it.emoji, full, cuts };
   },
   // F34: nadir tohum düştü — parlayan tohum yükselir, ışık halkası, kısa kutlama yazısı
   rareDrop(k, cx, cy) {
@@ -98,6 +101,8 @@ export const HandsMixin = {
     H.done.add(id);
     const r = this.harvestPlot(id, true); if (!r) return;
     H.n += r.n || 0; H.coins += r.coins || 0; if (!H.em.includes(r.emoji)) H.em.push(r.emoji);
+    // F387 (uygulamadaki F288): sessiz hasatın ambar dolu, fıskiye, kesinti, kombo ve elması da özete taşınır
+    if (r.full) H.full = 1; if (r.replant) H.replant = 1; H.cuts = [...new Set([...(H.cuts || []), ...(r.cuts || [])])]; H.combo = Math.max(H.combo || 0, r.combo || 0); H.gem = (H.gem || 0) + (r.gem || 0);
     if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) { /* yok */ }
   },
   harvestEnd(down) {
@@ -105,7 +110,7 @@ export const HandsMixin = {
     if (this.sickle) { const s = this.sickle; this.sickle = null; this.tweens.add({ targets: s, alpha: 0, scale: 0.6, duration: 180, onComplete: () => s.destroy() }); }
     const k = H.done.size; if (!k) return;
     this.lambReact && this.time.delayedCall(500, () => this.lambReact('joy', k > 2 ? '✋ ×' + k + ' — süper hasat! 🌾' : 'Mis gibi ürün! 🌾'));
-    this.toast([k > 1 ? `✋ ×${k}` : '', H.n ? `+${H.n} ${H.em.join('')} → 🏚️` : '', H.coins ? `+🪙${H.coins}` : ''].filter(Boolean).join('  ·  '));
+    this.toast(harvestNote({ ...H, k, em: H.em.join('') })); // F387 (uygulamadaki F288): tek dokunuşla aynı özet
     const f = save.farm; if (k === 1 && !f.dragTip) { f.dragTip = 1; persist(); this.time.delayedCall(1300, () => this.toast('✋ Parmağını tarlaların üstünde sürükle, hepsini topla!')); }
   },
 
