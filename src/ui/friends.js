@@ -115,7 +115,8 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     if (tab === 'fr') draw(true);
   };
   const gift = async (code, kind) => {
-    try { await giftSend(code, kind); track('gift_send', { kind }); msg(kind === 'life' ? t('frLifeSent') : t('frReqSent'), true); }
+    // F373 (uygulamadaki F230): can istemek hediye sayılmaz; yalnız verilen can hediye görevini (wgift7) ve Cömert'i ilerletir
+    try { await giftSend(code, kind); track(kind === 'life' ? 'gift_send' : 'life_req', { kind }); msg(kind === 'life' ? t('frLifeSent') : t('frReqSent'), true); }
     catch (er) { msg(String(er.message).includes('bugun') ? t('frToday') : t('rkOffline')); }
     drawInbox();
   };
