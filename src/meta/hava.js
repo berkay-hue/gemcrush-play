@@ -28,6 +28,9 @@ export const hava = (now = gameNow()) => HAVA[havaAt(now)];
 // şimdiki + sonraki n dilim: [{ id, at }]
 export const forecast = (now = gameNow(), n = 4) => Array.from({ length: n + 1 }, (_, i) => { const s = slotOf(now) + i; return { id: havaSlot(s), at: s * SLOT }; });
 export const msToNextSlot = (now = gameNow()) => (slotOf(now) + 1) * SLOT - now;
+// F395 (uygulamadaki F240): dilim başlangıcının yerel saati. Dilimler UTC'ye göre 3 saatlik; UTC+5:30 gibi
+// buçuklu saat diliminde değişim :30'da olur, ':00' yazmak oyuncuyu yanıltıyordu.
+export const slotClock = (at) => { const d = new Date(at); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 
 // geçen her yeni dilimin etkisini o dilimin başında büyüyen ekinlere uygular (ilk çalışmada geriye dönük değil)
 export function havaTick(now = gameNow()) {

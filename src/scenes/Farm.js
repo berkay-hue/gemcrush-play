@@ -36,7 +36,7 @@ import { rareOwned, rareCount, RARE_PITY } from '../meta/rare.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
 import { CHAIN, state as chainState, msLeft as chainLeft, progress as chainProg, missing as chainMissing, canStart as chainCan, start as chainStart, collectChain } from '../meta/chain.js';
 import { LAYERS, layerStatus, buyLayer, hasLayer, layerSig } from '../meta/layers.js';
-import { HAVA, hava, forecast, havaTick, msToNextSlot } from '../meta/hava.js';
+import { HAVA, hava, forecast, havaTick, msToNextSlot, slotClock } from '../meta/hava.js';
 import { comboOf, beeNear, neighbors, flowersNearHive, COMBO_STEP } from '../meta/combo.js';
 import { PESTS, SCARE, pestAt, shoo, scareStatus, buyScarecrow, hasScarecrow, pestSig } from '../meta/pests.js';
 import { buildFarmArt, spawnChickens } from '../farmArt.js';
@@ -1341,9 +1341,9 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, cx, cy - 162, en ? `Changes in ${Math.floor(mins / 60)}h ${mins % 60}m · a new card every 3 hours` : `${Math.floor(mins / 60)} sa ${mins % 60} dk sonra değişir · 3 saatte bir yeni kart`, 14, '#9fb3a8'));
     c.add(txt(this, cx, cy - 122, en ? 'Forecast' : 'Tahmin', 18, '#fff'));
     F.slice(1).forEach((f, i) => {
-      const x = cx + (i - 1.5) * 104, W = HAVA[f.id], hh = new Date(f.at).getHours();
+      const x = cx + (i - 1.5) * 104, W = HAVA[f.id];
       const bad = !!W.guard, g = this.add.graphics(); g.fillStyle(bad ? 0x5a3a3a : 0x3d7a58, 1); g.fillRoundedRect(x - 46, cy - 100, 92, 100, 14); g.lineStyle(3, bad ? 0xff8a6a : 0x9fe870, 0.9); g.strokeRoundedRect(x - 46, cy - 100, 92, 100, 14); c.add(g);
-      c.add(txt(this, x, cy - 82, `${String(hh).padStart(2, '0')}:00`, 13, '#cfe8d8'));
+      c.add(txt(this, x, cy - 82, slotClock(f.at), 13, '#cfe8d8'));
       c.add(txt(this, x, cy - 50, W.emoji, 32));
       c.add(txt(this, x, cy - 16, W[L], 13, '#fff'));
     });
