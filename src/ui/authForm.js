@@ -33,9 +33,10 @@ export function authForm(onDone, cancelLabel) {
   document.body.appendChild(shield(wrap));
   const f = wrap.querySelector('form'), err = wrap.querySelector('.err');
   if (lost) { wrap.querySelector('.lost').textContent = t('sessLost').replace('{u}', lost); f.u.value = lost; } // F369
-  const done = (ok) => { wrap.remove(); onDone && onDone(ok); };
-  let mode = 'login', busy = false;
-  f.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.m; if (mode === 'close') done(false); }));
+  // F375 (uygulamadaki F254): giriş/kayıt sürerken İptal/Misafir kapatmasın (geç yanıt hesabı ve kaydı sessizce değiştiriyordu); onDone bir kez (Pazar iki kez açılıyordu)
+  let mode = 'login', busy = false, closed = false;
+  const done = (ok) => { if (closed) return; closed = true; wrap.remove(); onDone && onDone(ok); };
+  f.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { if (b.dataset.m === 'close') { if (!busy) done(false); return; } mode = b.dataset.m; }));
   f.addEventListener('submit', async (ev) => {
     ev.preventDefault(); if (busy) return;
     const u = f.u.value.trim(), p = f.p.value;
