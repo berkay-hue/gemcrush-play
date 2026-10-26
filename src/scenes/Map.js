@@ -10,6 +10,7 @@ import { txt, button, modal, fmtMs, card, iconSlot, ribbon, chip, shine, awning,
 import { authForm } from '../ui/authForm.js';
 import { nameBox, codeBox } from '../ui/farmTitle.js';
 import { THEMES, currentTheme, ownsTheme, buyTheme, setTheme } from '../meta/themes.js';
+import { chapterName } from '../chapters.js';
 
 export class Map extends Phaser.Scene {
   constructor() { super('Map'); }
@@ -56,7 +57,9 @@ export class Map extends Phaser.Scene {
         const sg = this.add.graphics(); sg.fillStyle(0x000000, 0.35); sg.fillRoundedRect(sx - 88, sy - 26 + 4, 176, 52, 14);
         sg.fillStyle(0x6b4423, 1); sg.fillRoundedRect(sx - 88, sy - 26, 176, 52, 14); sg.lineStyle(3, 0xffb71b, 0.9); sg.strokeRoundedRect(sx - 88, sy - 26, 176, 52, 14);
         this.path.add(sg); this.path.add(txt(this, sx, sy - 8, `${t('chapter')} ${Math.floor((lv.id - 101) / 10) + 2}`, 13, '#ffe58a'));
-        this.path.add(txt(this, sx, sy + 10, lv.chapter, 18, '#ffffff'));
+        const cn = txt(this, sx, sy + 10, chapterName(lv.chapter), 18, '#ffffff'); // F392 (uygulamadaki F251): bölüm adı seçili dilde, uzun çeviri tabelaya sığsın
+        if (cn.width > 164) cn.setScale(164 / cn.width);
+        this.path.add(cn);
       }
       if (lv.id % 10 === 0) { // F21: her 10 bölümde bir simge yapı
         const LM = ['🏰', '🌋', '🗼', '⛲', '🌉', '🏯', '🎡', '🗿', '⛩', '🏝'];
