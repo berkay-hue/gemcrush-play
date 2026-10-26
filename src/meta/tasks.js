@@ -27,6 +27,7 @@ export const stat = (k) => (k === 'level' ? Math.max(0, (save.level || 1) - 1) :
 
 export function bump(name, props = {}) {
   const m = MAP[name]; if (!m) return false;
+  T(); // F366 (uygulamadaki F192): gün/hafta döndüyse yeni başlangıç artıştan önce alınır; gece yarısından sonraki ilk ilerleme yutulmasın
   const s = stats();
   for (const [k, inc] of m) { const n = typeof inc === 'number' ? inc : Number(props[inc]) || 0; if (n > 0) s[k] = (s[k] || 0) + n; }
   persist(); return true;
