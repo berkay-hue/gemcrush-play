@@ -147,6 +147,7 @@ export class Farm extends Phaser.Scene {
     this.drawQuest();
     this.time.delayedCall(400, () => this.bridgeArrive(data));
     if (data.cropCut !== undefined && ftueDone('play')) this.time.delayedCall(2200, () => { ftueDone('reward'); this.drawHint(); });
+    else ftueDone('reward'); // F368 (uygulamadaki F206): önceki girişte 2,2 sn dolmadan çıkıldıysa zamanlayıcı sahneyle silindi → rehber 'ödül'de takılmasın (adım 'reward' değilse bir şey yapmaz)
     this.events.once('shutdown', () => this.events.off('update', this.fingerFollow, this));
     this.drawHint();
     const cine = !Farm._cine; if (cine) { Farm._cine = true; this.opening(); }
