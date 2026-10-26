@@ -275,8 +275,10 @@ export class Farm extends Phaser.Scene {
       w.pan(p.x - down.lx, p.y - down.ly); down.lx = p.x; down.ly = p.y;
       if (Math.hypot(p.x - down.x, p.y - down.y) > 12) down.moved = true;
     });
+    // F386 (uygulamadaki F271): HUD düğmesi üstünde bırakılan sürükle-hasat pad'e pointerup getirmez (topOnly); sahne düzeyinde de bitir, bayrakla ikinci bitiş boşa düşsün
+    const endHarvest = () => { if (!down || !down.harvest || down.ended) return false; down.ended = 1; this.harvestEnd(down); down = null; pinch = 0; return true; };
     pad.on('pointerup', (p) => {
-      if (down && down.harvest) { this.harvestEnd(down); down = null; pinch = 0; return; }
+      if (endHarvest()) return;
       if (down && !down.moved && Date.now() - down.t < 500 && this.placing) this.placeTap(p);
       else if (down && !down.moved && Date.now() - down.t < 500 && this.editing) { const id = w.pick(p.x, p.y); if (id && MOVABLE(id)) this.placeStart(id, true); }
       else if (down && !down.moved && Date.now() - down.t < 500 && this.signHit(p)) this.signTap();
@@ -292,7 +294,8 @@ export class Farm extends Phaser.Scene {
       down = null; pinch = 0;
     });
     this.input.on('wheel', (_p, _o, _dx, dy) => w.zoomBy(dy > 0 ? 1.08 : 0.93));
-    this.input.on('pointerupoutside', () => { if (down && down.harvest) this.harvestEnd(down); down = null; });
+    this.input.on('pointerup', endHarvest);
+    this.input.on('pointerupoutside', () => { endHarvest(); down = null; });
     this.setupHands();
     // F16c/F20: maskot kuzu 3D (FarmWorld.mascot); dokunma + konuşma balonu farmLamb.js'de
     this.setupLamb(this._data || {});

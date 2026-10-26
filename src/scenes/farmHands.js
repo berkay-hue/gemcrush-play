@@ -85,6 +85,7 @@ export const HandsMixin = {
     // F360 (uygulamadaki F287): zararlı tarlada basış hasat başlatmaz; bırakınca plotTap önce zararlıyı kovar (+5 🪙, tam verim)
     if (!this.isReadyPlot(id) || pestAt(id)) return false;
     down.harvest = { done: new Set(), n: 0, coins: 0, em: [] };
+    if (this.sickle) this.sickle.destroy(); // F386 (uygulamadaki F271): bitmemiş eski sürüklemeden kalan orak sahnede kalmasın
     this.sickle = this.add.image(p.x, p.y - 30, 'sickle').setDepth(950).setScale(1.2);
     this.harvestAt(p, down);
     return true;
