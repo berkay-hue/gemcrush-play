@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Board, BOSS_EVERY } from '../engine/board.js';
 import { bestMove } from '../engine/bot.js';
 import { CELL, gemKey } from '../textures.js';
-import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife } from '../meta/save.js';
+import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife, GIFT_LIFE_CAP } from '../meta/save.js';
 import { perks, sheepOnLoss } from '../meta/farm.js';
 import { winCut, WIN_CUT } from '../meta/crops.js';
 import { gemsToBags, bagsLine } from '../meta/gubre.js';
@@ -867,7 +867,7 @@ export class Game extends Phaser.Scene {
     this.ended = true; sfx.lose(); recordLoss(); endLevel(false);
     if (this.lamb) this.lamb.setTexture('lamb_scared');
     if (this.boss && this.boss.active) await this.wolfLunge(true);
-    if (sheepOnLoss()) { addLife(1); this.time.delayedCall(600, () => this.toast('🐑 +1 ❤', 30)); }
+    if (sheepOnLoss()) { addLife(1, GIFT_LIFE_CAP); this.time.delayedCall(600, () => this.toast('🐑 +1 ❤', 30)); }
     track('level_fail', { level: this.level.id, score: this.board.score });
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 340);
