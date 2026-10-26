@@ -88,7 +88,8 @@ export class Visitors {
   // greet -> {coins, first, left}. Visitor hops and runs off.
   greet(v) {
     v.jump = 0.6; v.st = 'out'; v.tx = v.ex; v.tz = v.ez;
-    const f = save.farm, g = f.greet && f.greet.day === day() ? f.greet : (f.greet = { day: day(), n: 0 });
+    // F359 (uygulamadaki F265): sınır yalnız ileri giden günde sıfırlanır; saat geri alınınca 8 selam yeniden açılmaz
+    const f = save.farm, t = day(), g = f.greet && typeof f.greet.day === 'string' && t <= f.greet.day ? f.greet : (f.greet = { day: t, n: 0 });
     f.album = f.album || {};
     const first = !f.album[v.kind]; f.album[v.kind] = (f.album[v.kind] || 0) + 1;
     let coins = 0; if (g.n < DAILY_GREETS) { g.n++; coins = REWARD * (first ? 3 : 1); addCoins(coins); }
