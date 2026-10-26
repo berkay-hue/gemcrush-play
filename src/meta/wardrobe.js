@@ -44,9 +44,20 @@ export const worn = (id) => { const it = byId[id]; return !!it && st()[it.slot] 
 
 // 'ok' | 'owned' | 'locked' | 'coins' | 'gems'
 // F28: günün fırsatı — ücretli parçalardan tarihe göre biri, %50 indirimli
+// F346 (uygulamadaki F227/F303): seçilen parça kayda sabitlenir, yalnız gün ileri gidince yenilenir. Eskiden her açılışta
+// tarihten yeniden hesaplanıyordu: tarihi ya da saat dilimini değiştirmek her seferinde başka bir parçayı yarı fiyata getiriyordu.
+// Alınmış ya da seviye kilitli parça da artık fırsat olmaz.
 export function dailyDeal(d = new Date()) {
-  const paid = WARDROBE.filter((w) => w.cost), day = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5);
-  const it = paid[(day * 7 + 3) % paid.length];
+  const day = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5);
+  const w = st(), pin = w.deal && typeof w.deal === 'object' ? w.deal : null;
+  const pd = pin && Number.isInteger(pin.d) ? pin.d : -1, dd = pd > day ? pd : day;
+  let it = pin && pd >= day ? byId[pin.id] : null;
+  if (!it || !it.cost) {
+    const all = WARDROBE.filter((x) => x.cost), usable = all.filter((x) => !locked(x.id)), fresh = usable.filter((x) => !owns(x.id));
+    const paid = fresh.length ? fresh : usable.length ? usable : all;
+    it = paid[(dd * 7 + 3) % paid.length];
+    w.deal = { d: dd, id: it.id }; persist();
+  }
   return { it, off: 0.5, price: it.cost.g ? { g: Math.ceil(it.cost.g / 2) } : { c: Math.round(it.cost.c / 2) } };
 }
 export const priceOf = (it, off = 0) => (it.cost.g ? { g: Math.ceil(it.cost.g * (1 - off)) } : { c: Math.round(it.cost.c * (1 - off)) });
