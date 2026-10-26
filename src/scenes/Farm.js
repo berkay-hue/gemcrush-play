@@ -27,7 +27,7 @@ import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
 import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
-import { TIERS, XP_TIER, pass, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
+import { TIERS, XP_TIER, pass, passLive, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { authForm } from '../ui/authForm.js';
 import { mktList, mktPost, mktBuy, mktClaim, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
@@ -1338,7 +1338,7 @@ export class Farm extends Phaser.Scene {
   seasonPass() {
     const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
     const { c, close } = modal(this, 480, 560);
-    const p = pass(), tier = tierOf(), left = seasonMsLeft(), d = Math.floor(left / 86400000);
+    const p = pass(), live = passLive(), tier = tierOf(), left = seasonMsLeft(), d = Math.floor(left / 86400000);
     c.add(txt(this, cx, cy - 245, `🎟️ ${t('passTitle')}`, 30, '#ffb71b'));
     c.add(txt(this, cx, cy - 210, `${t('passTier')} ${tier}/${TIERS}  ·  ${t('festEnds')} ${d}${t('dayShort')}`, 17, '#9fb3a8'));
     const into = tier >= TIERS ? XP_TIER : p.xp % XP_TIER;
@@ -1347,7 +1347,7 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, cx, cy - 162, tier >= TIERS ? t('passMax') : `${into}/${XP_TIER} XP`, 14, '#fff'));
     for (let i = 1; i <= TIERS; i++) {
       const x = cx - 180 + ((i - 1) % 5) * 90, y = cy - 118 + Math.floor((i - 1) / 5) * 64;
-      const got = p.claimed.includes(i), open = i <= tier && !got;
+      const got = p.claimed.includes(i), open = live && i <= tier && !got;
       const b = this.add.rectangle(x, y, 80, 54, got ? 0x1d5c34 : open ? 0xffb71b : 0x2a333a).setStrokeStyle(2, 0xffffff, open ? 1 : 0.25); c.add(b);
       c.add(txt(this, x, y - 14, String(i), 12, open ? '#04220e' : '#9fb3a8'));
       c.add(txt(this, x, y + 8, got ? '✓' : rewardIcon(reward(i)), 17, open ? '#04220e' : '#fff'));
