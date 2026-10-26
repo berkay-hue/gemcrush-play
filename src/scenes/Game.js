@@ -660,7 +660,8 @@ export class Game extends Phaser.Scene {
     const { width } = this.scale;
     const y = OY + this.board.H * CELL / 2;
     const glow = this.add.image(width / 2, y, 'glow').setTint(0xffb71b).setBlendMode(Phaser.BlendModes.ADD).setDepth(69).setScale(0).setAlpha(0.8);
-    const tx = txt(this, width / 2, y, s, size, '#fff3c4').setDepth(70).setStroke('#7a3b00', 8).setShadow(0, 6, '#000', 8, true, true).setScale(0.3).setAngle(-6);
+    // F417: tek satırdı ve 1.3 katına büyüyordu; uzun yazı (görev, bossAttack) ekrandan taşıyordu. Kaydırma genişliği en büyük ölçeğe göre
+    const tx = txt(this, width / 2, y, s, size, '#fff3c4', { wordWrap: { width: (width - 24) / 1.3 } }).setDepth(70).setStroke('#7a3b00', 8).setShadow(0, 6, '#000', 8, true, true).setScale(0.3).setAngle(-6);
     this.tweens.add({ targets: glow, scale: 3.5, alpha: 0, duration: 500, ease: 'Quad.Out', onComplete: () => glow.destroy() });
     this.tweens.add({ targets: tx, scale: 1.15, angle: 3, duration: 260, ease: 'Back.Out', onComplete: () => this.tweens.add({ targets: tx, alpha: 0, y: tx.y - 50, scale: 1.3, delay: 450, duration: 300, onComplete: () => tx.destroy() }) });
   }
