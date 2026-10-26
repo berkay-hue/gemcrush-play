@@ -821,7 +821,8 @@ export class Game extends Phaser.Scene {
     const left = this.board.moves;
     this.lambMood('happy');
     if (this.boss && this.boss.active) { this.wolfIdle && this.wolfIdle.stop(); this.boss.setTexture('wolf_hurt'); this.tweens.add({ targets: this.boss, x: this.scale.width + 140, angle: 20, duration: 700, delay: 350, ease: 'Back.In' }); }
-    await this.victoryFx(left);
+    // F349 (uygulamadaki F181): ödüller kutlamadan ÖNCE yazılır — kutlama (~2 sn) sırasında sekme kapanır ya da arka plana
+    // alınırsa galibiyet (bölüm, yıldız, para) kayboluyordu
     const bonus = this.board.cashOutMoves();
     const stars = this.board.stars(); const score = this.board.score;
     const coins = CONFIG.coins.winReward + CONFIG.coins.threeStar + left * CONFIG.coins.perMoveLeft;
@@ -835,6 +836,7 @@ export class Game extends Phaser.Scene {
     this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor, gubre: got };
     track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
     if (fr) track('event_win', { n: fest, all: !!fr.all });
+    await this.victoryFx(left);
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
