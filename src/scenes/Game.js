@@ -281,7 +281,7 @@ export class Game extends Phaser.Scene {
     return [r, c];
   }
   onDown(p) {
-    if (this.busy || this.ended) return;
+    if (this.busy || this.ended || this.quitOpen) return; // F377 (uygulamadaki F128): çıkış penceresi düğmesine dokunuş alttaki taşı seçip takas etmesin
     const cell = this.cellAt(p); if (!cell) return;
     this.idle = 0; this.hideHint();
     if (this.mode) { this.applyBoosterAt(cell); return; }
@@ -292,7 +292,7 @@ export class Game extends Phaser.Scene {
     this.select(cell); this.dragFrom = cell;
   }
   onMove(p) {
-    if (!this.dragFrom || this.busy || this.ended || this.mode) return;
+    if (!this.dragFrom || this.busy || this.ended || this.quitOpen || this.mode) return;
     const [r, c] = this.dragFrom;
     const dx = p.x - px(c), dy = p.y - py(r);
     if (Math.max(Math.abs(dx), Math.abs(dy)) < CELL * 0.45) return;
@@ -899,7 +899,7 @@ export class Game extends Phaser.Scene {
   quit() {
     if (this.ended || this.quitOpen) return;
     const { width, height } = this.scale;
-    this.quitOpen = true;
+    this.quitOpen = true; this.clearSel(); this.dragFrom = null; // F377 (uygulamadaki F128): pencere açılırken seçim/sürükleme temizlensin
     const { c, close } = modal(this, 420, 300);
     c.once('destroy', () => { this.quitOpen = false; });
     c.add(txt(this, width / 2, height / 2 - 95, t('quitQ'), 30, '#ffb71b'));
