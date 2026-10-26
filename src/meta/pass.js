@@ -1,6 +1,6 @@
 // F14: ücretsiz 30 basamaklı sezon yolu (kayıt: save.pass {season, xp, claimed[]}).
 import { save, persist, addCoins, addGems, addLife } from './save.js';
-import { currentSeason } from './season.js';
+import { currentSeason, SEASONS } from './season.js';
 
 export const TIERS = 30, XP_TIER = 25;
 const BOOST = ['hammer', 'shuffle', 'moves5', 'prism'];
@@ -21,18 +21,23 @@ export function seasonMsLeft(d = new Date()) {
   const y = d.getFullYear() + (d.getMonth() === 11 && last !== 11 ? 1 : 0);
   return new Date(y, last + 1, 1).getTime() - d.getTime();
 }
+// F340 (uygulamadaki F264): sezon sırası (yıl*4 + kış/bahar/yaz/güz); bozuk anahtar -1
+const ord = (k) => { const m = /^(\d+)-(\w+)$/.exec(typeof k === 'string' ? k : ''); const s = m ? SEASONS.findIndex((x) => x.id === m[2]) : -1; return m && s >= 0 ? +m[1] * 4 + s : -1; };
+// F340: kart yalnız ileri giden sezonda sıfırlanır; saat geri alınınca kayıtlı (ileri) sezon korunur
 export function pass(d = new Date()) {
   const k = seasonKey(d);
-  if (!save.pass || save.pass.season !== k) save.pass = { season: k, xp: 0, claimed: [] };
+  if (!save.pass || ord(k) > ord(save.pass.season)) save.pass = { season: k, xp: 0, claimed: [] };
   return save.pass;
 }
+// F340: kayıtlı sezon saatten ileride kalınca XP ve ödül işlemez
+export const passLive = (d = new Date()) => pass(d).season === seasonKey(d);
 export const tierOf = (d) => Math.min(TIERS, Math.floor(pass(d).xp / XP_TIER));
-export const claimable = (d) => { const p = pass(d), n = tierOf(d); let c = 0; for (let i = 1; i <= n; i++) if (!p.claimed.includes(i)) c++; return c; };
+export const claimable = (d) => { if (!passLive(d)) return 0; const p = pass(d), n = tierOf(d); let c = 0; for (let i = 1; i <= n; i++) if (!p.claimed.includes(i)) c++; return c; };
 export const winXp = (stars, festival) => (10 + stars * 5) * (festival ? 2 : 1);
-export function addXp(n, d = new Date()) { const p = pass(d), before = tierOf(d); p.xp = Math.min(TIERS * XP_TIER, p.xp + n); persist(); return tierOf(d) - before; }
+export function addXp(n, d = new Date()) { if (!passLive(d)) return 0; const p = pass(d), before = tierOf(d); p.xp = Math.min(TIERS * XP_TIER, p.xp + n); persist(); return tierOf(d) - before; }
 export function claim(i, d = new Date()) {
   const p = pass(d);
-  if (i < 1 || i > tierOf(d) || p.claimed.includes(i)) return null;
+  if (!passLive(d) || i < 1 || i > tierOf(d) || p.claimed.includes(i)) return null;
   const r = reward(i); p.claimed.push(i);
   if (r.coins) addCoins(r.coins);
   if (r.gems) addGems(r.gems);
