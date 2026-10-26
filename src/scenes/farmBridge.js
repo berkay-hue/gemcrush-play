@@ -88,7 +88,8 @@ export const BridgeMixin = {
     c.add(txt(this, cx, cy - 12, `Veteriner bölümünü kazan → iyileşir (bugün ${n}/3)`, 16, '#fff'));
     const lvN = Math.min(save.level, this.levels.length);
     c.add(button(this, cx, cy + 50, 300, 56, n ? '🩺 Veteriner bölümü' : '🩺 Yarın tekrar', () => {
-      if (!n || !useVet()) return; close(); this.preLevel(this.levels[lvN - 1], id);
+      // F398 (uygulamadaki #204): hak dokunuşta değil kazanınca düşer (Game.win → useVet); kaybedilen deneme hakkı yemez
+      if (!vetLeft()) return; close(); this.preLevel(this.levels[lvN - 1], id);
     }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 20));
     const ok = save.gems >= CURE_GEMS;
     c.add(button(this, cx, cy + 115, 220, 48, `💎 ${CURE_GEMS} hemen`, () => { if (cureWithGems(id)) { close(); this.scene.restart({ cured: id }); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 18));
