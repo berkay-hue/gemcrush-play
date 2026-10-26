@@ -84,7 +84,8 @@ export async function wipeAll() {
 
 // F312: base = bu sekmenin son eşleştiği bulut kopyası (sürüm:ilerleme:harcanan yıldız), bilinmiyorsa null.
 // force > 0 = kod içe aktarıldı, içe aktarılanı taşıyan yazma bitene dek eşitleme karşılaştırmadan yazar. queue = eşitlemeler sırayla.
-let syncTimer = null, base = null, force = 0, queue = Promise.resolve();
+// unsent = bu hesabın son eşitlemesi düştü (çevrimdışı), değişiklik buluta gitmemiş olabilir (F334).
+let syncTimer = null, base = null, force = 0, queue = Promise.resolve(), unsent = false;
 // F312: kayıt sürümü (uygulamadaki F126 ile aynı) — ilerleme eşitken hangi tarafın yeni olduğunu ayırır.
 // Web cihaz saatini kullanmaz (+1): uygulamanın sunucu saatli sürümünü geçip eski kaydı kazandıramaz.
 const rev = (s) => (typeof s.rev === 'number' && s.rev > 0 ? s.rev : 0);
@@ -103,7 +104,7 @@ const AKEY = 'gemcrush.account.v1';
 const OKEY = 'gemcrush.owner.v1';
 export function account() { try { return JSON.parse(localStorage.getItem(AKEY) || 'null'); } catch { return null; } }
 function setAccount(a) {
-  base = null; force = 0;
+  base = null; force = 0; unsent = false;
   try {
     const o = account();
     if (a) { localStorage.setItem(AKEY, JSON.stringify(a)); localStorage.removeItem(OKEY); }
@@ -144,7 +145,8 @@ function pushCloud(boot = false) {
   // eski anahtarla geç dönen 'oturum' hatası arada açılan yeni oturumu kapatmasın
   const run = () => {
     const t = (account() || {}).token;
-    return sync(boot, lr).catch((e) => { const b = account(); if (/oturum/.test(e.message) && b && b.token === t) setAccount(null); return false; });
+    const mine = () => { const b = account(); return !!b && b.token === t; };
+    return sync(boot, lr).then((r) => { if (mine()) unsent = false; return r; }, (e) => { if (mine()) unsent = true; if (/oturum/.test(e.message) && mine()) setAccount(null); return false; });
   };
   return (queue = queue.then(run, run));
 }
@@ -180,6 +182,24 @@ async function sync(boot, lr) {
   try { await rpc('gc_push', { p_token: a.token, p_save: save }); } catch (e) { if (same()) base = null; throw e; }
   if (same()) { base = sent; if (force === f) force = 0; }
   return false;
+}
+// F334: çıkıştaki son itiş — o hesaba, çıkış anındaki kopyayla (sonraki misafir ilerlemesi gitmez). Karar sync ile aynı:
+// bulut başka yerde ilerlediyse ezilmez; alınmaz da (oturum kapandı, cihazdaki kayıt artık misafirin).
+function flush(a, s, b, f) {
+  const run = async () => {
+    const c = await rpc('gc_pull', { p_token: a.token });
+    if (c && typeof c.level === 'number') {
+      if (f) { if (rev(c) >= rev(s)) s.rev = rev(c) + 1; }
+      else {
+        const cs = progressScore(c), ls = progressScore(s);
+        if (b === null ? sig(c) === sig(s) || cs > ls || (cs === ls && rev(c) >= rev(s)) : sig(c) === b ? sig(s) === b : cs >= ls) return false;
+      }
+    }
+    await rpc('gc_push', { p_token: a.token, p_save: s });
+    return false;
+  };
+  const go = () => run().catch(() => false);
+  return (queue = queue.then(go, go));
 }
 // F312: sekme gizlenirken bekleyen kaydı hemen gönder; geri gelince buluta bak (başka yerde oynandıysa al)
 if (typeof document !== 'undefined' && document.addEventListener) {
@@ -260,7 +280,17 @@ export function openGiftBox(now = Date.now(), rnd = Math.random) {
   persist();
   return r;
 }
-export function logout() { clearTimeout(syncTimer); setAccount(null); }
+// F334: çıkış bekleyen (2.5 sn içindeki) ya da itilemeyen değişikliği silmesin, o hesabın bulutuna yine gitsin (uygulamadaki
+// F126/F329 karşılığı). Yoksa aynı hesaba geri girişte ilerleme eşit olduğu için bulut kazanıyor, alım/hasat kayboluyordu.
+// Bekleyen: son eşleşmeden (base) beri değişen kayıt; base bilinmiyorsa kurulu itiş ya da düşen eşitleme.
+// Bekleyen yoksa itilmez: başka cihazın daha yeni kaydı ezilmez.
+export function logout() {
+  const a = account(), p = base === null ? !!syncTimer || unsent : sig(save) !== base;
+  clearTimeout(syncTimer); syncTimer = null;
+  const r = a && p ? flush(a, JSON.parse(JSON.stringify(save)), base, force) : Promise.resolve(false);
+  setAccount(null);
+  return r;
+}
 // açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
 // F312: ilerleme eşitse sürümü yeni olan kalır, eşit sürümde bulut — web'deki eski kopya uygulamada
 // yapılan çiftlik/envanter değişikliklerini ezmesin. Açılış bitene kadar başka itme sırada bekler.
