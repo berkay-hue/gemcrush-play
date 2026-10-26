@@ -865,7 +865,8 @@ export class Game extends Phaser.Scene {
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); const coinT = txt(this, width / 2 + 10, height / 2 + 60, '+0', 26, '#ffe58a'); c.add(coinT);
     this.time.delayedCall(900, () => flyCoins(this, width / 2, height / 2 - 90, width / 2 - 40, height / 2 + 60, Math.ceil(coins / 15), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { const o = { v: 0 }; this.tweens.add({ targets: o, v: coins, duration: 500, ease: 'Quad.Out', onUpdate: () => coinT.setText(`+${Math.round(o.v)}`), onComplete: () => { coinT.setText(`+${coins}`); this.tweens.add({ targets: coinT, scale: 1.3, duration: 90, yoyo: true }); } }); }));
     const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : '', bagsLine(got)].filter(Boolean).join('  ·  ');
-    c.add(txt(this, width / 2, height / 2 + 95, extra, 19, '#ffb71b'));
+    // F425 (uygulamayla aynı): uzun ödül satırı pencereden taşmasın — sığdır
+    const ex = txt(this, width / 2, height / 2 + 95, extra, 19, '#ffb71b'); if (ex.width > 400) ex.setScale(400 / ex.width); c.add(ex);
     if (cut.length) c.add(txt(this, width / 2, height / 2 - 140, `🌽 ${t('cropFaster')} −${WIN_CUT / 60000} ${t('minShort')}`, 18, '#9dffb8'));
     const nf = fest ? festNext() : 0;
     const last = fest ? !nf : this.level.id >= this.cache.json.get('levels').length;
