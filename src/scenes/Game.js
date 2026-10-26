@@ -804,6 +804,8 @@ export class Game extends Phaser.Scene {
     const g = this.board.cells[r][c];
     const blk = this.board.blocked(r, c) && this.mode === 'hammer';
     if (!blk && (!g || g.type < 0)) return;
+    // F376 (uygulamadaki F147): zincirli/buzlu ya da zaten özel taşa prizma konmaz (bombayı ezer) — ödemeden önce reddet, mod açık kalır
+    if (this.mode === 'prism' && (g.special || this.board.stuck(r, c))) { sfx.bad(); this.toast(t('pickOther'), 26); return; }
     const k = this.mode; this.setMode(null);
     if (!this.pendingPay()) return;
     if (k === 'hammer') { const ev = this.board.useHammer(r, c); if (ev) await this.runEvents(ev); }
