@@ -1,6 +1,6 @@
 // F27: Kuzucuk'un gardırobu — şapka / tulum / aksesuar; 3D kuzu anında giyinir
 import { save } from '../meta/save.js';
-import { SLOTS, WARDROBE, look, owns, locked, worn, buy, wear } from '../meta/wardrobe.js';
+import { SLOTS, WARDROBE, look, owns, locked, worn, buy, wear, dailyDeal, priceOf } from '../meta/wardrobe.js';
 import { txt, button, modal, card } from '../ui/widgets.js';
 import { getLang } from '../i18n.js';
 import { sfx } from '../sound.js';
@@ -27,6 +27,7 @@ export const WardrobeMixin = {
         body.add(button(this, width / 2 + (i - 1) * 150, top + 112, 140, 44, `${ic} ${L(tr, en)}`, () => { if (!on) { slot = s; sfx.click(); draw(); } }, on ? 0xffb71b : 0x2a333a, on ? '#1a1200' : '#fff', 17));
       });
       const list = WARDROBE.filter((w) => w.slot === slot), cw = 140, ch = 160;
+      const dealId = dailyDeal().it.id; // F350 (uygulamadaki F35): mağazadaki günün fırsatı indirimi gardıropta da geçerli
       list.forEach((w, i) => {
         const x = width / 2 + ((i % 3) - 1) * (cw + 12), y = top + 230 + Math.floor(i / 3) * (ch + 14);
         const isW = worn(w.id), own = owns(w.id), lk = !own && locked(w.id);
@@ -46,17 +47,20 @@ export const WardrobeMixin = {
         else if (lk) { lab = `🔒 ${L('Sv', 'Lv')} ${w.lvl}`; col = 0x44505a; }
         else if (w.cost.g) { lab = `💎 ${w.cost.g}`; col = 0x7b4fc9; }
         else { lab = `🪙 ${w.cost.c}`; col = 0xffb71b; tc = '#1a1200'; }
-        body.add(button(this, x, y + 54, 112, 38, lab, () => this.wardrobePick(w, draw), col, tc, 16));
+        const deal = !isW && !own && !lk && w.id === dealId && w.cost;
+        if (deal) { const dp = priceOf(w, 0.5); lab = dp.g ? `⚡💎 ${dp.g}` : `⚡🪙 ${dp.c}`; col = 0xff4f9a; tc = '#ffffff'; }
+        // indirim, düğmede gösterilen fiyattan alınır (pencere açıkken gece yarısı geçince fırsat değişebilir)
+        body.add(button(this, x, y + 54, 112, 38, lab, () => this.wardrobePick(w, draw, deal ? 0.5 : 0), col, tc, 16));
       });
     };
     draw();
     c.add(button(this, width / 2, top + H - 50, 220, 52, L('Tamam', 'Done'), close, 0x2e9e4f, '#fff', 22));
   },
 
-  wardrobePick(w, redraw) {
+  wardrobePick(w, redraw, off = 0) {
     if (worn(w.id)) return;
     if (!owns(w.id)) {
-      const r = buy(w.id);
+      const r = buy(w.id, off);
       if (r === 'locked') { this.toast(L(`🔒 Seviye ${w.lvl}’te açılır`, `🔒 Unlocks at level ${w.lvl}`)); return; }
       if (r === 'coins') { this.toast(L('Yeterli para yok 🪙', 'Not enough coins 🪙')); return; }
       if (r === 'gems') { this.toast(L('Yeterli elmas yok 💎', 'Not enough gems 💎')); return; }
