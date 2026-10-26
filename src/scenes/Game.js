@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { Board, BOSS_EVERY } from '../engine/board.js';
 import { bestMove } from '../engine/bot.js';
 import { CELL, gemKey } from '../textures.js';
-import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife, GIFT_LIFE_CAP } from '../meta/save.js';
+import { save, persist, beginLevel, endLevel, addCoins, spendCoins, recordWin, recordLoss, addLife, GIFT_LIFE_CAP, tickLives } from '../meta/save.js';
 import { perks, sheepOnLoss } from '../meta/farm.js';
 import { winCut, WIN_CUT } from '../meta/crops.js';
 import { gemsToBags, bagsLine } from '../meta/gubre.js';
@@ -893,7 +893,9 @@ export class Game extends Phaser.Scene {
     if (this.level.boss) c.add(this.add.image(width / 2 + 190, height / 2 - 130, 'wolf').setDisplaySize(120, 120));
     c.add(txt(this, width / 2, height / 2 - 40, `${t('score')}: ${this.board.score}`, 22, '#fff'));
     // F362 (uygulamadaki F173): Tekrar veteriner hedefini (vetFor) taşısın; yoksa tekrarda kazanınca hayvan iyileşmez
-    c.add(button(this, width / 2, height / 2 + 40, 300, 64, t('retry'), async () => { await maybeInterstitial('level_end'); this.scene.start(save.lives > 0 ? 'Game' : 'Farm', { level: this.level, vetFor: this.vetFor }); }, 0x2ee06a, '#04220e'));
+    // F379 (uygulamadaki F142): Tekrar önce canı tazelesin (pencere açıkken dolan can sayılsın); can yoksa sessizce çiftliğe düşmesin, haritada can penceresi açılsın
+    tickLives(); const hasLife = save.lives > 0;
+    c.add(button(this, width / 2, height / 2 + 40, 300, 64, hasLife ? t('retry') : `❤ ${t('noLives')}`, async () => { await maybeInterstitial('level_end'); tickLives(); if (save.lives > 0) this.scene.start('Game', { level: this.level, vetFor: this.vetFor }); else this.scene.start('Map', { livesModal: true }); }, hasLife ? 0x2ee06a : 0x3f7bff, hasLife ? '#04220e' : '#fff'));
     c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm'); }, 0x2a333a, '#fff', 18));
   }
   quit() {
