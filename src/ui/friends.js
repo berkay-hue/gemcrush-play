@@ -114,11 +114,18 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     box.querySelectorAll('[data-give]').forEach((b) => b.addEventListener('click', () => gift(b.dataset.give, 'life')));
     if (tab === 'fr') draw(true);
   };
+  // F388 (uygulamadaki F284): yanıtı beklenen can gönder/iste ('kod|tür') — çift dokunuş ikinci istek atıp "bugün gönderdin" ile onayı ezmesin
+  const gifting = new Set();
   const gift = async (code, kind) => {
     // F373 (uygulamadaki F230): can istemek hediye sayılmaz; yalnız verilen can hediye görevini (wgift7) ve Cömert'i ilerletir
-    try { await giftSend(code, kind); track(kind === 'life' ? 'gift_send' : 'life_req', { kind }); msg(kind === 'life' ? t('frLifeSent') : t('frReqSent'), true); }
-    catch (er) { msg(String(er.message).includes('bugun') ? t('frToday') : t('rkOffline')); }
-    drawInbox();
+    const k = `${code}|${kind}`;
+    if (gifting.has(k)) return;
+    gifting.add(k);
+    try {
+      try { await giftSend(code, kind); track(kind === 'life' ? 'gift_send' : 'life_req', { kind }); msg(kind === 'life' ? t('frLifeSent') : t('frReqSent'), true); }
+      catch (er) { msg(String(er.message).includes('bugun') ? t('frToday') : t('rkOffline')); }
+      await drawInbox(); // kilit gönderilenler ('sent') yenilenene dek kalır, düğme ✓ olur
+    } finally { gifting.delete(k); } // istek düşse de kalkar: yeniden denenebilir
   };
   const drawLb = async () => {
     const box = $('.list');
