@@ -340,7 +340,8 @@ export function endLevel(won) {
   if (!won) spendLife(); else persist();
 }
 export function settlePendingLevel() { if (save.inLevel) endLevel(false); }
-export function addLife(n = 1) { save.lives = Math.min(CONFIG.lives.max, save.lives + n); persist(); }
+// F342 (uygulamadaki F175): can eklemek üst sınırı aşan hediye canları silmez; ödül canları cap ile hediye sınırına kadar eklenir
+export function addLife(n = 1, cap = CONFIG.lives.max) { save.lives = Math.max(save.lives, Math.min(cap, save.lives + n)); persist(); }
 
 // ---- coins ----
 export function addCoins(n) { save.coins += n; persist(); }

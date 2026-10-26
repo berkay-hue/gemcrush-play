@@ -1,5 +1,5 @@
 // F14: ücretsiz 30 basamaklı sezon yolu (kayıt: save.pass {season, xp, claimed[]}).
-import { save, persist, addCoins, addGems, addLife } from './save.js';
+import { save, persist, addCoins, addGems, addLife, GIFT_LIFE_CAP } from './save.js';
 import { currentSeason, SEASONS } from './season.js';
 
 export const TIERS = 30, XP_TIER = 25;
@@ -41,7 +41,7 @@ export function claim(i, d = new Date()) {
   const r = reward(i); p.claimed.push(i);
   if (r.coins) addCoins(r.coins);
   if (r.gems) addGems(r.gems);
-  if (r.life) addLife(1);
+  if (r.life) addLife(1, GIFT_LIFE_CAP); // F342: ödül canı dolu canda da eklenir
   if (r.booster) save.boosters[r.booster] = (save.boosters[r.booster] || 0) + 1;
   persist(); return r;
 }
