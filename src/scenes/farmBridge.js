@@ -8,6 +8,7 @@ import { CATALOG, owns } from '../meta/farm.js';
 import { isSick, vetLeft, useVet, cureWithGems, CURE_GEMS, LIVESTOCK } from '../meta/animals.js';
 import { bereketLeft } from '../meta/bereket.js';
 import { sfx } from '../sound.js';
+import { t } from '../i18n.js';
 
 const MIN = Math.round(WIN_CUT / 60000);
 
@@ -24,7 +25,7 @@ export const BridgeMixin = {
         this.tweens.add({ targets: s, x: a.x + (i - 1.5) * 12, y: a.y, scale: 0.6, delay: delay + i * 70, duration: 700, ease: 'Cubic.InOut', onComplete: () => s.destroy() });
       }
       this.time.delayedCall(delay + 750, () => {
-        const l = txt(this, a.x, a.y - 10, `−${MIN} dk ✨`, 20, '#9dffb8').setDepth(1501).setStroke('#0a0f0d', 5);
+        const l = txt(this, a.x, a.y - 10, `−${MIN} ${t('minShort')} ✨`, 20, '#9dffb8').setDepth(1501).setStroke('#0a0f0d', 5);
         this.tweens.add({ targets: l, y: a.y - 60, alpha: 0, delay: 700, duration: 800, onComplete: () => l.destroy() });
         sfx.coin && sfx.coin();
       });
