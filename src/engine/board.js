@@ -50,6 +50,10 @@ export class Board {
     this.cells = grid(this.H, this.W, null);
     this.applyLayout(level.layout);
     this.fillInitial();
+    // F364 (uygulamadaki F221): katman hedefi bölüm başında tahtadaki sayıdan sayılır; bölüm dosyasındaki
+    // hedef tahtadakinden az ya da çok olabiliyor, gösterge "-18/30" gibi eksiden başlıyordu.
+    this.start = { jelly: this.count(this.jelly), rock: this.count(this.rock), ice: this.count(this.ice), fence: this.count(this.fence),
+      mud: this.count(this.mud), moss: this.count(this.moss), lock: this.locks() };
   }
 
   // layout: array of H strings, W chars each.
@@ -594,24 +598,20 @@ export class Board {
     if (obj.collect)
       for (const [t, n] of Object.entries(obj.collect))
         out.push({ kind: 'collect', gemType: +t, target: n, current: Math.min(this.collected[t] || 0, n) });
-    if (obj.jelly) {
-      const total = this.count(this.jelly);
-      out.push({ kind: 'jelly', target: obj.jelly, current: obj.jelly - total });
-    }
-    if (obj.rock) {
-      const total = this.count(this.rock);
-      out.push({ kind: 'rock', target: obj.rock, current: obj.rock - total });
-    }
-    if (obj.ice) out.push({ kind: 'ice', target: obj.ice, current: Math.max(0, obj.ice - this.count(this.ice)) });
-    if (obj.fence) out.push({ kind: 'fence', target: obj.fence, current: Math.max(0, obj.fence - this.count(this.fence)) });
-    if (obj.moss) out.push({ kind: 'moss', target: obj.moss, current: Math.max(0, obj.moss - this.count(this.moss)) });
-    if (obj.mud) out.push({ kind: 'mud', target: obj.mud, current: Math.max(0, obj.mud - this.count(this.mud)) });
-    if (obj.lock) {
-      let left = 0;
-      for (let r = 0; r < this.H; r++) for (let c = 0; c < this.W; c++) if (this.cells[r][c] && this.cells[r][c].locked) left++;
-      out.push({ kind: 'lock', target: obj.lock, current: obj.lock - left });
-    }
+    for (const k of ['jelly', 'rock', 'ice', 'fence', 'moss', 'mud', 'lock'])
+      if (obj[k]) out.push(this.layer(k, obj[k], k === 'lock' ? this.locks() : this.count(this[k])));
     return out;
+  }
+  // F364: hedef bölüm başındaki sayı; ilerleme 0'ın altına inmez (çamur, yosun yayılır). Başta hiç yoksa hedef tamam sayılır.
+  layer(kind, o, left) {
+    const t = this.start ? this.start[kind] : o;
+    if (!(t > 0)) return { kind, target: o, current: o };
+    return { kind, target: t, current: Math.max(0, t - left) };
+  }
+  locks() {
+    let n = 0;
+    for (let r = 0; r < this.H; r++) for (let c = 0; c < this.W; c++) if (this.cells[r][c] && this.cells[r][c].locked) n++;
+    return n;
   }
   count(layer) {
     let n = 0;
