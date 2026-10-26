@@ -301,12 +301,15 @@ export class Farm extends Phaser.Scene {
     this.setupLamb(this._data || {});
 
     // overlays follow their 3D anchors
-    this.events.on('update', () => {
+    const follow = () => {
       for (const id in this.nodes) {
         const a = w.anchor(id, 0.15), c = this.nodes[id];
         if (a && c.active) { c.x = a.x; c.y = a.y; c.setVisible(a.vis && a.y > 90 && a.y < 900); }
       }
-    });
+    };
+    // F424: sahne yeniden başlayınca dinleyici kalksın (her restart'ta biri daha ekleniyordu)
+    this.events.on('update', follow);
+    this.events.once('shutdown', () => this.events.off('update', follow));
   }
 
   drawItem3d(it, st, c, big) {

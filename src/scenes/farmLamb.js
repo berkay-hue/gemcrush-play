@@ -19,7 +19,7 @@ export const LambMixin = {
     const zone = this.add.zone(0, 0, 60, 90).setOrigin(0.5, 1).setDepth(1).setInteractive({ useHandCursor: true });
     this._lambTaps = [];
     zone.on('pointerup', () => this.lambTap());
-    this.events.on('update', () => {
+    const follow = () => {
       const [LX, LZ] = w.mascotPos || [-7.3, 1.1];
       const a = w.project(LX, 0, LZ), b = w.project(LX, 2.6, LZ);
       const h = Math.max(24, Math.min(260, a.y - b.y));
@@ -28,7 +28,10 @@ export const LambMixin = {
       const vis = a.vis && a.y > 90 && a.y < 900; zone.setVisible(vis);
       const bb = this.lambBubble;
       if (bb && bb.active) { bb.x = Math.max(bb.halfW + 8, Math.min(540 - bb.halfW - 8, b.x)); bb.y = Math.max(bb.hH + 100, b.y - 6); bb.tail.x = Math.max(-bb.halfW + 18, Math.min(bb.halfW - 18, b.x - bb.x)); bb.setVisible(vis); }
-    });
+    };
+    // F424: restart'ta eski sahnenin kuzu takibi birikmesin
+    this.events.on('update', follow);
+    this.events.once('shutdown', () => this.events.off('update', follow));
     // açılış: alışveriş sonrası dans, yoksa selam
     this.time.delayedCall(1600, () => {
       if (data.dlg) this.lambReact('dance', pick([L('Yeni bir şey! Çok güzel olmuş 🤩', 'Something new! Looks great 🤩'), L('Bayıldım! Hemen yerleşelim 🎉', 'Love it! Let’s settle in 🎉')]));
