@@ -332,7 +332,27 @@ export function applyInbox(r, replay = false) {
   persist();
   return { life: save.lives - before, help, coins: help * HELP_REWARD.owner, left: n('left') };
 }
-export async function helpFriend(code) { await giftSend(code, 'help'); save.coins += HELP_REWARD.helper; persist(); return HELP_REWARD.helper; }
+// F411 (uygulamada da): yardım ödülü yanıt kaybolunca kaybolmasın. İstekten önce bugünün (sunucu günü, UTC) bekleyen
+// işareti (helpP[kod] = gün) yazılır. Ağ/5xx hatasında işaret kalır: sunucu yazmışsa sonraki dokunuş 'bugun_yapildi' alır
+// ve önceki deneme belirsiz kaldığı için ödül bir kez verilir. Alınan ödül 'gün!' ile işaretlenir, aynı gün ikinci kez
+// verilmez; bekleyen işaret yokken gelen 'bugun' (başka cihazda ya da önceden yardım edilmiş) ödül vermez.
+const helpP = () => (save.helpP && typeof save.helpP === 'object' && !Array.isArray(save.helpP) ? save.helpP : (save.helpP = {}));
+export async function helpFriend(code) {
+  tok(); // hesap yoksa işaret bırakmadan hata
+  const d = new Date(gameNow()).toISOString().slice(0, 10), m = {};
+  for (const [k, v] of Object.entries(helpP())) if (typeof v === 'string' && v.startsWith(d)) m[k] = v; // eski günler atılır
+  const was = m[code] === d;
+  if (m[code] !== `${d}!`) m[code] = d;
+  save.helpP = m; persist();
+  try { await giftSend(code, 'help'); }
+  catch (e) {
+    const p = helpP();
+    if (!e || !e.server) throw e; // ağ/5xx: sonuç belirsiz, işaret kalır
+    if (!String(e.message).includes('bugun')) { if (p[code] === d) { delete p[code]; persist(); } throw e; } // reddedildi: yazılmadı
+    if (!was) { p[code] = `${d}!`; persist(); throw e; }
+  }
+  helpP()[code] = `${d}!`; save.coins += HELP_REWARD.helper; persist(); return HELP_REWARD.helper;
+}
 // F36: canlı çiftlik linki — herkese açık görüntü + cihaz başına günde 1 sulama; sahibi girişte toplar
 export const publicFarm = (code) => rpc('gc_public_farm', { p_code: code });
 export function deviceId() {
