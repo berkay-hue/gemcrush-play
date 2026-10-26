@@ -390,7 +390,14 @@ export function logout() {
 // F312: ilerleme eşitse sürümü yeni olan kalır, eşit sürümde bulut — web'deki eski kopya uygulamada
 // yapılan çiftlik/envanter değişikliklerini ezmesin. Açılış bitene kadar başka itme sırada bekler.
 export async function syncOnBoot() { return account() ? pushCloud(true) : false; }
-export function authError(e) { const m = String(e && e.message || ''); return ['kullanici_adi', 'sifre_kisa', 'alinmis', 'hatali'].find((k) => m.includes(k)) || 'ag'; }
+export function authError(e) {
+  const m = String(e && e.message || '');
+  // F365 (uygulamadaki F160/F194): 10 yanlış denemede sunucu 'hatali_kilit' döner; 'hatali'dan önce bakılmazsa
+  // "şifre yanlış" görünür. Kayıtta filtreye takılan kullanıcı adı (isim_uygunsuz) "bağlantı hatası" görünmesin.
+  if (m.includes('hatali_kilit')) return 'kilit';
+  if (m.includes('isim_uygunsuz')) return 'isim';
+  return ['kullanici_adi', 'sifre_kisa', 'alinmis', 'hatali'].find((k) => m.includes(k)) || 'ag';
+}
 
 // Dev/test: on localhost lives are always full
 // F353: yayındaki sayfada ?dev=1 artık sınırsız can vermez — yalnız yerel geliştirme
