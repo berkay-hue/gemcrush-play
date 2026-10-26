@@ -1,5 +1,5 @@
 import { CONFIG } from '../config.js';
-import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, wipeAll, totalStars, account, logout, leaderboard } from '../meta/save.js';
+import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, loadCode, wipeAll, totalStars, account, logout, leaderboard } from '../meta/save.js';
 import { t, setLang, getLang } from '../i18n.js';
 import { showRewarded } from '../monetize/ads.js';
 import { buy, price, restore } from '../monetize/iap.js';
@@ -365,8 +365,11 @@ export class Map extends Phaser.Scene {
     }, 0x2a333a, '#fff', 18));
     c.add(button(this, width / 2, y0 + 430, 320, 44, `📥 ${t('loadCode')}`, () => {
       codeBox({ title: `📥 ${t('loadCode')}`, okLabel: `📥 ${t('loadBtn')}`, onSave: (code) => {
-        if (!code || !importCode(code)) return false;
-        close(); this.scene.restart({}); return true;
+        // F352: önce şimdiki ve kodun bölüm/altını gösterilip onay istenir; İptal'de kutu kapanır, kayıt aynen kalır
+        const r = code && loadCode(code, (pk) => window.confirm(t('loadConfirm').replace('{a}', save.level).replace('{b}', save.coins).replace('{c}', pk.level).replace('{d}', pk.coins)));
+        if (r === false || r === '') return false;
+        if (r) { close(); this.scene.restart({}); }
+        return true;
       } });
     }, 0x2a333a, '#fff', 20));
     c.add(button(this, width / 2, y0 + 495, 320, 48, `🗑️ ${t('wipe')}`, async () => {
