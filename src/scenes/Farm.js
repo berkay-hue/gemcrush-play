@@ -30,7 +30,7 @@ import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FES
 import { TIERS, XP_TIER, pass, passLive, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
 import { friendFarm, account, inbox } from '../meta/save.js';
 import { authForm } from '../ui/authForm.js';
-import { mktList, mktPost, mktBuy, mktClaim, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
+import { mktList, mktPost, mktBuy, mktClaim, mktBusy, mktPosting, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
 import { NORMAL_SEEDS } from '../meta/crops.js';
 import { rareOwned, rareCount, RARE_PITY } from '../meta/rare.js';
 import { CROPS, SEEDS, seedOf, cropInfo, seedOpen, WIN_CUT, cropState, growth, msLeft, plant, harvest, cropRush, cropRushCost, autoHarvest, cropMs, seedPrice, plotLvl, plotUpgradeCost, upgradePlot, cropYield } from '../meta/crops.js';
@@ -595,14 +595,19 @@ export class Farm extends Phaser.Scene {
       c.add(txt(this, width / 2 - 160, y - 10, `🪙${m.price}`, 19, '#ffe58a').setOrigin(0, 0.5));
       c.add(txt(this, width / 2 - 160, y + 12, `${tr > 0 ? '▲' : tr < 0 ? '▼' : '•'}${Math.abs(tr)}% · 📦${m.units || 0}`, 13, tr > 0 ? '#8ff0b0' : tr < 0 ? '#ff9a9a' : '#9fb3a8').setOrigin(0, 0.5));
       const buyOk = m.units > 0 && m.min != null;
-      c.add(button(this, width / 2 + 50, y, 116, 42, buyOk ? `${t('pzBuy')} 🪙${m.min}` : t('pzNone'), async () => {
+      // F344 (uygulamadaki F166): en ucuz ilanın adedi ve toplam bedeli; alım bu birim fiyat ve adetle sınırlı
+      const unit = m.min || 0, lotN = m.minN || 0, total = lotN > 0 ? unit * lotN : unit;
+      const buyLbl = lotN > 0 ? `${t('pzBuy')} ×${lotN} 🪙${total}` : `${t('pzBuy')} 🪙${unit}`;
+      c.add(button(this, width / 2 + 50, y, 116, 42, buyOk ? buyLbl : t('pzNone'), async () => {
         if (!buyOk) { this.toast(t('pzNone')); return; }
-        try { const r = await mktBuy(p.good); sfx.coin(); track('pazar_buy', { good: p.good, n: r.n }); this.toast(`🤝 +${p.emoji}×${r.n} −🪙${r.cost}`); again(); }
-        catch (e) { this.toast(/yok/.test(e.message) ? (save.coins < m.min ? t('needCoins') : t('pzGone')) : `⚠️ ${t('rkOffline')}`); }
+        if (mktBusy()) return; // F344: alım sürüyor (çift dokunuş)
+        try { const r = await mktBuy(p.good, unit, lotN > 0 ? lotN : null); sfx.coin(); track('pazar_buy', { good: p.good, n: r.n }); this.toast(`🤝 +${p.emoji}×${r.n} −🪙${r.cost}`); again(); }
+        catch (e) { this.toast(/yok/.test(e.message) ? (save.coins < total ? t('needCoins') : t('pzGone')) : `⚠️ ${t('rkOffline')}`); }
       }, buyOk ? 0x3f7bff : 0x2a333a, buyOk ? '#fff' : '#777', 16));
       c.add(button(this, width / 2 + 170, y, 96, 42, `${t('pzSell')} ×${Math.min(3, n) || 1}`, async () => {
         if (!n) { this.toast(t('tradeNeed')); return; }
-        try { await mktPost(p.good, Math.min(3, n), m.price); sfx.coin(); track('pazar_post', { good: p.good }); this.toast(`📜 ${p.emoji}×${Math.min(3, n)} · 🪙${m.price}`); again(); }
+        if (mktPosting()) return; // F344: ilan işlemi sürüyor (çift dokunuş)
+        try { await mktPost(p.good, Math.min(3, n), m.price, m.mine || 0); sfx.coin(); track('pazar_post', { good: p.good }); this.toast(`📜 ${p.emoji}×${Math.min(3, n)} · 🪙${m.price}`); again(); }
         catch (e) { this.toast(/dolu/.test(e.message) ? t('pzFull') : /fiyat/.test(e.message) ? t('pzPrice') : `⚠️ ${t('rkOffline')}`); }
       }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 16));
     });
@@ -610,6 +615,7 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, width / 2 - 200, y, `📜 ${t('pzMine')} ${mine}/${MAX_LISTINGS} · %${FEE * 100} ${t('pzFee')}`, 15, '#ffe58a').setOrigin(0, 0.5));
     c.add(button(this, width / 2 + 160, y, 120, 40, `↩ ${t('pzCancel')}`, async () => {
       if (!mine) { this.toast(t('pzNoMine')); return; }
+      if (mktPosting()) return; // F344
       try { await mktClaim(true); track('pazar_cancel', {}); this.toast(`↩ ${t('pzBack')}`); again(); } catch { this.toast(`⚠️ ${t('rkOffline')}`); }
     }, mine ? 0xff8a3d : 0x2a333a, mine ? '#1a0a00' : '#777', 16));
   }
