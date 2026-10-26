@@ -19,6 +19,12 @@ export const CROP_ITEMS = { wheat: { good: 'wheat', emoji: '🌾', price: 12 }, 
 // F30: üretim zincirinin mamulleri (değirmen → un, fırın → ekmek)
 export const MADE_ITEMS = { flour: { good: 'flour', emoji: '🥣', price: 40 }, bread: { good: 'bread', emoji: '🍞', price: 110 } };
 export const GOODS = { ...Object.fromEntries(Object.values(PRODUCTS).map((p) => [p.good, p])), ...CROP_ITEMS, ...MADE_ITEMS };
+// F413: kayıt uygulamayla ortak; uygulamanın açtığı sipariş web'de üretilmeyen ürünü (meyve, peynir, ot…) isteyebilir. Simgeleri uygulamadaki produce.dart ile aynı.
+const APP_EMOJI = {
+  apple: '🍎', cherry: '🍒', orange: '🍊', peach: '🍑', lemon: '🍋', walnut: '🌰', pomegranate: '🔴', date: '🌴', sakura: '🌸',
+  jam: '🫙', juice: '🧃', pie: '🥧', cheese: '🧀', butter: '🧈', cake: '🍰', herbs: '🌿', mushroom: '🍄', grape: '🍇', crayfish: '🦞',
+};
+export const goodEmoji = (g) => (GOODS[g] && GOODS[g].emoji) || APP_EMOJI[g] || '📦';
 // F4: takas tarifleri (ürün karışımı -> güçlendirici)
 export const RECIPES = [
   { need: { wheat: 3 }, give: 'shuffle' },

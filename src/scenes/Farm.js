@@ -9,7 +9,7 @@ import { showRewarded } from '../monetize/ads.js';
 import { Visitors, KINDS } from '../farm3d/visitors.js';
 import { isSick, hunger, LIVESTOCK } from '../meta/animals.js';
 import { CATALOG, TABS, item, status, buyItem, owns, PERK_TEXT, newUnlocks, markSeen, posOf, setPos, ARSA, arsa, ownsPlot, plotStatus, buyPlot, inPlot, ANIMAL_MAX, animalCount, moreStatus, buyMore, BLD_MAX, bldLvl, upgradeCost, upgrade, ambarCap } from '../meta/farm.js';
-import { PRODUCTS, TRADES, GOODS, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
+import { PRODUCTS, TRADES, GOODS, goodEmoji, RECIPES, canCraft, craft, HATCH_WINS, isReady, readyAt, collect, inventory, sell, trade, hatchState, incubate, hatch, rush, rushCost, ambarUsed, ambarFull } from '../meta/produce.js';
 import { currentQuest, questDone, claimQuest, takeDialog } from '../meta/quests.js';
 import { claimWater } from '../meta/link.js';
 import { t, getLang } from '../i18n.js';
@@ -594,7 +594,7 @@ export class Farm extends Phaser.Scene {
     let L;
     try {
       const got = await mktClaim(false);
-      if (got && (got.coins || Object.keys(got.back || {}).length)) { sfx.coin(); this.toast(`🤝 ${got.coins ? `+🪙${got.coins} ` : ''}${Object.entries(got.back || {}).map(([g, n]) => `${GOODS[g] ? GOODS[g].emoji : g}×${n}`).join(' ')}`); this.refreshHud(); }
+      if (got && (got.coins || Object.keys(got.back || {}).length)) { sfx.coin(); this.toast(`🤝 ${got.coins ? `+🪙${got.coins} ` : ''}${Object.entries(got.back || {}).map(([g, n]) => `${goodEmoji(g)}×${n}`).join(' ')}`); this.refreshHud(); }
       L = await mktList();
     } catch (e) { if (c.scene) wait.setText(`⚠️ ${t('rkOffline')}`).setFontSize(19); return; }
     if (!c.scene) return; wait.destroy();
@@ -1218,7 +1218,7 @@ export class Farm extends Phaser.Scene {
         return;
       }
       c.add(txt(this, width / 2 - 200, y - 32, `${o.emoji} ${o.name}`, 20, '#fff').setOrigin(0, 0.5));
-      const need = Object.entries(o.need).map(([g, n]) => `${GOODS[g].emoji}${Math.min(inv[g] || 0, n)}/${n}`).join('   ');
+      const need = Object.entries(o.need).map(([g, n]) => `${goodEmoji(g)}${Math.min(inv[g] || 0, n)}/${n}`).join('   '); // F413: uygulamanın siparişindeki ürün web'de yoksa pano çökmesin
       c.add(txt(this, width / 2 - 200, y + 4, need, 22, '#ffe58a').setOrigin(0, 0.5));
       c.add(txt(this, width / 2 - 200, y + 38, `🪙${o.coins}  ·  +${o.xp} XP`, 16, '#9dffb8').setOrigin(0, 0.5));
       const ok = canDeliver(i);
