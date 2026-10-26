@@ -1102,11 +1102,11 @@ export class Farm extends Phaser.Scene {
     const pages = {
       farm: CATALOG.map((i) => ({ emoji: i.emoji, have: owns(i.id), name: nameOf(i.id) || this.itemName(i) })),
       season: SEASONS.map((s) => ({ emoji: s.emoji, have: decor().includes(s.id), name: s[getLang()] || s.tr })),
-      visitors: Object.entries(KINDS).map(([k, K]) => ({ emoji: K.emoji, have: !!al[k], name: al[k] ? `${K.name} ×${al[k]}` : K.name })),
+      visitors: Object.entries(KINDS).map(([k, K]) => ({ emoji: K.emoji, have: !!al[k], name: al[k] ? `${this.itemName(K)} ×${al[k]}` : this.itemName(K) })), // F403: ziyaretçi adı seçili dilde
     };
     c.add(txt(this, width / 2, height / 2 - 300, `📖 ${t('book')} ${this.bookCount()}`, 28, '#ffb71b'));
     ['farm', 'season', 'visitors'].forEach((p, i) => c.add(button(this, width / 2 - 145 + i * 145, height / 2 - 250, 136, 40,
-      { farm: '🏡 Çiftlik', season: '🎃 Sezon', visitors: '🦊 Ziyaretçi' }[p], () => { close(); this.book(p); }, p === page ? 0xffb71b : 0x2a333a, p === page ? '#1a1200' : '#fff', 15)));
+      t({ farm: 'pgFarm', season: 'pgSeason', visitors: 'pgVisitors' }[p]), () => { close(); this.book(p); }, p === page ? 0xffb71b : 0x2a333a, p === page ? '#1a1200' : '#fff', 15))); // F403 (uygulamadaki b.fc.*): sekme ve sayfa ödülü metinleri seçili dilde
     const list = pages[page], full = list.every((x) => x.have);
     list.forEach((it, k) => {
       const x = width / 2 - 165 + (k % 4) * 110, y = height / 2 - 175 + Math.floor(k / 4) * 96;
@@ -1115,11 +1115,11 @@ export class Farm extends Phaser.Scene {
       c.add(txt(this, x, y + 28, it.have ? it.name : '???', 12, '#fff'));
     });
     const have = list.filter((x) => x.have).length, ry = height / 2 + 250;
-    if (pageClaimed(page)) c.add(txt(this, width / 2, ry, '✅ Sayfa ödülü alındı', 18, '#9dffb8'));
-    else if (full) c.add(button(this, width / 2, ry, 240, 48, `Sayfa tamam! 💎${PAGE_REWARD[page]}`, () => {
+    if (pageClaimed(page)) c.add(txt(this, width / 2, ry, t('pageClaimed'), 18, '#9dffb8'));
+    else if (full) c.add(button(this, width / 2, ry, 240, 48, `${t('pageDone')} 💎${PAGE_REWARD[page]}`, () => {
       if (claimPage(page, true)) { sfx.coin && sfx.coin(); this.refreshHud(); close(); this.book(page); }
     }, 0x2ee06a, '#04220e', 18));
-    else c.add(txt(this, width / 2, ry, `${have}/${list.length} · tamamla → 💎${PAGE_REWARD[page]}`, 18, '#ffe58a'));
+    else c.add(txt(this, width / 2, ry, `${have}/${list.length} · ${t('pageComplete')} → 💎${PAGE_REWARD[page]}`, 18, '#ffe58a'));
     if (page === 'farm' && save.farm.chicks) c.add(txt(this, width / 2, ry - 40, `🐤 × ${save.farm.chicks}`, 20, '#ffe58a'));
     c.add(button(this, width / 2, height / 2 + 305, 140, 44, '✕', close, 0x2a333a, '#fff'));
   }
