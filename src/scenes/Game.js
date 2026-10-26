@@ -9,7 +9,7 @@ import { gemsToBags, bagsLine } from '../meta/gubre.js';
 import { zoneCut } from '../meta/zones.js';
 import { addEnergy } from '../meta/energy.js';
 import { startBereket } from '../meta/bereket.js';
-import { cure } from '../meta/animals.js';
+import { cure, useVet } from '../meta/animals.js';
 import { currentQuest } from '../meta/quests.js';
 import { t, getLang } from '../i18n.js';
 import { showRewarded, maybeInterstitial } from '../monetize/ads.js';
@@ -834,7 +834,7 @@ export class Game extends Phaser.Scene {
     const xp = winXp(stars, !!fest), tierUp = addXp(xp);
     const cut = winCut(); this.cropCut = cut.length + zoneCut(); const en = stars === 3 ? 3 : 2; addEnergy(en);
     if (stars === 3) startBereket();
-    if (this.vetFor) cure(this.vetFor);
+    if (this.vetFor) { cure(this.vetFor); useVet(); } // F398: veteriner hakkı yalnız kazanınca düşer
     const got = gemsToBags(this.board.collected); // F39: toplanan taş rengi → gübre torbası
     this.farmData = { cropCut: this.cropCut, cut, energy: en, bereket: stars === 3, cured: this.vetFor, gubre: got };
     track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
