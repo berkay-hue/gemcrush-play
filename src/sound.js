@@ -14,6 +14,7 @@ export const sfx = {
   unlock: () => ac(),
   swap: () => tone(420, 0.08, 'triangle', 0.08),
   bad: () => tone(160, 0.15, 'sawtooth', 0.08, -60),
+  error: () => sfx.bad(), // F383: Farm/Map satın alma hataları bunu çağırıyordu ama yoktu (Günün Fırsatı'nda TypeError, uyarı çıkmıyordu)
   match: (cascade = 1) => tone(520 + cascade * 90, 0.14, 'sine', 0.14),
   special: () => { tone(300, 0.25, 'square', 0.08, 500); tone(900, 0.3, 'sine', 0.1); },
   combo: () => { [0, 60, 120].forEach((d, i) => setTimeout(() => tone(600 + i * 200, 0.25, 'triangle', 0.12), d)); },
