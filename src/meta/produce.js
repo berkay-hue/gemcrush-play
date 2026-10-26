@@ -2,6 +2,7 @@
 import { save, persist, addCoins, spendGems } from './save.js';
 import { owns, ambarCap, animalCount } from './farm.js';
 import { honeyMul } from './combo.js';
+import { LIVESTOCK, isSick } from './animals.js';
 
 const H = 3600000;
 export const PRODUCTS = {
@@ -51,7 +52,7 @@ export function readyAt(id) {
 }
 export function isReady(id, now = Date.now()) { return !!PRODUCTS[id] && owns(id) && now >= readyAt(id); }
 export function collect(id, now = Date.now()) {
-  if (!isReady(id, now) || ambarFull()) return null;
+  if (!isReady(id, now) || (LIVESTOCK.includes(id) && isSick(id, now)) || ambarFull()) return null; // F276: hasta hayvan ürün vermez
   const f = P(); const pr = PRODUCTS[id];
   // F24: her hayvan 1 ürün verir, ambarda yer kadar
   const k = Math.max(1, Math.min(animalCount(id) || 1, ambarCap() - ambarUsed()));

@@ -56,6 +56,7 @@ function migrate(s) {
 }
 
 // ---- Kayıt alanı: profil + kayıt kodu (cihaz taşıma) + veri silme ----
+// F308: sunucu da bu listeyi tutar (gc_ab_avatar, supabase/f308-avatar.sql); yeni avatar eklerken orayı da güncelle.
 export const AVATARS = ['🧑‍🌾', '👩‍🌾', '👨‍🌾', '🐔', '🐄', '🐑', '🦊', '🐱'];
 export function setProfile(p) { save.profile = { ...(save.profile || {}), ...p }; persist(); }
 export function exportCode() {
@@ -69,7 +70,8 @@ export function importCode(code) {
     const obj = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
     if (!obj || typeof obj !== 'object' || typeof obj.level !== 'number') return false;
     const next = migrate({ ...def(), ...obj });
-    Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist(); return true;
+    next.rev = rev(save); // F312: koddaki sürüm taşınmaz, sürüm geri de gitmez
+    Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); force++; persist(); return true;
   } catch { return false; }
 }
 export async function wipeAll() {
@@ -79,37 +81,110 @@ export async function wipeAll() {
   const next = def(); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist();
 }
 
-let syncTimer = null;
+// F312: base = bu sekmenin son eşleştiği bulut kopyası (sürüm:ilerleme:harcanan yıldız), bilinmiyorsa null.
+// force > 0 = kod içe aktarıldı, içe aktarılanı taşıyan yazma bitene dek eşitleme karşılaştırmadan yazar. queue = eşitlemeler sırayla.
+let syncTimer = null, base = null, force = 0, queue = Promise.resolve();
+// F312: kayıt sürümü (uygulamadaki F126 ile aynı) — ilerleme eşitken hangi tarafın yeni olduğunu ayırır.
+// Web cihaz saatini kullanmaz (+1): uygulamanın sunucu saatli sürümünü geçip eski kaydı kazandıramaz.
+const rev = (s) => (typeof s.rev === 'number' && s.rev > 0 ? s.rev : 0);
+// starsSpent: sunucudaki gc_star_to_coin sürümü değiştirmeden yıldızı altına çevirir; bu da bulutun ilerlemesi sayılsın
+const sig = (s) => rev(s) + ':' + progressScore(s) + ':' + (s.starsSpent || 0);
 export function persist() {
+  save.rev = rev(save) + 1;
   try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {}
-  if (account()) { clearTimeout(syncTimer); syncTimer = setTimeout(pushCloud, 2500); }
+  if (account()) { clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncTimer = null; pushCloud(); }, 2500); }
 }
 
 // ---- Hesap: kullanıcı adı + şifre, ilerleme bulutta (gc_* RPC, token hash'li) ----
 const AKEY = 'gemcrush.account.v1';
 export function account() { try { return JSON.parse(localStorage.getItem(AKEY) || 'null'); } catch { return null; } }
-function setAccount(a) { try { a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); } catch {} }
+function setAccount(a) { base = null; force = 0; try { a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); } catch {} }
 async function rpc(fn, body) {
   const c = CONFIG.cloud || {};
   if (!c.url) throw new Error('offline');
-  const r = await fetch(`${c.url}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: c.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json().catch(() => null);
-  if (!r.ok) throw new Error((j && j.message) || 'ag');
-  return j;
+  const o = { method: 'POST', headers: { apikey: c.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  // F312: asılı istek sırayı kilitlemesin (AbortSignal.timeout eski Safari'de yok, sayaçla kesilir)
+  const ac = typeof AbortController !== 'undefined' ? new AbortController() : null, tm = ac && setTimeout(() => ac.abort(), 20000);
+  if (ac) o.signal = ac.signal;
+  try {
+    const r = await fetch(`${c.url}/rest/v1/rpc/${fn}`, o);
+    let bad = false;
+    const j = await r.json().catch(() => { bad = true; return null; });
+    if (!r.ok) throw new Error((j && j.message) || 'ag');
+    // F312: gövdesi okunamayan çekme (zaman aşımı, kopan bağlantı) çekme hatasıdır; boş sayılıp üstüne yazılmasın.
+    // Dönüşsüz RPC'ler boş gövde dönebilir, onlar için eski davranış kalır.
+    if (bad && fn === 'gc_pull') throw new Error('ag');
+    return j;
+  } finally { clearTimeout(tm); }
 }
 // ilerleme puanı: hangisi daha ileride
 export function progressScore(s) { return (s.level || 0) * 1000 + Object.values(s.stars || {}).reduce((a, n) => a + (n || 0), 0); }
 function adopt(obj) { const next = migrate({ ...def(), ...obj }); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
-async function pushCloud() { const a = account(); if (!a) return; try { await rpc('gc_push', { p_token: a.token, p_save: save }); } catch (e) { if (/oturum/.test(e.message)) setAccount(null); } }
+// F312: buluta yazmadan önce çek. Bulut bu sekmenin base'inden sonra başka yerde (uygulama, öbür sekme)
+// değiştiyse ve ilerlemesi geride değilse onu al, sayfayı yenile — eski sekme yeni kaydı ezmesin.
+// base bilinmiyorsa (açılış ya da açılışta çekme hatası) açılış kuralı: ilerleme, eşitse sürüm, eşit sürümde bulut.
+// true: bulut alındı. lr: açılışta çağrı anındaki yerel sürüm (bekleme sırasında artanlar sayılmaz);
+// açılış dışında güncel sürüm — sırada beklerken yapılan düzenleme, yanıtı kaybolan kendi yazmasına yenilmez.
+function pushCloud(boot = false) {
+  const lr = rev(save);
+  // eski anahtarla geç dönen 'oturum' hatası arada açılan yeni oturumu kapatmasın
+  const run = () => {
+    const t = (account() || {}).token;
+    return sync(boot, lr).catch((e) => { const b = account(); if (/oturum/.test(e.message) && b && b.token === t) setAccount(null); return false; });
+  };
+  return (queue = queue.then(run, run));
+}
+async function sync(boot, lr) {
+  const a = account(); if (!a) return false;
+  const same = () => { const b = account(); return !!b && b.token === a.token; };
+  const c = await rpc('gc_pull', { p_token: a.token });
+  if (!same()) return false;
+  if (c && typeof c.level === 'number' && !force) {
+    const cs = progressScore(c), ls = progressScore(save);
+    let take;
+    if (base === null) {
+      if (!boot && sig(c) === sig(save)) { base = sig(c); return false; }
+      take = cs > ls || (cs === ls && rev(c) >= (boot ? lr : rev(save)));
+    } else if (sig(c) === base) {
+      if (sig(save) === base) return false;
+      take = false;
+    } else take = cs >= ls;
+    if (take) {
+      adopt(c); base = sig(c);
+      if (!boot && typeof location !== 'undefined' && location.reload) location.reload();
+      return true;
+    }
+  }
+  if (force && c && rev(c) >= rev(save)) {
+    // içe aktarılan kod buluttakinden yeni sürümle yazılsın; uygulama açılışta onu eski sanıp ezmesin
+    save.rev = rev(c) + 1;
+    try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {}
+  }
+  const sent = sig(save), f = force; // yazma sürerken içe aktarılan kod zorlamasını korur
+  // yazma sunucuya ulaşıp yanıtı kaybolabilir: base bilinmez sayılır, sekme bulutta gördüğü kendi kopyasını
+  // başkasının yazması sanıp sonraki düzenlemeleri silmez (açılış kuralı: eşit ilerlemede yeni sürüm kalır)
+  try { await rpc('gc_push', { p_token: a.token, p_save: save }); } catch (e) { if (same()) base = null; throw e; }
+  if (same()) { base = sent; if (force === f) force = 0; }
+  return false;
+}
+// F312: sekme gizlenirken bekleyen kaydı hemen gönder; geri gelince buluta bak (başka yerde oynandıysa al)
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('visibilitychange', () => {
+    if (!account()) return;
+    if (!document.hidden) pushCloud();
+    else if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; pushCloud(); }
+  });
+}
 export async function register(user, pass) {
+  const sent = sig(save);
   const token = await rpc('gc_register', { p_user: user, p_pass: pass, p_save: save });
-  setAccount({ user: user.trim().toLowerCase(), token });
+  setAccount({ user: user.trim().toLowerCase(), token }); base = sent;
 }
 // giriş: buluttaki ve cihazdaki kayıttan ileride olanı tutar
 export async function login(user, pass) {
   const r = await rpc('gc_login', { p_user: user, p_pass: pass });
   setAccount({ user: user.trim().toLowerCase(), token: r.token });
-  if (r.save && typeof r.save.level === 'number' && progressScore(r.save) >= progressScore(save)) adopt(r.save);
+  if (r.save && typeof r.save.level === 'number' && progressScore(r.save) >= progressScore(save)) { adopt(r.save); base = sig(r.save); }
   else await pushCloud();
 }
 // F5: sıralama — önce güncel ilerlemeyi it ki kendi sıran taze olsun
@@ -123,6 +198,9 @@ const tok = () => { const a = account(); if (!a) throw new Error('hesap'); retur
 export const myFriendCode = () => rpc('gc_me', { p_token: tok() });
 export const friendList = () => rpc('gc_friend_list', { p_token: tok() });
 export const friendAdd = (code) => rpc('gc_friend_add', { p_token: tok(), p_code: code });
+// F311: gelen arkadaşlık istekleri — kabul friendAdd ile (karşılıklı istek arkadaş yapar), ret ayrı
+export const friendReqs = () => rpc('gc_friend_reqs', { p_token: tok() });
+export const friendReject = (code) => rpc('gc_friend_reject', { p_token: tok(), p_code: code });
 export const friendRemove = (code) => rpc('gc_friend_remove', { p_token: tok(), p_code: code });
 export const friendFarm = (code) => rpc('gc_friend_farm', { p_token: tok(), p_code: code });
 // F11: arkadaş etkileşimi — can gönder/iste, ziyarette yardım (arkadaş başına günde 1), gelen kutusu, arkadaş sıralaması
@@ -164,15 +242,9 @@ export function openGiftBox(now = Date.now(), rnd = Math.random) {
 }
 export function logout() { clearTimeout(syncTimer); setAccount(null); }
 // açılışta: bulut daha ilerideyse onu al; true dönerse sahne yenilenmeli
-export async function syncOnBoot() {
-  const a = account(); if (!a) return false;
-  try {
-    const s = await rpc('gc_pull', { p_token: a.token });
-    if (s && typeof s.level === 'number' && progressScore(s) > progressScore(save)) { adopt(s); return true; }
-    await pushCloud();
-  } catch (e) { if (/oturum/.test(e.message)) setAccount(null); }
-  return false;
-}
+// F312: ilerleme eşitse sürümü yeni olan kalır, eşit sürümde bulut — web'deki eski kopya uygulamada
+// yapılan çiftlik/envanter değişikliklerini ezmesin. Açılış bitene kadar başka itme sırada bekler.
+export async function syncOnBoot() { return account() ? pushCloud(true) : false; }
 export function authError(e) { const m = String(e && e.message || ''); return ['kullanici_adi', 'sifre_kisa', 'alinmis', 'hatali'].find((k) => m.includes(k)) || 'ag'; }
 
 // Dev/test: on localhost (or ?dev=1) lives are always full

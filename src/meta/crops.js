@@ -95,7 +95,8 @@ export function harvest(id, now = Date.now()) {
   const rare = rollRare(seed); // F34
   // F29: fıskiyeli tarla aynı tohumu kendiliğinden yeniden eker
   const replant = hasLayer(id, 'fiskiye') && plant(id, now, seed);
-  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, dolu, combo, rare, gem };
+  const cutHit = cut < 1 && (n < n0 || put < n); // F274: 1 verim ambara tam girince kesinti yok
+  persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, dolu, combo, rare, gem, cutHit };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
 export function autoHarvest(now = Date.now()) {

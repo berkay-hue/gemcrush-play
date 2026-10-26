@@ -45,7 +45,8 @@ export class Board {
     this.ice = grid(this.H, this.W, 0);
     this.fence = grid(this.H, this.W, 0);
     this.mud = grid(this.H, this.W, 0);
-    this.used = 0; this.mudHit = 0;
+    this.moss = grid(this.H, this.W, 0);
+    this.used = 0; this.mudHit = 0; this.mossHit = 0;
     this.cells = grid(this.H, this.W, null);
     this.applyLayout(level.layout);
     this.fillInitial();
@@ -69,6 +70,7 @@ export class Board {
         else if (ch === 'I') this.ice[r][c] = 2;
         else if (ch === 'f') this.fence[r][c] = 1;
         else if (ch === 'm') this.mud[r][c] = 1;
+        else if (ch === 'g') this.moss[r][c] = 1;
       }
   }
 
@@ -166,13 +168,14 @@ export class Board {
     this.swapCells(r1, c1, r2, c2);
     this.events.push({ type: 'swap', from: [r1, c1], to: [r2, c2] });
 
-    const mud0 = this.count(this.mud);
-    this.mudHit = 0;
+    const mud0 = this.count(this.mud), moss0 = this.count(this.moss);
+    this.mudHit = 0; this.mossHit = 0;
     const comboHandled = this.applySwapCombo(r1, c1, r2, c2, a, b);
     this.resolve(comboHandled ? null : [[r1, c1], [r2, c2]]);
     this.used++;
     if (!this.isWon()) {
       if (mud0 && !this.mudHit) this.spreadMud();
+      if (moss0 && !this.mossHit && this.used % 2 === 0) this.spreadMoss();
       if (this.level.boss && this.used % BOSS_EVERY === 0 && this.moves > 0) this.bossAttack();
     }
     if (!this.findValidMoves().length && !this.isWon()) this.shuffle();
@@ -215,6 +218,21 @@ export class Board {
     this.mud[r][c] = 1;
     this.events.push({ type: 'mud_spread', at: [r, c], from: [fr, fc] });
     if (!this.findValidMoves().length) this.shuffle();
+  }
+  spreadMoss() {
+    const cand = [];
+    for (let r = 0; r < this.H; r++)
+      for (let c = 0; c < this.W; c++) {
+        if (!this.moss[r][c]) continue;
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const rr = r + dr, cc = c + dc;
+          if (this.gem(rr, cc) && !this.moss[rr][cc]) cand.push([rr, cc, r, c]);
+        }
+      }
+    if (!cand.length) return;
+    const [r, c, fr, fc] = cand[this.rng.int(cand.length)];
+    this.moss[r][c] = 1;
+    this.events.push({ type: 'moss_spread', at: [r, c], from: [fr, fc] });
   }
   bossAttack() {
     const free = this.freeGems();
@@ -411,7 +429,7 @@ export class Board {
     const keep = new Map();
     for (const grp of groups) if (grp.spawn) keep.set(key(...grp.spawn.at), grp);
     for (const k of keep.keys()) toClear.delete(k);
-    this.clearSet(toClear, 'match', false);
+    this.clearSet(toClear, 'match', false, new Set(keep.keys())); // F275: gruptaki özel taş patlasa da yeni özel taşın hücresi korunur
     for (const [k, grp] of keep) {
       const [r, c] = grp.spawn.at;
       const g = this.gem(r, c);
@@ -425,14 +443,14 @@ export class Board {
   }
 
   // Clears a set of cells, triggering specials found inside (chain), damaging layers.
-  clearSet(set, reason, fromSpecial) {
+  clearSet(set, reason, fromSpecial, protect = new Set()) {
     const queue = [...set];
     const done = new Set();
     const cleared = [];
     const hits = []; // special activations for FX
     while (queue.length) {
       const k = queue.pop();
-      if (done.has(k)) continue;
+      if (done.has(k) || protect.has(k)) continue;
       done.add(k);
       const [r, c] = unkey(k);
       if (!this.isPlayable(r, c)) continue;
@@ -492,6 +510,11 @@ export class Board {
       if (this.jelly[r][c] > 0) {
         this.jelly[r][c]--;
         this.events.push({ type: 'jelly_hit', at: [r, c], left: this.jelly[r][c] });
+        this.score += 40;
+      }
+      if (this.moss[r][c] > 0) {
+        this.moss[r][c] = 0; this.mossHit++;
+        this.events.push({ type: 'moss_hit', at: [r, c], left: 0 });
         this.score += 40;
       }
       // damage adjacent rocks
@@ -580,6 +603,7 @@ export class Board {
     }
     if (obj.ice) out.push({ kind: 'ice', target: obj.ice, current: Math.max(0, obj.ice - this.count(this.ice)) });
     if (obj.fence) out.push({ kind: 'fence', target: obj.fence, current: Math.max(0, obj.fence - this.count(this.fence)) });
+    if (obj.moss) out.push({ kind: 'moss', target: obj.moss, current: Math.max(0, obj.moss - this.count(this.moss)) });
     if (obj.mud) out.push({ kind: 'mud', target: obj.mud, current: Math.max(0, obj.mud - this.count(this.mud)) });
     if (obj.lock) {
       let left = 0;

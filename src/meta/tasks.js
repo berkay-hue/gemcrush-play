@@ -91,7 +91,7 @@ export function openChest(kind, now = Date.now(), rnd = Math.random) {
   if (kind === 'd') t.dChest = true; else t.wChest = true;
   save.coins += c.coins; save.gems += c.gems;
   const cards = []; for (let i = 0; i < c.cards; i++) cards.push(dropCard(rnd));
-  persist(); return { coins: c.coins, gems: c.gems, cards };
+  persist(); return { coins: c.coins + cards.filter((x) => x.dup).length * DUP_COINS, gems: c.gems, cards }; // F273
 }
 
 // ---- başarımlar ----

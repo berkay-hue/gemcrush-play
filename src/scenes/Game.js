@@ -242,7 +242,7 @@ export class Game extends Phaser.Scene {
       if (on && m.texture.key !== 'star') { m.setTexture('star'); this.tweens.add({ targets: m, scale: 0.75, yoyo: true, duration: 180, ease: 'Back.Out' }); sfx.special && sfx.special(); this.starEarnFx(m.x, m.y); }
     });
     const prog = b.progress();
-    prog.forEach((p, i) => { const o = this.objIcons[i]; if (o) { o.lbl.setText(`${Math.min(p.current, p.target)}/${p.target}`); if (p.current >= p.target && !o.check.visible) { o.check.setVisible(true).setScale(0); this.tweens.add({ targets: o.check, scale: 1, duration: 300, ease: 'Back.Out' }); this.ringAt(this.objTxt.x + o.x, this.objTxt.y + o.y, 0x2ee06a); } } });
+    prog.forEach((p, i) => { const o = this.objIcons[i]; if (o) { o.lbl.setText(`${Math.min(p.current, p.target)}/${p.target}`); if (p.current >= p.target && !o.check.visible) { o.check.setVisible(true).setScale(0); this.tweens.add({ targets: o.check, scale: 1, duration: 300, ease: 'Back.Out' }); this.ringAt(this.objTxt.x + o.x, this.objTxt.y + o.y, 0x2ee06a); } else if (p.current < p.target && o.check.visible) o.check.setVisible(false); } }); // F277
   }
   buildObjectives() {
     const prog = this.board.progress();
