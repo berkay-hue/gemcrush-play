@@ -131,7 +131,8 @@ async function rpc(fn, body) {
     let bad = false;
     const j = await r.json().catch(() => { bad = true; return null; });
     // F344: sunucunun mesajla reddi (işlem geri alındı) ile belirsiz hata (ag) ayrılır
-    if (!r.ok) { const e = new Error((j && j.message) || 'ag'); e.server = !!(j && j.message); throw e; }
+    // F347: mesajlı 5xx (ağ geçidi, zaman aşımı) red sayılmaz — işlem sunucuda yapılmış olabilir
+    if (!r.ok) { const e = new Error((j && j.message) || 'ag'); e.status = r.status; e.server = !!(j && j.message) && r.status < 500; throw e; }
     // F312: gövdesi okunamayan çekme (zaman aşımı, kopan bağlantı) çekme hatasıdır; boş sayılıp üstüne yazılmasın.
     // Dönüşsüz RPC'ler boş gövde dönebilir, onlar için eski davranış kalır.
     if (bad && fn === 'gc_pull') throw new Error('ag');
@@ -258,12 +259,16 @@ export const inbox = () => rpc('gc_inbox', { p_token: tok() });
 export async function friendLb() { clearTimeout(syncTimer); await pushCloud(); return rpc('gc_friend_lb', { p_token: tok() }); }
 export const HELP_REWARD = { helper: 25, owner: 40 };
 export const GIFT_LIFE_CAP = 10; // hediye canlar üst sınırı aşabilir (max+5)
-export function applyInbox(r) {
-  const life = (r && r.life) || 0, help = (r && r.help) || 0;
-  if (life) save.lives = Math.max(save.lives, Math.min(GIFT_LIFE_CAP, save.lives + life));
+// F347 (uygulamadaki F226): 'life' gerçekte eklenen can (üst sınırda kesilen sayılmaz), 'left' kutuda bekleyen can hediyesi.
+// replay (F326): yanıtı kaybolmuş alımın yeniden gönderimi. Sunucu o kimlikle eski boş yere göre aldığı canları döner,
+// o hediyeler kutudan çoktan düştü; şimdiki canla kesilirse kaybolurdu → hepsi eklenir.
+export function applyInbox(r, replay = false) {
+  const n = (k) => (r && typeof r[k] === 'number' && Number.isFinite(r[k]) ? Math.min(1000, Math.max(0, Math.trunc(r[k]))) : 0);
+  const life = n('life'), help = n('help'), before = save.lives, cap = replay ? GIFT_LIFE_CAP + life : GIFT_LIFE_CAP;
+  if (life) save.lives = Math.max(before, Math.min(cap, before + life));
   if (help) save.coins += help * HELP_REWARD.owner;
   persist();
-  return { life, help, coins: help * HELP_REWARD.owner };
+  return { life: save.lives - before, help, coins: help * HELP_REWARD.owner, left: n('left') };
 }
 export async function helpFriend(code) { await giftSend(code, 'help'); save.coins += HELP_REWARD.helper; persist(); return HELP_REWARD.helper; }
 // F36: canlı çiftlik linki — herkese açık görüntü + cihaz başına günde 1 sulama; sahibi girişte toplar
@@ -275,7 +280,41 @@ export function deviceId() {
 export const publicWater = (code) => rpc('gc_public_water', { p_code: code, p_device: deviceId() });
 export const waterClaimRaw = () => rpc('gc_water_claim', { p_token: tok() });
 export const farmLink = (code, base = (typeof location !== 'undefined' ? location.origin + location.pathname : '')) => `${base}?ciftlik=${encodeURIComponent(code)}`;
-export async function claimInbox() { return applyInbox(await rpc('gc_inbox_claim', { p_token: tok() })); }
+// F347 (uygulamadaki F226/F326): sunucu yalnız boş yer kadar can hediyesi alır, kalanı kutuda bekler. Eskiden gc_inbox_claim
+// bütün canları kutudan düşüyordu, üst sınırı aşanlar kayboluyordu. Alım bir kimlikle gider; yanıt kaybolursa kimlik cihazda
+// kalır, sonraki alım aynı kimlikle gider ve sunucu aynı sonucu döner (hediye kaybolmaz). Süren alım varken ikinci çağrı
+// istek atmaz, null döner. Kimlik hesap başına saklanır; yanıt gelmeden hesap değiştiyse yanıt başka kayda eklenmez,
+// kimlik ilk hesabın girişinde yeniden gönderilir.
+const INKEY = 'gemcrush.inboxNonce.v1:';
+let inboxBusy = null;
+const inboxUser = () => account()?.user ?? null;
+function inboxNonce(u = inboxUser()) {
+  try { const n = u != null ? localStorage.getItem(INKEY + u) : null; return typeof n === 'string' && n ? n : null; } catch { return null; }
+}
+export const inboxPending = () => !!inboxNonce();
+export function claimInbox() {
+  if (inboxBusy) return inboxBusy.then(() => null, () => null);
+  const p = inboxBusy = claimInbox0();
+  p.then(() => { inboxBusy = null; }, () => { inboxBusy = null; });
+  return p;
+}
+async function claimInbox0() {
+  const tk = tok(), u = account().user;
+  tickLives();
+  let n = inboxNonce(u);
+  const replay = !!n, base = save.lives;
+  if (!n) { n = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`; try { localStorage.setItem(INKEY + u, n); } catch {} }
+  const done = () => { try { if (inboxNonce(u) === n) localStorage.removeItem(INKEY + u); } catch {} };
+  let r;
+  try { r = await rpc('gc_inbox_claim2', { p_token: tk, p_room: Math.max(0, GIFT_LIFE_CAP - base), p_nonce: n }); }
+  catch (e) { if (e.server) done(); throw e; } // sunucu reddetti: işlem geri alındı, bekleyen kalmasın
+  if (inboxUser() !== u) return null; // yanıt gelmeden çıkış/hesap değişti: kimlik ilk hesapta bekler
+  if (!r || typeof r !== 'object') throw new Error('ag'); // gövde okunamadı: sonuç bilinmiyor, kimlik kalır
+  // istek sürerken can arttıysa (yenilenme, günlük kutu) sunucunun boş yere göre verdiği canlar kesilmesin
+  const g = applyInbox(r, replay || save.lives > base);
+  done();
+  return g;
+}
 // günlük hediye kutusu (cihazda, günde 1)
 // F338 (uygulamadaki F259): yalnız gün ileri gidince açılır; saati geri alıp düzeltmek kutuyu yeniden açmasın
 export function giftBoxReady(now = Date.now()) { return Math.floor(now / 86400000) > (save.giftBox ?? -1); }

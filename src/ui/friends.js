@@ -1,7 +1,7 @@
 // F9: arkadaşlar paneli — kendi kodun + kopyala, kodla ekle, liste (ziyaret / çıkar). Hesap gerekir.
 // F11: ❤ can gönder / 🙏 can iste (arkadaş başına günde 1), 📬 gelen kutusu, 🎁 günlük kutu, 🏆 haftalık arkadaş sıralaması
 import { t } from '../i18n.js';
-import { account, myFriendCode, friendList, friendAdd, friendRemove, friendReqs, friendReject, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox, farmLink } from '../meta/save.js';
+import { account, myFriendCode, friendList, friendAdd, friendRemove, friendReqs, friendReject, giftSend, inbox, claimInbox, inboxPending, friendLb, giftBoxReady, openGiftBox, farmLink } from '../meta/save.js';
 import { track } from '../analytics.js';
 import { authForm } from './authForm.js';
 import { shield } from './widgets.js';
@@ -92,7 +92,8 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     const gifts = items.filter((x) => x.kind !== 'req'), reqs = items.filter((x) => x.kind === 'req');
     const nl = gifts.filter((x) => x.kind === 'life').length, nh = gifts.length - nl;
     let h = '';
-    if (gifts.length) h += `<div style="display:flex;align-items:center;gap:8px;background:#3a2f12;border:2px solid #ffb71b;border-radius:12px;padding:8px 10px">
+    // F347: yanıtı kaybolmuş alım bekliyorsa kutu boş görünse de Topla açık kalır (aynı kimlikle yeniden dener)
+    if (gifts.length || inboxPending()) h += `<div style="display:flex;align-items:center;gap:8px;background:#3a2f12;border:2px solid #ffb71b;border-radius:12px;padding:8px 10px">
       <div style="flex:1;font-size:15px;font-weight:700">📬 ${nl ? `❤×${nl} ` : ''}${nh ? `🤝×${nh}` : ''} <span style="font-size:12px;color:#ffe7a3">${esc(gifts.slice(0, 3).map((x) => x.name).join(', '))}</span></div>
       <button data-claim style="${btn};background:linear-gradient(#6ff29a,#2ee06a);color:#04220e;font-size:15px;padding:8px 12px">${t('frCollect')}</button></div>`;
     h += reqs.map((x) => `<div style="display:flex;align-items:center;gap:8px;background:#2a2238;border-radius:12px;padding:6px 10px">
@@ -101,7 +102,13 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     box.innerHTML = h;
     const cl = box.querySelector('[data-claim]');
     if (cl) cl.addEventListener('click', async () => {
-      try { const g = await claimInbox(); track('inbox_claim', g); msg(`${g.life ? `+❤${g.life} ` : ''}${g.coins ? `+🪙${g.coins}` : ''}`, true); changed(); drawInbox(); } catch { msg(t('rkOffline')); }
+      // F347: süren alımda ikinci dokunuş istek atmaz (null); canlar doluysa kalan can hediyeleri kutuda bekler
+      try {
+        const g = await claimInbox(); if (!g) return;
+        track('inbox_claim', g);
+        const got = `${g.life ? `+❤${g.life} ` : ''}${g.coins ? `+🪙${g.coins}` : ''}`.trim();
+        msg(g.left ? `${got ? `${got} · ` : ''}${t('frLivesWait').replace('{n}', g.left)}` : got, true); changed(); drawInbox();
+      } catch { msg(t('rkOffline')); }
     });
     box.querySelectorAll('[data-give]').forEach((b) => b.addEventListener('click', () => gift(b.dataset.give, 'life')));
     if (tab === 'fr') draw(true);
