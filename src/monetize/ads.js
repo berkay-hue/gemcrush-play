@@ -1,12 +1,15 @@
 // Ads abstraction. Native: @capacitor-community/admob (loaded dynamically if present).
-// Web / dev: simulated ad overlay so the whole funnel is testable in a browser.
+// Local dev (localhost): simulated ad overlay so the whole funnel is testable in a browser.
+// F354: yayındaki web sayfasında gerçek reklam yok — sahte reklam ödül (altın/can/hamle) vermez.
 import { CONFIG } from '../config.js';
+import { t } from '../i18n.js';
 import { save } from '../meta/save.js';
 import { track } from '../analytics.js';
 import { shield } from '../ui/widgets.js';
 
 let AdMob = null;
 let ready = false;
+const local = () => typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 export async function initAds() {
   try {
@@ -38,15 +41,15 @@ export async function showRewarded(placement) {
   let earned = false;
   if (AdMob && ready) {
     try {
-      const { RewardAdPluginEvents } = await import('@capacitor-community/admob');
+      // F354: paketleyicisiz derlemede '@capacitor-community/admob' içe aktarılamıyor — olay adları (RewardAdPluginEvents) sabit
       earned = await new Promise(async (res) => {
-        const h = await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { res(true); h.remove(); });
-        const d = await AdMob.addListener(RewardAdPluginEvents.Dismissed, () => { setTimeout(() => res(false), 300); d.remove(); });
-        await AdMob.showRewardVideoAd();
+        const h = await AdMob.addListener('onRewardedVideoAdReward', () => { res(true); h.remove(); });
+        const d = await AdMob.addListener('onRewardedVideoAdDismissed', () => { setTimeout(() => res(false), 300); d.remove(); });
+        try { await AdMob.showRewardVideoAd(); } catch (e) { console.warn(e); h.remove(); d.remove(); res(false); }
       });
       preload();
-    } catch (e) { console.warn(e); earned = await webAd('rewarded'); }
-  } else earned = await webAd('rewarded');
+    } catch (e) { console.warn(e); earned = false; } // F354: reklam gösterilemediyse ödül yok
+  } else earned = local() ? await webAd('rewarded') : await noAd();
   track(earned ? 'ad_watched' : 'ad_skipped', { kind: 'rewarded', placement });
   return earned;
 }
@@ -64,7 +67,19 @@ export async function maybeInterstitial(placement) {
   // web'de gerçek reklam yok: sahte geçiş reklamı oyunu donmuş gibi gösteriyordu
 }
 
-// ---- web fallback: 3s fake ad so you can test the loop in a browser ----
+// F354: yayındaki web — reklam yok, ödül de yok; oyuncuya nedenini söyle
+function noAd() {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99;font:20px system-ui;padding:24px;text-align:center';
+    el.innerHTML = `<div id="adm" style="max-width:360px"></div><button id="adx" style="margin-top:24px;padding:10px 24px">OK</button>`;
+    el.querySelector('#adm').textContent = t('adApp');
+    document.body.appendChild(shield(el));
+    el.querySelector('#adx').onclick = () => { el.remove(); resolve(false); };
+  });
+}
+
+// ---- local dev: 3s fake ad so you can test the loop in a browser ----
 function webAd(kind) {
   return new Promise((resolve) => {
     const el = document.createElement('div');
