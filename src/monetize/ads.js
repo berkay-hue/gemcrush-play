@@ -36,7 +36,14 @@ async function preload() {
 }
 
 // Resolves true if the user earned the reward.
+// F374 (uygulamadaki F238): reklam açıkken gelen ikinci çağrı (çift dokunuş) false döner; AdMob tek ödülü iki dinleyiciye de veriyordu → altın/bomba/hamle iki kez yazılıyordu
+let adBusy = false;
 export async function showRewarded(placement) {
+  if (adBusy) return false;
+  adBusy = true;
+  try { return await rewarded(placement); } finally { adBusy = false; }
+}
+async function rewarded(placement) {
   track('ad_request', { kind: 'rewarded', placement });
   let earned = false;
   if (AdMob && ready) {
