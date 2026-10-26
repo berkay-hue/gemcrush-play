@@ -1246,9 +1246,15 @@ export class Farm extends Phaser.Scene {
     }).catch(() => {});
   }
   friends() {
-    friendsPanel((code) => {
-      friendFarm(code).then((f) => this.scene.start('Visit', { f })).catch(() => this.toast(`⚠️ ${t('frFarmErr')}`));
-    }, () => this.friends(), () => { this.refreshHud(); this.inboxBadge(this.scale.width - 16, 264); });
+    friendsPanel((code) => this.visitFriend(code), () => this.friends(), () => { this.refreshHud(); this.inboxBadge(this.scale.width - 16, 264); });
+  }
+  // F363 (uygulamadaki F261): yanıt gelene dek oyuncu çiftlikten çıktıysa (bölüme/haritaya geçtiyse) ziyaret açılmaz;
+  // istek sürerken ikinci dokunuş ikinci istek atmaz
+  visitFriend(code) {
+    if (this.visiting) return; this.visiting = true;
+    friendFarm(code).then((f) => { if (this.sys.isActive()) this.scene.start('Visit', { f }); })
+      .catch(() => { if (this.sys.isActive()) this.toast(`⚠️ ${t('frFarmErr')}`); })
+      .finally(() => { this.visiting = false; });
   }
 
   // F12: görevler/başarım/albüm — alınabilir ödül sayısı 📜 üstünde
