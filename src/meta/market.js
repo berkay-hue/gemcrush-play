@@ -1,6 +1,6 @@
 // F38: oyuncular arası pazar — fiyat son 24 saatin arz/talebiyle oynar (sunucu: gc_market_*)
 // İlan verirken mal hemen ambardan düşer; satılmazsa 48 saat sonra (ya da geri çekince) iade olur.
-import { save, persist, addCoins, acctRpc } from './save.js';
+import { save, persist, addCoins, acctRpc, claimOnce } from './save.js';
 
 export const FEE = 0.05, MAX_LISTINGS = 8;
 export const band = (p) => [Math.floor(p * 0.8), Math.ceil(p * 1.25)];
@@ -56,7 +56,7 @@ export function applyBuy(r) {
 }
 export async function mktClaim(cancel = false) {
   if (cancel) { if (posting) throw new Error('mesgul'); posting = true; } // F344: geri çekme de ilan kilidini tutar
-  try { const r = await acctRpc('gc_market_claim', { p_cancel: cancel }); applyClaim(r); return r; }
+  try { const r = await claimOnce('gc_market_claim', { p_cancel: cancel }, `gc_market_claim:${cancel}`); applyClaim(r); return r; } // F408
   finally { if (cancel) posting = false; }
 }
 export function applyClaim(r) {
