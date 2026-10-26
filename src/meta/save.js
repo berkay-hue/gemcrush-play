@@ -75,11 +75,19 @@ export function importCode(code) {
     Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); keepLang(); force++; persist(); return true;
   } catch { return false; }
 }
+// F339 (uygulamadaki F127 + F339): sunucu hesabı silmedikçe yerelde hiçbir şeye dokunma, silindi deme.
+// Ağ/sunucu hatası → false, oturum ve kayıt durur (tekrar denenir). false dönerse token sunucuda yok (hesaba başka
+// yerden girildi): hesap bulutta duruyor → oturum kapanır, kayıt durur; yeniden girip silinir.
 export async function wipeAll() {
   const a = account();
-  if (a) { try { await rpc('gc_delete', { p_token: a.token }); } catch {} setAccount(null); }
+  if (a) {
+    let ok; try { ok = await rpc('gc_delete', { p_token: a.token }); } catch { return false; }
+    if (ok !== true) { if ((account() || {}).token === a.token) setAccount(null); return false; }
+    setAccount(null);
+  }
   try { localStorage.removeItem(KEY); localStorage.removeItem(OKEY); } catch {}
   const next = def(); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist();
+  return true;
 }
 
 // F312: base = bu sekmenin son eşleştiği bulut kopyası (sürüm:ilerleme:harcanan yıldız), bilinmiyorsa null.
