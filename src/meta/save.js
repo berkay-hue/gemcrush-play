@@ -1,5 +1,6 @@
 // Player state: localStorage, optional Supabase mirror.
 import { CONFIG } from '../config.js';
+import { getLang, setLang } from '../i18n.js'; // F333
 
 const KEY = 'gemcrush.save.v1';
 const def = () => ({
@@ -71,7 +72,7 @@ export function importCode(code) {
     if (!obj || typeof obj !== 'object' || typeof obj.level !== 'number') return false;
     const next = migrate({ ...def(), ...obj });
     next.rev = rev(save); // F312: koddaki sürüm taşınmaz, sürüm geri de gitmez
-    Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); force++; persist(); return true;
+    Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); keepLang(); force++; persist(); return true;
   } catch { return false; }
 }
 export async function wipeAll() {
@@ -129,7 +130,10 @@ async function rpc(fn, body) {
 }
 // ilerleme puanı: hangisi daha ileride
 export function progressScore(s) { return (s.level || 0) * 1000 + Object.values(s.stars || {}).reduce((a, n) => a + (n || 0), 0); }
-function adopt(obj) { const next = migrate({ ...def(), ...obj }); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
+// F333: benimsenen kayıt (giriş, açılışta bulut, kodla yükleme) dili değiştirebilir; oyun yenilenene kadar eski dilde
+// kalıyordu. Çalışan dil kayda uyar; kayıtta dil yoksa seçili dil yazılır (sonraki açılış da aynı dilde açılır).
+function keepLang() { if (typeof save.lang === 'string') setLang(save.lang); save.lang = getLang(); }
+function adopt(obj) { const next = migrate({ ...def(), ...obj }); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); keepLang(); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
 // F312: buluta yazmadan önce çek. Bulut bu sekmenin base'inden sonra başka yerde (uygulama, öbür sekme)
 // değiştiyse ve ilerlemesi geride değilse onu al, sayfayı yenile — eski sekme yeni kaydı ezmesin.
 // base bilinmiyorsa (açılış ya da açılışta çekme hatası) açılış kuralı: ilerleme, eşitse sürüm, eşit sürümde bulut.
