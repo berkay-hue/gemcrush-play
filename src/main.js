@@ -13,6 +13,8 @@ import { sfx } from './sound.js';
 import { music, trackFor } from './music.js';
 import { fadeIn } from './ui/widgets.js';
 import { irisOpen } from './ui/cinema.js';
+import { onSessionLost } from './meta/save.js';
+import { sessionLostToast } from './ui/authForm.js';
 
 window.addEventListener('pointerdown', () => { sfx.unlock(); music.unlock(); }, { once: true });
 initIap().catch(() => {});
@@ -22,6 +24,7 @@ let adsStarted = false;
 const startAds = () => { if (adsStarted) return; adsStarted = true; setTimeout(() => initAds().catch(() => {}), 800); };
 setTimeout(startAds, 6000); // emniyet: sahne açılmasa da reklamlar başlasın
 try { initNotify(); } catch {}
+onSessionLost(sessionLostToast); // F369 (uygulamadaki F215): oturum başka cihazda açılınca üstte uyarı
 document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
 window.__game = new Phaser.Game({

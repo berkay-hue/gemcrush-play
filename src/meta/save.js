@@ -96,7 +96,7 @@ export async function wipeAll() {
     if (ok !== true) { if ((account() || {}).token === a.token) setAccount(null); return false; }
     setAccount(null);
   }
-  try { localStorage.removeItem(KEY); localStorage.removeItem(OKEY); } catch {}
+  try { localStorage.removeItem(KEY); localStorage.removeItem(OKEY); localStorage.removeItem(LKEY); } catch {} // F369
   const next = def(); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist();
   return true;
 }
@@ -122,11 +122,24 @@ const AKEY = 'gemcrush.account.v1';
 // Başka hesapla girişte kayıt o andan beri ilerlemediyse önceki oyuncunun kaydı yeni hesabın bulutuna itilmez.
 const OKEY = 'gemcrush.owner.v1';
 export function account() { try { return JSON.parse(localStorage.getItem(AKEY) || 'null'); } catch { return null; } }
+// F369 (uygulamadaki F215): sunucu oturumu düşürünce (hesaba başka cihazdan girildi) hesap sessizce çıkıyordu, bulut
+// yedeğinin durduğu fark edilmiyordu. Düşen hesabın yalnız adı saklanır: üstte uyarı çıkar (onSessionLost), giriş formu
+// nedeni yazıp adı hazır getirir; yeniden giriş/kayıtta ve tüm silmede silinir. Çıkış yazmaz.
+const LKEY = 'gemcrush.lost.v1';
+export function lostUser() { try { const u = localStorage.getItem(LKEY); return typeof u === 'string' && u ? u : null; } catch { return null; } }
+let lostCb = null;
+export function onSessionLost(f) { lostCb = f; }
+function dropSession(a) {
+  const u = String((a && a.user) || '');
+  try { if (u) localStorage.setItem(LKEY, u); } catch {}
+  setAccount(null);
+  if (u && lostCb) { try { lostCb(u); } catch {} }
+}
 function setAccount(a) {
   base = null; force = 0; unsent = false;
   try {
     const o = account();
-    if (a) { localStorage.setItem(AKEY, JSON.stringify(a)); localStorage.removeItem(OKEY); }
+    if (a) { localStorage.setItem(AKEY, JSON.stringify(a)); localStorage.removeItem(OKEY); localStorage.removeItem(LKEY); } // F369
     else { if (o) localStorage.setItem(OKEY, JSON.stringify({ user: o.user, score: progressScore(save) })); localStorage.removeItem(AKEY); }
   } catch {}
 }
@@ -202,7 +215,7 @@ function pushCloud(boot = false) {
   const run = () => {
     const t = (account() || {}).token;
     const mine = () => { const b = account(); return !!b && b.token === t; };
-    return sync(boot, lr).then((r) => { if (mine()) unsent = false; return r; }, (e) => { if (mine()) unsent = true; if (/oturum/.test(e.message) && mine()) setAccount(null); return false; });
+    return sync(boot, lr).then((r) => { if (mine()) unsent = false; return r; }, (e) => { if (mine()) unsent = true; if (/oturum/.test(e.message) && mine()) dropSession(account()); return false; }); // F369: sessiz çıkış yok
   };
   return (queue = queue.then(run, run));
 }
