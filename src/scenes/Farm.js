@@ -648,16 +648,16 @@ export class Farm extends Phaser.Scene {
     else c.add(button(this, width / 2, height / 2 + 70, 200, 50, 'OK', close, 0x2a333a, '#fff', 20));
   }
 
-  itemName(it) { return it.name[getLang()] || it.name.tr; }
+  itemName(it) { return typeof it.name === 'string' ? (getLang() === 'en' && it.en) || it.name : it.name[getLang()] || it.name.tr; } // F402: PETS/KINDS adı düz metin + en
 
   // F3: say hi to a wild visitor
   greetVisitor(v) {
     const a = this.w3.visitors.anchorOf(v), r = this.w3.visitors.greet(v), K = KINDS[v.kind];
     if (!r) return; // F372 (uygulamadaki F321): zaten selamlaşıldı, ödül/yazı yok
     sfx.coin && sfx.coin();
-    const msg = r.first ? `Yeni dost! ${K.emoji} ${K.name} albüme eklendi` : `Selamlaştın! ${K.emoji}`;
+    const msg = r.first ? t('newFriend').replace('{e}', K.emoji).replace('{n}', this.itemName(K)) : t('saidHi').replace('{e}', K.emoji); // F402 (uygulamadaki b.fb.*): seçili dilde
     const t1 = txt(this, a.x, a.y, msg, 18, '#fff').setDepth(960).setStroke('#3a2a00', 5);
-    const t2 = txt(this, a.x, a.y + 26, r.coins ? `+🪙${r.coins}` : 'bugünlük ödül bitti', 16, r.coins ? '#ffe58a' : '#ddd').setDepth(960).setStroke('#3a2a00', 4);
+    const t2 = txt(this, a.x, a.y + 26, r.coins ? `+🪙${r.coins}` : t('noRewardToday'), 16, r.coins ? '#ffe58a' : '#ddd').setDepth(960).setStroke('#3a2a00', 4);
     this.tweens.add({ targets: [t1, t2], y: '-=60', alpha: 0, delay: 700, duration: 1100, onComplete: () => { t1.destroy(); t2.destroy(); } });
     this.refreshHud();
   }
@@ -674,17 +674,17 @@ export class Farm extends Phaser.Scene {
     if (ftueDone('pet')) { this.drawHint(); this.toast(t('ftDone')); }
     { const r = doCare(id, 'pet'); if (r.gold) this.goldEgg(id); } // F37: sevmek bakımdır (1 saatte bir sayılır)
     const lv0 = lovePet(id);
-    if (lv0.reward) { sfx.coin && sfx.coin(); this.toast(`💞 Sevgi turu tamam! +🪙${lv0.reward.coins} +💎${lv0.reward.gems}`); this.refreshHud(); }
-    else if (!loveState().done) this.toast(`💞 Sevgi turu ${lv0.n}/${LOVE_N}`);
+    if (lv0.reward) { sfx.coin && sfx.coin(); this.toast(t('loveDone').replace('{c}', lv0.reward.coins).replace('{g}', lv0.reward.gems)); this.refreshHud(); }
+    else if (!loveState().done) this.toast(t('loveStep').replace('{n}', lv0.n).replace('{m}', LOVE_N));
     this._petId = id; this._petT = Date.now();
     this.card && this.card.destroy();
     if (!a) return;
     const it = item(id) || PETS[id], lv = LIVESTOCK.includes(id), sick = lv && isSick(id);
-    const hp = happiness(id), line = sick ? 'Hasta 🤒 — veteriner lazım' : (lv ? 'Tokluk ' + hunger(id) + '% · ' : '') + 'Mutluluk ' + hp + '% ' + (hp >= GOLD_AT ? '🥰' : hp >= 50 ? '😊' : '😐');
+    const hp = happiness(id), line = sick ? t('petSick') : (lv ? t('fullness') + ' ' + hunger(id) + '% · ' : '') + t('happiness') + ' ' + hp + '% ' + (hp >= GOLD_AT ? '🥰' : hp >= 50 ? '😊' : '😐');
     const c = this.card = this.add.container(Math.max(120, Math.min(420, a.x)), Math.max(90, a.y - 90)).setDepth(960);
     c.add(this.add.rectangle(0, 0, 220, 58, 0xfff8e6, 0.96).setStrokeStyle(3, 0xffb71b));
-    c.add(txt(this, 0, -12, it.emoji + ' ' + (nameOf(id) || (it.name && it.name.tr) || it.name || id), 17, '#3a2a00'));
-    c.add(txt(this, 0, 12, line + ' · tekrar dokun', 12, sick ? '#a33' : '#556'));
+    c.add(txt(this, 0, -12, it.emoji + ' ' + (nameOf(id) || this.itemName(it) || id), 17, '#3a2a00'));
+    c.add(txt(this, 0, 12, line + ' · ' + t('tapAgain'), 12, sick ? '#a33' : '#556'));
     c.setScale(0.6); this.tweens.add({ targets: c, scale: 1, duration: 200, ease: 'Back.Out' });
     this.time.delayedCall(2500, () => { if (this.card === c) { c.destroy(); this.card = null; } });
   }
@@ -696,7 +696,7 @@ export class Farm extends Phaser.Scene {
     const again = () => { close(); this.careModal(id); };
     c.add(txt(this, cx, cy - 180, it.emoji, 56));
     c.add(txt(this, cx, cy - 130, nameOf(id) || (en ? 'No name' : 'Adı yok'), 26, '#ffb71b'));
-    c.add(txt(this, cx, cy - 102, (it.name && (it.name[getLang()] || it.name.tr)) || it.name, 15, '#ccc'));
+    c.add(txt(this, cx, cy - 102, this.itemName(it), 15, '#ccc'));
     const hp = happiness(id), sick = LIVESTOCK.includes(id) && isSick(id), g = this.add.graphics();
     g.fillStyle(0x0f1f17, 0.9).fillRoundedRect(cx - 150, cy - 78, 300, 22, 11);
     g.fillStyle(hp >= GOLD_AT ? 0xffd23f : hp >= 50 ? 0x2ee06a : 0xff8a5c, 1).fillRoundedRect(cx - 148, cy - 76, Math.max(10, 296 * hp / 100), 18, 9);

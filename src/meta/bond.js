@@ -2,7 +2,7 @@
 import { save, persist, addCoins, addGems } from './save.js';
 import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
-export const PETS = { kopek: { emoji: '🐶', name: 'Köpek' }, kedi: { emoji: '🐱', name: 'Kedi' } };
+export const PETS = { kopek: { emoji: '🐶', name: 'Köpek', en: 'Dog' }, kedi: { emoji: '🐱', name: 'Kedi', en: 'Cat' } }; // F402: en ad (uygulamadaki b.pet.*)
 // F7 v2: side regions removed — pets arrive at level 5 or with the first side plot
 export const petsOpen = () => (save.level || 1) >= 5 || ((save.farm || {}).plots || []).length > 0;
 const F = () => save.farm;
