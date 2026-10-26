@@ -27,8 +27,8 @@ import { friendsPanel } from '../ui/friends.js';
 import { tasksPanel } from '../ui/tasks.js';
 import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
-import { TIERS, XP_TIER, pass, passLive, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
-import { friendFarm, account, inbox, inboxPending, claimInbox } from '../meta/save.js';
+import { TIERS, XP_TIER, pass, passLive, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft, carryLine } from '../meta/pass.js';
+import { friendFarm, account, inbox, inboxPending, claimInbox, persist } from '../meta/save.js';
 import { authForm } from '../ui/authForm.js';
 import { mktList, mktPost, mktBuy, mktClaim, mktBusy, mktPosting, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
 import { NORMAL_SEEDS } from '../meta/crops.js';
@@ -166,6 +166,8 @@ export class Farm extends Phaser.Scene {
     this.festBadge(86, 314);
     button(this, 50, 380, 80, 40, '🎟️', () => this.seasonPass(), 0x2a333a, '#fff', 20);
     this.passBadge(86, 364);
+    // F351: geçen sezondan otomatik verilen Sezon Yolu ödülleri bir kez gösterilir
+    { const pc = save.passCarry; if (pc && typeof pc === 'object' && Object.keys(pc).length) { delete save.passCarry; persist(); this.time.delayedCall(2400, () => this.toast(`🎟️ ${getLang() === 'en' ? 'Unclaimed Season Path rewards from last season were added' : 'Geçen sezonun alınmamış Sezon Yolu ödülleri eklendi'}: ${carryLine(pc)}`)); } }
     button(this, 50, 430, 80, 40, mevsim().emoji, () => this.seasonModal(), 0x2a333a, '#fff', 20); // F31: mevsimler
     this.havaBtn = button(this, 50, 480, 80, 40, hava().emoji, () => this.havaModal(), 0x2a333a, '#fff', 20); // F35: hava kartları
     // Faz 6: harvest animation - product flies from the animal to the market basket
