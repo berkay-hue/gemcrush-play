@@ -26,9 +26,30 @@ const ord = (k) => { const m = /^(\d+)-(\w+)$/.exec(typeof k === 'string' ? k : 
 // F340: kart yalnız ileri giden sezonda sıfırlanır; saat geri alınınca kayıtlı (ileri) sezon korunur
 export function pass(d = new Date()) {
   const k = seasonKey(d);
-  if (!save.pass || ord(k) > ord(save.pass.season)) save.pass = { season: k, xp: 0, claimed: [] };
+  if (!save.pass || ord(k) > ord(save.pass.season)) { const old = save.pass; save.pass = { season: k, xp: 0, claimed: [] }; if (old && typeof old === 'object' && ord(old.season) >= 0) carry(old); }
   return save.pass;
 }
+// F351 (uygulamadaki F242): sezon değişince kazanılmış ama alınmamış basamaklar silinmez, otomatik verilir; çiftlikte bir kez gösterilir
+function carry(old) {
+  const n = Math.min(TIERS, Math.floor((+old.xp || 0) / XP_TIER)), got = Array.isArray(old.claimed) ? old.claimed : [], sum = {};
+  for (let i = 1; i <= n; i++) {
+    if (got.includes(i)) continue;
+    const r = reward(i); grant(r);
+    const k = r.booster ?? Object.keys(r)[0]; sum[k] = (sum[k] || 0) + (r.coins ?? r.gems ?? 1);
+  }
+  if (!Object.keys(sum).length) return;
+  const pc = save.passCarry && typeof save.passCarry === 'object' ? save.passCarry : {};
+  for (const k in sum) pc[k] = (pc[k] || 0) + sum[k];
+  save.passCarry = pc; persist();
+}
+function grant(r) {
+  if (r.coins) addCoins(r.coins);
+  if (r.gems) addGems(r.gems);
+  if (r.life) addLife(1, GIFT_LIFE_CAP); // F342: ödül canı dolu canda da eklenir
+  if (r.booster) save.boosters[r.booster] = (save.boosters[r.booster] || 0) + 1;
+}
+const CARRY_ICON = { coins: '🪙', gems: '💎', life: '❤', hammer: '🔨', shuffle: '🔀', moves5: '+5 ×', prism: '🌈' };
+export const carryLine = (m) => Object.entries(m).map(([k, v]) => `${CARRY_ICON[k] || k}${v}`).join(' ');
 // F340: kayıtlı sezon saatten ileride kalınca XP ve ödül işlemez
 export const passLive = (d = new Date()) => pass(d).season === seasonKey(d);
 export const tierOf = (d) => Math.min(TIERS, Math.floor(pass(d).xp / XP_TIER));
@@ -38,10 +59,6 @@ export function addXp(n, d = new Date()) { if (!passLive(d)) return 0; const p =
 export function claim(i, d = new Date()) {
   const p = pass(d);
   if (!passLive(d) || i < 1 || i > tierOf(d) || p.claimed.includes(i)) return null;
-  const r = reward(i); p.claimed.push(i);
-  if (r.coins) addCoins(r.coins);
-  if (r.gems) addGems(r.gems);
-  if (r.life) addLife(1, GIFT_LIFE_CAP); // F342: ödül canı dolu canda da eklenir
-  if (r.booster) save.boosters[r.booster] = (save.boosters[r.booster] || 0) + 1;
+  const r = reward(i); p.claimed.push(i); grant(r);
   persist(); return r;
 }
