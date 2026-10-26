@@ -83,11 +83,13 @@ export class Visitors {
   // nearest visitor to a Phaser-space point (visitors are small, use screen distance)
   pick(px, py) {
     let best = null, bd = 55;
-    for (const v of this.list) { const K = KINDS[v.kind], p = v.o.position, a = this.w.project(p.x, (K.fly || 0) + K.h * 0.5, p.z); const d = Math.hypot(a.x - px, a.y - py); if (a.vis && d < bd) { bd = d; best = v; } }
+    // F372 (uygulamadaki F321): selamlaşılan ziyaretçi bir daha seçilmez, dokunuş arkadakine geçer
+    for (const v of this.list) { if (v.hi) continue; const K = KINDS[v.kind], p = v.o.position, a = this.w.project(p.x, (K.fly || 0) + K.h * 0.5, p.z); const d = Math.hypot(a.x - px, a.y - py); if (a.vis && d < bd) { bd = d; best = v; } }
     return best;
   }
-  // greet -> {coins, first, left}. Visitor hops and runs off.
+  // greet -> {coins, first, left} (null if already greeted). Visitor hops and runs off.
   greet(v) {
+    if (v.hi) return null; v.hi = true; // F372 (uygulamadaki F321): ikinci selam altın/albüm vermez
     v.jump = 0.6; v.st = 'out'; v.tx = v.ex; v.tz = v.ez;
     // F359 (uygulamadaki F265): sınır yalnız ileri giden günde sıfırlanır; saat geri alınınca 8 selam yeniden açılmaz
     const f = save.farm, t = day(), g = f.greet && typeof f.greet.day === 'string' && t <= f.greet.day ? f.greet : (f.greet = { day: t, n: 0 });
