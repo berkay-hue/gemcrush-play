@@ -154,6 +154,7 @@ export class Map extends Phaser.Scene {
     }
     c.add(button(this, width / 2, height / 2 + 150, 220, 60, `${t('claim')} +${d.reward}`, () => {
       const r = claimDaily(); sfx.coin(); track('daily_claim', { streak: d.streak + 1, reward: r }); this.refreshHud(); close();
+      if (r && save.daily.streak === 7) this.toast(`+🪙${r} +💎1 +🔨1`); // F361 (uygulamadaki F78): haritadan alınca da 7. gün bonusu
     }, 0x2ee06a, '#04220e'));
   }
 

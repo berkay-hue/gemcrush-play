@@ -28,8 +28,7 @@ export function ftueDone(id) {
 export function farmDaily() { return dailyStatus(); }
 export function farmClaimDaily() {
   const s = dailyStatus(); if (!s.available) return null;
-  const coins = claimDaily(); const gems = (s.streak + 1) % 7 === 0 ? 1 : 0;
-  if (gems) addGems(gems);
+  const coins = claimDaily(); const gems = s.streak === 6 ? 1 : 0; // F361 (uygulamadaki F78): 💎 + 🔨 claimDaily içinde verilir
   return { coins, gems, streak: s.streak + 1 };
 }
 

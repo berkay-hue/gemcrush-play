@@ -1177,7 +1177,7 @@ export class Farm extends Phaser.Scene {
       c.add([this.add.rectangle(x, height / 2 - 10, 50, 56, on ? 0xffb71b : 0x2a333a), txt(this, x, height / 2 - 10, i === 6 ? '💎' : `${i + 1}`, 18, on ? '#1a1200' : '#9fb3a8')]);
     }
     c.add(button(this, width / 2, height / 2 + 100, 220, 60, `${t('claim')} 🪙${d.reward}`, () => {
-      const r = farmClaimDaily(); if (r) { sfx.coin && sfx.coin(); track('daily_claim', { streak: r.streak, reward: r.coins, src: 'farm' }); this.toast(`+🪙${r.coins}${r.gems ? ' +💎1' : ''}`); }
+      const r = farmClaimDaily(); if (r) { sfx.coin && sfx.coin(); track('daily_claim', { streak: r.streak, reward: r.coins, src: 'farm' }); this.toast(`+🪙${r.coins}${r.gems ? ' +💎1 +🔨1' : ''}`); } // F361 (uygulamadaki F78): 7. gün 🔨 de verilir
       this.refreshHud(); close(); next();
     }, 0x2ee06a, '#04220e', 22));
   }
