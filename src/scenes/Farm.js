@@ -376,7 +376,10 @@ export class Farm extends Phaser.Scene {
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
     // F382 (uygulamadaki F316): süre dolunca pencere '⏳ 0:00'da asılı kalmasın — kapanır, tarla hemen olgun çizilir
     const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); if (cropState(id) !== 'growing') { tk.remove(); close(); this.refreshHud(); return; } left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
-    m.add(txt(this, width / 2, height / 2 + 2, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
+    // F418 (uygulamayla aynı): uzun dillerde satır pencereden taşmasın — sarmak yerine sığdır (F251 kalıbı)
+    const tip = txt(this, width / 2, height / 2 + 2, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8');
+    if (tip.width > 400) tip.setScale(400 / tip.width);
+    m.add(tip);
     { const en = getLang() === 'en', cb = comboOf(id), bz = beeNear(id), bits = [cb ? `🔗×${cb} +%${Math.round(cb * COMBO_STEP * 100)} ${en ? 'coins' : 'para'}` : '', bz ? `🐝 ${en ? '15% faster' : '%15 hızlı'}` : ''].filter(Boolean);
       m.add(txt(this, width / 2, height / 2 + 24, bits.length ? bits.join('  ·  ') : (en ? '🔗 Same seed side by side = +10% each' : '🔗 Aynı tohumu yan yana ek = komşu başına +%10'), 14, bits.length ? '#ffd45a' : '#9fb3a8')); }
     m.add(button(this, width / 2, height / 2 + 60, 300, 56, `▶ ${t('play')} (−5 ${t('minShort')})`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 20));

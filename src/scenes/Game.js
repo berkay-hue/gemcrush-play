@@ -860,7 +860,8 @@ export class Game extends Phaser.Scene {
     }
     this.confetti(c);
     c.add(txt(this, width / 2, height / 2 - 20, `${t('score')}: ${score}`, 26, '#fff'));
-    if (left) c.add(txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'));
+    // F418 (uygulamayla aynı): uzun dillerde hamle bonusu satırı pencereden taşmasın — sığdır (F251 kalıbı)
+    if (left) { const mb = txt(this, width / 2, height / 2 + 15, `${t('movesBonus')} ${left} × 🪙${CONFIG.coins.perMoveLeft}  ·  ${t('bonus')} +${bonus}`, 18, '#9fb3a8'); if (mb.width > 400) mb.setScale(400 / mb.width); c.add(mb); }
     c.add(this.add.image(width / 2 - 40, height / 2 + 60, 'coin').setScale(0.6)); const coinT = txt(this, width / 2 + 10, height / 2 + 60, '+0', 26, '#ffe58a'); c.add(coinT);
     this.time.delayedCall(900, () => flyCoins(this, width / 2, height / 2 - 90, width / 2 - 40, height / 2 + 60, Math.ceil(coins / 15), () => { sfx.coin && sfx.coin(); haptic('light'); }, () => { const o = { v: 0 }; this.tweens.add({ targets: o, v: coins, duration: 500, ease: 'Quad.Out', onUpdate: () => coinT.setText(`+${Math.round(o.v)}`), onComplete: () => { coinT.setText(`+${coins}`); this.tweens.add({ targets: coinT, scale: 1.3, duration: 90, yoyo: true }); } }); }));
     const extra = [newStars ? `⭐ +${newStars}` : '', `🎟️ +${xp} XP${tierUp ? ' ⬆' : ''}`, fr ? `🌾 +${fr.coins}🪙${fr.hammer ? ' +🔨' : ''}${fr.gems ? ` +💎${fr.gems}` : ''}` : '', bagsLine(got)].filter(Boolean).join('  ·  ');
