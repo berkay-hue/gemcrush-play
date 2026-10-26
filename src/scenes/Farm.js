@@ -646,6 +646,7 @@ export class Farm extends Phaser.Scene {
   // F3: say hi to a wild visitor
   greetVisitor(v) {
     const a = this.w3.visitors.anchorOf(v), r = this.w3.visitors.greet(v), K = KINDS[v.kind];
+    if (!r) return; // F372 (uygulamadaki F321): zaten selamlaşıldı, ödül/yazı yok
     sfx.coin && sfx.coin();
     const msg = r.first ? `Yeni dost! ${K.emoji} ${K.name} albüme eklendi` : `Selamlaştın! ${K.emoji}`;
     const t1 = txt(this, a.x, a.y, msg, 18, '#fff').setDepth(960).setStroke('#3a2a00', 5);
