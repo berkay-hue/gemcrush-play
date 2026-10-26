@@ -871,11 +871,12 @@ export class Game extends Phaser.Scene {
     c.add(txt(this, width / 2, height / 2 - 160, t('outOfMoves'), 34, '#ff3b5c'));
     c.add(txt(this, width / 2, height / 2 - 100, `${t('continueFor')} +${CONFIG.ads.rewardedExtraMoves} ${t('moves')}`, 20, '#fff'));
     let decided = false; // ✕ ile kapatılırsa kayıp say (oyun "ended" durumunda asılı kalmasın)
-    c.once('destroy', () => { if (!decided) this.lose(); });
-    const cont = () => { decided = true; this.board.moves += CONFIG.ads.rewardedExtraMoves; this.ended = false; this.refreshHud(); close(); track('continue', { level: this.level.id }); };
+    c.once('destroy', () => { if (!decided) { decided = true; this.lose(); } });
+    // F358 (uygulamadaki F174): çift dokunuş / ✕ sonrası gelen reklam ödülü ikinci kez işlemesin
+    const cont = () => { if (decided) return; decided = true; this.board.moves += CONFIG.ads.rewardedExtraMoves; this.ended = false; this.refreshHud(); close(); track('continue', { level: this.level.id }); };
     c.add(button(this, width / 2, height / 2 - 30, 360, 64, `📺 ${t('watchAd')}`, async () => { if (await showRewarded('extra_moves')) cont(); }, 0x3f7bff, '#fff', 22));
-    c.add(button(this, width / 2, height / 2 + 50, 360, 64, `🪙 ${CONFIG.boosters.moves5} ${t('coins')}`, () => { if (spendCoins(CONFIG.boosters.moves5)) cont(); else this.toast(t('notEnoughCoins'), 24); }, 0xffb71b, '#1a1200', 22));
-    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('lose'), () => { decided = true; close(); this.lose(); }, 0x2a333a, '#fff', 20));
+    c.add(button(this, width / 2, height / 2 + 50, 360, 64, `🪙 ${CONFIG.boosters.moves5} ${t('coins')}`, () => { if (decided) return; if (spendCoins(CONFIG.boosters.moves5)) cont(); else this.toast(t('notEnoughCoins'), 24); }, 0xffb71b, '#1a1200', 22));
+    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('lose'), () => { if (decided) return; decided = true; close(); this.lose(); }, 0x2a333a, '#fff', 20));
   }
   async lose() {
     this.ended = true; sfx.lose(); recordLoss(); endLevel(false);
