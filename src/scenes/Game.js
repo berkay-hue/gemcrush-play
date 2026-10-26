@@ -878,7 +878,7 @@ export class Game extends Phaser.Scene {
     const cont = () => { if (decided) return; decided = true; this.board.moves += CONFIG.ads.rewardedExtraMoves; this.ended = false; this.refreshHud(); close(); track('continue', { level: this.level.id }); };
     c.add(button(this, width / 2, height / 2 - 30, 360, 64, `📺 ${t('watchAd')}`, async () => { if (await showRewarded('extra_moves')) cont(); }, 0x3f7bff, '#fff', 22));
     c.add(button(this, width / 2, height / 2 + 50, 360, 64, `🪙 ${CONFIG.boosters.moves5} ${t('coins')}`, () => { if (decided) return; if (spendCoins(CONFIG.boosters.moves5)) cont(); else this.toast(t('notEnoughCoins'), 24); }, 0xffb71b, '#1a1200', 22));
-    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('lose'), () => { if (decided) return; decided = true; close(); this.lose(); }, 0x2a333a, '#fff', 20));
+    c.add(button(this, width / 2, height / 2 + 140, 300, 56, t('quitYes'), () => { if (decided) return; decided = true; close(); this.lose(); }, 0x2a333a, '#fff', 20)); // F394 (uygulamadaki F314): başlığı tekrarlayan "Hamle Bitti" değil, can kaybını söyleyen "Çık (−1 ❤)"
   }
   async lose() {
     this.ended = true; sfx.lose(); recordLoss(); endLevel(false);
