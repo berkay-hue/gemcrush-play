@@ -65,11 +65,21 @@ export function exportCode() {
   let bin = ''; b.forEach((x) => { bin += String.fromCharCode(x); });
   return 'GC1.' + btoa(bin);
 }
-export function importCode(code) {
+function decodeCode(code) {
   try {
     const bin = atob(String(code).trim().replace(/^GC1\./, ''));
     const obj = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
-    if (!obj || typeof obj !== 'object' || typeof obj.level !== 'number') return false;
+    return obj && typeof obj === 'object' && typeof obj.level === 'number' ? obj : null;
+  } catch { return null; }
+}
+// F352 (uygulamadaki F146): kodun bölüm/altını, kayda dokunmadan (yüklemeden önce onay için)
+export function peekCode(code) { const o = decodeCode(code); return o && { level: o.level, coins: typeof o.coins === 'number' ? o.coins : 0 }; }
+// F352: kod tüm ilerlemenin (ve bulut kaydının) yerine geçer — önce ask(peek) onayı; geçersiz kod false, iptal null (kayıt aynen kalır)
+export function loadCode(code, ask) { const pk = peekCode(code); if (!pk) return false; if (!ask(pk)) return null; return importCode(code); }
+export function importCode(code) {
+  try {
+    const obj = decodeCode(code);
+    if (!obj) return false;
     const next = migrate({ ...def(), ...obj });
     next.rev = rev(save); // F312: koddaki sürüm taşınmaz, sürüm geri de gitmez
     Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); keepLang(); force++; persist(); return true;
