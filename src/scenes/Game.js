@@ -890,7 +890,8 @@ export class Game extends Phaser.Scene {
     c.add(this.add.image(width / 2 - 190, height / 2 - 130, 'lamb_scared').setDisplaySize(120, 120));
     if (this.level.boss) c.add(this.add.image(width / 2 + 190, height / 2 - 130, 'wolf').setDisplaySize(120, 120));
     c.add(txt(this, width / 2, height / 2 - 40, `${t('score')}: ${this.board.score}`, 22, '#fff'));
-    c.add(button(this, width / 2, height / 2 + 40, 300, 64, t('retry'), async () => { await maybeInterstitial('level_end'); this.scene.start(save.lives > 0 ? 'Game' : 'Farm', { level: this.level }); }, 0x2ee06a, '#04220e'));
+    // F362 (uygulamadaki F173): Tekrar veteriner hedefini (vetFor) taşısın; yoksa tekrarda kazanınca hayvan iyileşmez
+    c.add(button(this, width / 2, height / 2 + 40, 300, 64, t('retry'), async () => { await maybeInterstitial('level_end'); this.scene.start(save.lives > 0 ? 'Game' : 'Farm', { level: this.level, vetFor: this.vetFor }); }, 0x2ee06a, '#04220e'));
     c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm'); }, 0x2a333a, '#fff', 18));
   }
   quit() {
