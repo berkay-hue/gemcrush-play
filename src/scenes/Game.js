@@ -206,6 +206,7 @@ export class Game extends Phaser.Scene {
       if (ok && !ok.startsWith('jelly')) this.overlays[r * 100 + c] = this.add.image(px(c), py(r), ok);
       if (g && g.locked && g.type >= 0) { const l = this.add.image(px(c), py(r), 'lock'); this.overlays[(r * 100 + c) + 10000] = l; }
       if (g && b.ice[r][c]) this.overlays[(r * 100 + c) + 20000] = this.add.image(px(c), py(r), `ice${Math.min(2, b.ice[r][c])}`);
+      if (b.moss[r][c]) this.overlays[(r * 100 + c) + 30000] = this.add.image(px(c), py(r), 'moss'); // F345
     }
     this.children.bringToTop(this.fx);
   }
@@ -258,6 +259,7 @@ export class Game extends Phaser.Scene {
       else if (p.kind === 'ice') icon = this.add.image(0, 0, 'ice2').setScale(0.6);
       else if (p.kind === 'fence') icon = this.add.image(0, 0, 'fence').setScale(0.6);
       else if (p.kind === 'mud') icon = this.add.image(0, 0, 'mud').setScale(0.6);
+      else if (p.kind === 'moss') icon = this.add.image(0, 0, 'moss').setScale(0.6);
       else icon = txt(this, 0, 0, '🏆', 28);
       const lbl = txt(this, 0, 34, '', 16, '#fff');
       const check = txt(this, 22, -18, '✔', 18, '#2ee06a').setVisible(false);
@@ -386,6 +388,16 @@ export class Game extends Phaser.Scene {
           if (s) { delete this.sprites[k]; this.tweens.add({ targets: s, scale: 0, duration: 200, onComplete: () => s.destroy() }); }
           const m = this.add.image(px(e.at[1]), py(e.at[0]), 'mud').setScale(0.2); this.overlays[k] = m;
           this.tweens.add({ targets: m, scale: 1, duration: 260, ease: 'Back.Out' }); await this.wait(260); break;
+        }
+        case 'moss_hit': { // F345: yosun kalkar
+          const k = e.at[0] * 100 + e.at[1] + 30000, o = this.overlays[k];
+          if (o) { delete this.overlays[k]; this.tweens.add({ targets: o, alpha: 0, scale: 1.3, duration: 180, onComplete: () => o.destroy() }); }
+          this.particles(px(e.at[1]), py(e.at[0]), 5); break;
+        }
+        case 'moss_spread': { // F345: yosun komşu taşa yayılır
+          const k = e.at[0] * 100 + e.at[1] + 30000; if (this.overlays[k]) this.overlays[k].destroy();
+          const m = this.add.image(px(e.at[1]), py(e.at[0]), 'moss').setScale(0.2); this.overlays[k] = m;
+          this.tweens.add({ targets: m, scale: 1, duration: 240, ease: 'Back.Out' }); await this.wait(240); break;
         }
         case 'boss_attack': { await this.bossAttackFx(e.cells); break; }
         case 'unlock': { const l = this.overlays[e.at[0] * 100 + e.at[1] + 10000]; if (l) { this.tweens.add({ targets: l, alpha: 0, scale: 1.5, duration: 200, onComplete: () => l.destroy() }); delete this.overlays[e.at[0] * 100 + e.at[1] + 10000]; }
