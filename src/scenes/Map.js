@@ -371,7 +371,11 @@ export class Map extends Phaser.Scene {
     }, 0x2a333a, '#fff', 20));
     c.add(button(this, width / 2, y0 + 495, 320, 48, `🗑️ ${t('wipe')}`, async () => {
       if (!window.confirm(t('wipeConfirm'))) return;
-      await wipeAll(); close(); this.scene.restart({});
+      if (!(await wipeAll())) { // F339: sunucu silmedi → kayıt durur; oturum düştüyse nedeni yazılır
+        if (account()) { this.toastMsg(`⚠️ ${t('rkOffline')}`); return; }
+        close(); this.toastMsg(t('wipeSess')); return;
+      }
+      close(); this.scene.restart({});
     }, 0xc0392b, '#fff', 20));
   }
   toastMsg(m) {
