@@ -121,7 +121,9 @@ export function modal(scene, w, h) {
   // ölçek ekran ortasından: konteyner (0,0)'da, çocuklar mutlak koordinatlı
   const pop = { s: 1 };
   const applyPop = () => { c.setScale(pop.s); c.x = cam.scrollX + (width / 2) * (1 - pop.s); c.y = cam.scrollY + (height / 2) * (1 - pop.s); };
-  const closeFn = () => { if (!c.active) return; dim.disableInteractive(); scene.tweens.add({ targets: pop, s: 0.92, duration: 150, ease: 'Quad.In', onUpdate: applyPop }); scene.tweens.add({ targets: c, alpha: 0, duration: 150, onComplete: () => c.destroy() }); };
+  // F358 (uygulamadaki F174): 150 ms solma boyunca düğmeler hâlâ dokunuş alıyordu → çift dokunuşla çift harcama; kapanırken hepsi kapanır
+  const off = (o) => { o.disableInteractive(); if (o.list) o.list.forEach(off); };
+  const closeFn = () => { if (!c.active || c.closing) return; c.closing = true; off(c); scene.tweens.add({ targets: pop, s: 0.92, duration: 150, ease: 'Quad.In', onUpdate: applyPop }); scene.tweens.add({ targets: c, alpha: 0, duration: 150, onComplete: () => c.destroy() }); };
   // F22: büyük, görünür kapatma düğmesi (eski ✕ metni parmakla zor vuruluyordu)
   const bx = width / 2 + w / 2 - 30, by = height / 2 - h / 2 + 30;
   const xb = scene.add.circle(bx, by, 24, 0x7a1f1f, 1).setStrokeStyle(3, 0xffd9a0);
