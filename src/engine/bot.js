@@ -37,7 +37,7 @@ export function evaluate(before, after) {
   return v;
 }
 
-export function bestMove(board, noise = 0) {
+export function bestMove(board, noise = 0, rnd = Math.random) {
   const moves = board.findValidMoves();
   if (!moves.length) return null;
   let best = null, bestV = -Infinity;
@@ -45,7 +45,7 @@ export function bestMove(board, noise = 0) {
     const sim = cloneBoard(board);
     sim.playSwap(...m);
     let v = evaluate(board, sim);
-    if (noise) v += (Math.random() - 0.5) * noise;
+    if (noise) v += (rnd() - 0.5) * noise;
     if (v > bestV) { bestV = v; best = m; }
   }
   return best;
@@ -55,9 +55,12 @@ export function bestMove(board, noise = 0) {
 export function playLevel(level, seed, noise = 0, perks = null) {
   const b = new Board(level, seed, perks);
   if (perks && perks.extraMoves) b.moves += perks.extraMoves;
+  // F343: gürültü tohumdan türetilir; aynı tohum hep aynı oyunu oynar, bot testi koşudan koşuya değişmez
+  let ns = (seed >>> 0) || 1;
+  const rnd = () => { ns = (Math.imul(ns, 1103515245) + 12345) & 0x7fffffff; return ns / 0x80000000; };
   let guard = 0;
   while (!b.isWon() && b.moves > 0 && guard++ < 500) {
-    const m = bestMove(b, noise);
+    const m = bestMove(b, noise, rnd);
     if (!m) break;
     b.playSwap(...m);
   }
