@@ -11,6 +11,7 @@ import { comboOf, comboMul, beeSpeed } from './combo.js';
 import { isRare, useRare, rollRare, RARE } from './rare.js';
 import { HAIL_CUT } from './hava.js';
 import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
+import { track } from '../analytics.js'; // F367: analytics → save/tasks; crops'a geri dönen döngü yok
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -103,7 +104,12 @@ export function harvest(id, now = gameNow()) {
 export function autoHarvest(now = gameNow()) {
   if (!owns('traktor')) return 0;
   let sum = 0;
-  for (const id of Object.keys(CROPS)) if (cropState(id, now) === 'ready') { sum += harvest(id, now).coins; if (!F()[id]) plant(id, now); }
+  // F367 (uygulamadaki F244): traktörün biçtiği/ektiği her ekin elle hasat/ekim gibi sayılır (görev, başarım, günlük sandık)
+  for (const id of Object.keys(CROPS)) if (cropState(id, now) === 'ready') {
+    const r = harvest(id, now); sum += r.coins;
+    track('crop_harvest', { plot: id, coins: r.coins, good: r.good, n: r.n, via: 'tractor' });
+    if (r.replant || (!F()[id] && plant(id, now))) track('crop_plant', { plot: id, seed: seedOf(id), via: 'tractor' });
+  }
   return sum;
 }
 // called on every level win; returns list of crop ids that were shortened

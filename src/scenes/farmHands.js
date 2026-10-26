@@ -50,6 +50,7 @@ export const HandsMixin = {
     const coins = r.coins;
     sfx.harvest(); this.w3.burst(id); this.w3.poke && this.w3.poke(id);
     track('crop_harvest', { plot: id, coins, good: r.good, n: r.n, drag: quiet });
+    if (r.replant) track('crop_plant', { plot: id, seed: r.seed, via: 'fiskiye' }); // F367 (uygulamadaki F244): fıskiyenin yeniden ekimi de ekim görevini ilerletir
     const cx = c ? c.x : this.scale.width / 2, cy = c ? c.y : this.scale.height / 2;
     if (!quiet) {
       const sk = this.add.image(cx - 60, cy - 10, 'sickle').setDepth(900);
