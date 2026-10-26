@@ -77,7 +77,7 @@ export function importCode(code) {
 export async function wipeAll() {
   const a = account();
   if (a) { try { await rpc('gc_delete', { p_token: a.token }); } catch {} setAccount(null); }
-  try { localStorage.removeItem(KEY); } catch {}
+  try { localStorage.removeItem(KEY); localStorage.removeItem(OKEY); } catch {}
   const next = def(); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); persist();
 }
 
@@ -97,8 +97,18 @@ export function persist() {
 
 // ---- Hesap: kullanıcı adı + şifre, ilerleme bulutta (gc_* RPC, token hash'li) ----
 const AKEY = 'gemcrush.account.v1';
+// F331: oturum kapanınca cihazdaki kaydın sahibi (hesap + o anki ilerleme) — uygulamadaki F126 sahip kaydının karşılığı.
+// Başka hesapla girişte kayıt o andan beri ilerlemediyse önceki oyuncunun kaydı yeni hesabın bulutuna itilmez.
+const OKEY = 'gemcrush.owner.v1';
 export function account() { try { return JSON.parse(localStorage.getItem(AKEY) || 'null'); } catch { return null; } }
-function setAccount(a) { base = null; force = 0; try { a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); } catch {} }
+function setAccount(a) {
+  base = null; force = 0;
+  try {
+    const o = account();
+    if (a) { localStorage.setItem(AKEY, JSON.stringify(a)); localStorage.removeItem(OKEY); }
+    else { if (o) localStorage.setItem(OKEY, JSON.stringify({ user: o.user, score: progressScore(save) })); localStorage.removeItem(AKEY); }
+  } catch {}
+}
 async function rpc(fn, body) {
   const c = CONFIG.cloud || {};
   if (!c.url) throw new Error('offline');
@@ -181,10 +191,16 @@ export async function register(user, pass) {
   setAccount({ user: user.trim().toLowerCase(), token }); base = sent;
 }
 // giriş: buluttaki ve cihazdaki kayıttan ileride olanı tutar
+// F331: cihazdaki kayıt başka hesabınsa ve çıkıştan beri ilerlemediyse buluta itilmez — bu hesabın kaydı alınır (yoksa sıfırdan).
+// Çıkıştan sonra misafir olarak ilerlendiyse bugünkü kural: ileride olan kalır.
 export async function login(user, pass) {
   const r = await rpc('gc_login', { p_user: user, p_pass: pass });
-  setAccount({ user: user.trim().toLowerCase(), token: r.token });
-  if (r.save && typeof r.save.level === 'number' && progressScore(r.save) >= progressScore(save)) { adopt(r.save); base = sig(r.save); }
+  const u = user.trim().toLowerCase();
+  let o = null; try { o = JSON.parse(localStorage.getItem(OKEY) || 'null'); } catch {}
+  setAccount({ user: u, token: r.token });
+  const ok = r.save && typeof r.save.level === 'number';
+  if (o && o.user !== u && progressScore(save) === o.score) { adopt(ok ? r.save : {}); if (ok) base = sig(r.save); return; }
+  if (ok && progressScore(r.save) >= progressScore(save)) { adopt(r.save); base = sig(r.save); }
   else await pushCloud();
 }
 // F5: sıralama — önce güncel ilerlemeyi it ki kendi sıran taze olsun
