@@ -130,7 +130,8 @@ async function rpc(fn, body) {
     const r = await fetch(`${c.url}/rest/v1/rpc/${fn}`, o);
     let bad = false;
     const j = await r.json().catch(() => { bad = true; return null; });
-    if (!r.ok) throw new Error((j && j.message) || 'ag');
+    // F344: sunucunun mesajla reddi (işlem geri alındı) ile belirsiz hata (ag) ayrılır
+    if (!r.ok) { const e = new Error((j && j.message) || 'ag'); e.server = !!(j && j.message); throw e; }
     // F312: gövdesi okunamayan çekme (zaman aşımı, kopan bağlantı) çekme hatasıdır; boş sayılıp üstüne yazılmasın.
     // Dönüşsüz RPC'ler boş gövde dönebilir, onlar için eski davranış kalır.
     if (bad && fn === 'gc_pull') throw new Error('ag');
