@@ -411,7 +411,9 @@ export class Board {
       let spawnAt = null;
       if (special) {
         // prefer the cell the player swapped into, else the run's middle / intersection
-        if (swapped) spawnAt = grp.cells.find(([r, c]) => swapped.some(([sr, sc]) => sr === r && sc === c)) || null;
+        // F415 (uygulamadaki #213): mevcut özel taşın üstüne yazma, o patlasın
+        const plain = ([r, c]) => !(this.gem(r, c) || {}).special;
+        if (swapped) spawnAt = grp.cells.find(([r, c]) => plain([r, c]) && swapped.some(([sr, sc]) => sr === r && sc === c)) || null;
         if (!spawnAt) {
           if (hasH && hasV) {
             const h = grp.runs.find((x) => x.dir === 'h'), v = grp.runs.find((x) => x.dir === 'v');
@@ -420,6 +422,12 @@ export class Board {
             const run = grp.runs[0];
             spawnAt = run.cells[Math.floor(run.len / 2)];
           }
+        }
+        // hedef hücrede zaten özel taş varsa yeni özel taşı gruptaki boş bir hücreye koy; yoksa eski özel taş sessizce silinir ve hiç patlamaz
+        if (!plain(spawnAt)) {
+          const free = grp.cells.filter(plain);
+          spawnAt = free.length ? free[free.length >> 1] : null;
+          if (!spawnAt) special = null;
         }
       }
       const base = 60 + (grp.cells.length - 3) * 20;
