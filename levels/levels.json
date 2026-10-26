@@ -6258,18 +6258,20 @@
   "name": "Seviye 211",
   "chapter": "Elmas",
   "gemTypes": 6,
-  "moves": 11,
+  "moves": 25,
   "layout": [
-   "XXX..XXX",
+   "XXXggXXX",
    "XX....XX",
    "X......X",
    "........",
    "........",
    "X......X",
    "XX....XX",
-   "XXX..XXX"
+   "XXXg.XXX"
   ],
-  "objectives": {},
+  "objectives": {
+   "moss": 3
+  },
   "stars": [
    0,
    2200,
@@ -6279,7 +6281,7 @@
   "targetWin": 0.595,
   "wall": false,
   "boss": false,
-  "botWin": 1
+  "botWin": 0.59
  },
  {
   "id": 212,
