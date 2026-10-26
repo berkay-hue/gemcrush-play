@@ -356,8 +356,9 @@ export function logout() {
 export async function syncOnBoot() { return account() ? pushCloud(true) : false; }
 export function authError(e) { const m = String(e && e.message || ''); return ['kullanici_adi', 'sifre_kisa', 'alinmis', 'hatali'].find((k) => m.includes(k)) || 'ag'; }
 
-// Dev/test: on localhost (or ?dev=1) lives are always full
-export const DEV = typeof location !== 'undefined' && (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]dev=1/.test(location.search));
+// Dev/test: on localhost lives are always full
+// F353: yayındaki sayfada ?dev=1 artık sınırsız can vermez — yalnız yerel geliştirme
+export const DEV = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 // ---- lives ----
 export function tickLives() {
   if (DEV) { save.lives = CONFIG.lives.max; save.lifeTs = Date.now(); return; }
