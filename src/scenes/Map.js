@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { save, persist, tickLives, msToNextLife, addLife, addCoins, spendCoins, dailyStatus, claimDaily, starBalance, AVATARS, setProfile, exportCode, importCode, loadCode, wipeAll, totalStars, account, logout, leaderboard } from '../meta/save.js';
 import { t, setLang, getLang } from '../i18n.js';
 import { showRewarded } from '../monetize/ads.js';
-import { buy, price, restore } from '../monetize/iap.js';
+import { buy, canBuy, price, restore } from '../monetize/iap.js';
 import { track } from '../analytics.js';
 import { sfx } from '../sound.js';
 import { musicOn, setMusic } from '../music.js';
@@ -184,7 +184,7 @@ export class Map extends Phaser.Scene {
     c.add(signBoard(this, cx, top + 50, `🏪 ${t('shop')}`, 22));
     const ch1 = chip(this, 0, top + 88, '🪙', save.coins || 0, 0xffb71b), ch2 = chip(this, 0, top + 88, '💎', save.gems || 0, 0x46c8ff);
     const gap = 16, tw = ch1.w + ch2.w + gap; ch1.x = cx - tw / 2 + 17; ch2.x = ch1.x + ch1.w + gap; c.add([ch1, ch2]);
-    const P = CONFIG.iap.products, buyP = async (p) => { if (await buy(p)) { sfx.coin(); track('shop_buy', { id: p.id }); close(); this.refreshHud(); this.shop(); } };
+    const P = CONFIG.iap.products, buyP = async (p) => { if (!canBuy()) { this.toast(t('iapApp')); return; } if (await buy(p)) { sfx.coin(); track('shop_buy', { id: p.id }); close(); this.refreshHud(); this.shop(); } };
     let y = top + 132;
     // Başlangıç paketi afişi
     const sp = P.find((p) => p.starter);

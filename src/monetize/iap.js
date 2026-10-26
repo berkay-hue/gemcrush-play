@@ -1,11 +1,14 @@
 // In-app purchases. Native: cordova-plugin-purchase (CdvPurchase) via Capacitor.
-// Web/dev: simulated purchase (grants immediately) so the shop flow is testable.
+// Local dev (localhost): simulated purchase (grants immediately) so the shop flow is testable.
+// F353: yayındaki web sayfasında satın alma yok — bedava elmas/altın/can verilmez.
 import { CONFIG } from '../config.js';
 import { save, addCoins, addGems, persist } from '../meta/save.js';
 import { track } from '../analytics.js';
 
 let store = null;
 const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const local = () => typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+export const canBuy = () => !!store || (!isNative() && local());
 
 export async function initIap() {
   const CdvPurchase = window.CdvPurchase;
@@ -46,7 +49,8 @@ export async function buy(p) {
   }
   // F43: mobil uygulamada asla bedava/test satın alma yok — mağaza yüklenemediyse satın alma olmaz
   if (isNative()) return false;
-  // web: simulate
+  if (!local()) return false; // F353
+  // local dev: simulate
   const ok = window.confirm(`[TEST] Buy ${p.id} for ${p.priceLabel}?`);
   if (ok) grant(p.id);
   return ok;
