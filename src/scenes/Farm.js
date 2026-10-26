@@ -1197,13 +1197,15 @@ export class Farm extends Phaser.Scene {
     c.add(txt(this, width / 2, top + 84, `${t('farmLv')} ${xp.level}  ·  XP ${xp.cur}/${xp.need}`, 17, '#9dffb8'));
     c.add(this.add.rectangle(width / 2, top + 112, 380, 12, 0x000000, 0.4).setStrokeStyle(1, 0xffffff, 0.2));
     c.add(this.add.rectangle(width / 2 - 190, top + 112, 380 * Math.min(1, xp.cur / xp.need), 12, 0x2ee06a).setOrigin(0, 0.5));
-    const again = () => { close(); this.orders(); this.refreshHud(); };
+    // F381 (uygulamadaki F324): ✕ da teslim/atla da modal'ın kapanışından geçer ve c.closing'i kurar; 150 ms solma sürerken dolan sayaç panoyu yeniden açmasın, aynı saniyede dolan iki yuva iki pano açmasın
+    const shut = () => !c.active || c.closing;
+    const again = () => { if (shut()) return; close(); this.orders(); this.refreshHud(); };
     list.slice(0, SLOTS).forEach((o, i) => {
       const y = top + 200 + i * 140;
       c.add(this.add.rectangle(width / 2, y, 440, 124, 0x000000, 0.25).setStrokeStyle(2, canDeliver(i) ? 0x2ee06a : 0xffffff, canDeliver(i) ? 0.7 : 0.12));
       if (o.wait) {
         const w = txt(this, width / 2, y, `🚶 ${t('orderWait')} ${fmtMs(o.wait - gameNow())}`, 19, '#9fb3a8'); c.add(w);
-        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!w.active) return tk.remove(); const ms = o.wait - gameNow(); if (ms <= 0) { tk.remove(); again(); } else w.setText(`🚶 ${t('orderWait')} ${fmtMs(ms)}`); } });
+        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!w.active || shut()) return tk.remove(); const ms = o.wait - gameNow(); if (ms <= 0) { tk.remove(); again(); } else w.setText(`🚶 ${t('orderWait')} ${fmtMs(ms)}`); } });
         return;
       }
       c.add(txt(this, width / 2 - 200, y - 32, `${o.emoji} ${o.name}`, 20, '#fff').setOrigin(0, 0.5));
