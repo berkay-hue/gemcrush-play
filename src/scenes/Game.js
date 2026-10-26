@@ -40,6 +40,7 @@ export class Game extends Phaser.Scene {
     this.board.moves += this.perks.extraMoves;
     this.busy = false; this.ended = false; this.sel = null; this.mode = null; this.idle = 0;
     this.leaving = false; this.won = false; this.lost = false; this.skipFarm = false; this.farmData = null; // F404: sahne yeniden kullanılır, önceki bölümden kalmasın
+    this.introDone = false; // F406: ikinci boss bölümünde de "Kurt geldi" girişi oynasın
     beginLevel(this.level.id);
     track('level_start', { level: this.level.id, lives: save.lives, coins: save.coins });
 
@@ -747,7 +748,8 @@ export class Game extends Phaser.Scene {
     const m = modal(this, 560, 430); const cx = width / 2, top = height / 2 - 215;
     // F22: her kapanış yolu (✕, karartı, Oyna, reklam) konteyneri yok eder → kilit tek yerden açılır
     let fin = false;
-    const done = () => { if (fin) return; fin = true; if (!this.ended) this.busy = false; if (this.level.boss) this.time.delayedCall(250, () => this.bossIntro()); };
+    // F406 (uygulamadaki F182): boss bölümünde kilit "Kurt geldi" girişine devredilir; aradaki 250 ms'de yapılan hamle girişin altında tahtayı açıyordu
+    const done = () => { if (fin) return; fin = true; if (this.level.boss && !this.introDone) { this.time.delayedCall(250, () => this.bossIntro()); return; } if (!this.ended) this.busy = false; };
     m.c.once('destroy', done);
     m.c.list[0].once('pointerup', () => m.close());
     m.c.add(txt(this, cx, top + 50, t('preTitle'), 28, '#ffe58a'));
