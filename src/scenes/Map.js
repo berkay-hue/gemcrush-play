@@ -160,20 +160,29 @@ export class Map extends Phaser.Scene {
   livesModal() {
     const { width, height } = this.scale;
     const { c, close } = modal(this, 440, 360);
+    tickLives(); // F357 (uygulamadaki F179): HUD 1 sn geride kalabilir; can dolmuşken satın alma düğmeleri açılmasın
     const full = save.lives >= CONFIG.lives.max;
     c.add(txt(this, width / 2, height / 2 - 120, full ? t('lives') : t('noLives'), 32, '#ffb71b'));
     const timer = txt(this, width / 2, height / 2 - 60, '', 22, '#ffffff'); c.add(timer);
     const upd = () => { tickLives(); const ms = msToNextLife(); timer.setText(`${save.lives}/${CONFIG.lives.max}  ${ms ? t('nextLife') + ' ' + fmtMs(ms) : t('full')}`); };
-    upd(); const ev = this.time.addEvent({ delay: 1000, loop: true, callback: upd });
+    let busy = false, shut = false;
+    const end = () => { shut = true; ev.remove(); close(); };
+    // F357 (uygulamadaki F179): pencere açıkken can dolduysa 💰/📺 boşa harcatmasın — dokunuşta ve her saniye bakıp ücretsiz dolu hâline geç
+    const filled = () => { tickLives(); if (full || save.lives < CONFIG.lives.max) return false; if (!shut) { end(); this.refreshHud(); this.livesModal(); } return true; };
+    upd(); const ev = this.time.addEvent({ delay: 1000, loop: true, callback: () => { upd(); if (!busy) filled(); } });
+    c.once('destroy', () => ev.remove()); // F357 (uygulamadaki F179): köşedeki ✕ ile kapanınca sayaç sahne boyunca dönmesin
     if (!full) {
       c.add(button(this, width / 2, height / 2 + 10, 360, 60, `📺 ${t('lifeAd')}`, async () => {
-        if (await showRewarded('life')) { addLife(1); sfx.coin(); this.refreshHud(); ev.remove(); close(); }
+        if (busy || filled()) return;
+        busy = true; const ok = await showRewarded('life'); busy = false; // F357: reklam açıkken sayaç pencereyi değiştirmesin
+        if (ok) { addLife(1); sfx.coin(); this.refreshHud(); end(); }
       }, 0x3f7bff, '#ffffff', 20));
       c.add(button(this, width / 2, height / 2 + 85, 360, 60, `💰 ${t('buy')} 5 ${t('lives')} · 150`, () => {
-        if (spendCoins(150)) { addLife(5); sfx.coin(); this.refreshHud(); ev.remove(); close(); } else this.shop();
+        if (busy || filled()) return;
+        if (spendCoins(150)) { addLife(5); sfx.coin(); this.refreshHud(); end(); } else this.shop();
       }, 0xffb71b, '#1a1200', 20));
     }
-    c.add(button(this, width / 2, height / 2 + 150, 160, 50, '✕', () => { ev.remove(); close(); }, 0x2a333a, '#ffffff'));
+    c.add(button(this, width / 2, height / 2 + 150, 160, 50, '✕', end, 0x2a333a, '#ffffff'));
   }
 
   shop() {
