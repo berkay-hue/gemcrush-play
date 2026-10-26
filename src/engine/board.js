@@ -488,7 +488,7 @@ export class Board {
       }
       if (g.locked) {
         g.locked = false;
-        this.events.push({ type: 'unlock', at: [r, c] });
+        this.events.push({ type: 'unlock', at: [r, c], gemType: g.type, special: g.special }); // F399: açıldığı andaki taş
         this.score += 30;
         continue;
       }
