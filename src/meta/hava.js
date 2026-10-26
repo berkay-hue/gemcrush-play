@@ -2,6 +2,7 @@
 // dolu (seralı olmayan ekinin %30'u gider), rüzgâr, açık. Tahmin önceden görünür. Test: ?hava=yagmur|dolu|kurak|ruzgar|acik
 import { save, persist } from './save.js';
 import { hasLayer } from './layers.js';
+import { plantedAt } from './pests.js'; // F378
 import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const SLOT = 3 * 3600e3, RAIN_CUT = 20 * 60e3, DRY_ADD = 30 * 60e3, HAIL_CUT = 0.7;
@@ -37,7 +38,8 @@ export function havaTick(now = gameNow()) {
   for (let s = Math.max(f.havaSlot + 1, cur - 15); s <= cur; s++) {
     const w = havaSlot(s), t0 = s * SLOT; if (!HAVA[w].guard && w !== 'yagmur') continue;
     for (const [id, c] of Object.entries(crops)) {
-      if (!c || !c.ms || c.readyAt - c.ms >= t0 || c.readyAt <= t0) continue; // bu dilimin başında büyümüyordu
+      // F378 (uygulamadaki F249): ekim anı pt'den; gübre/hızlandırma ekini ekilmeden önceki dilimlere kaydırmasın
+      if (!c || !c.ms || plantedAt(c) >= t0 || c.readyAt <= t0) continue; // bu dilimin başında büyümüyordu
       if (w === 'yagmur') { const d = Math.min(RAIN_CUT, c.readyAt - t0); c.readyAt -= d; c.ms -= d; hits.push([id, w]); }
       else if (hasLayer(id, HAVA[w].guard)) hits.push([id, w + '-guard']);
       else if (w === 'kurak') { c.readyAt += DRY_ADD; c.ms += DRY_ADD; hits.push([id, w]); }
