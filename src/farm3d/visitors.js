@@ -6,12 +6,12 @@ import { owns } from '../meta/farm.js';
 import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 export const KINDS = {
-  sincap: { emoji: '🐿', name: 'Sincap', h: 0.35, v: 1.3, w: 3, lure: 'findik' },
-  tavsan: { emoji: '🐰', name: 'Tavşan', model: 'animal-bunny', h: 0.4, v: 1.1, w: 3, lure: 'havuc' },
-  tilki: { emoji: '🦊', name: 'Tilki', model: 'animal-fox', h: 0.5, v: 0.9, w: 1.5 },
-  geyik: { emoji: '🦌', name: 'Geyik', model: 'animal-deer', h: 0.9, v: 0.6, w: 1 },
-  ari: { emoji: '🐝', name: 'Arı', model: 'animal-bee', h: 0.22, v: 1.0, w: 2, fly: 1.2, lure: 'cicek' },
-  kelebek: { emoji: '🦋', name: 'Kelebek', h: 0.3, v: 0.8, w: 2.5, fly: 1.0 },
+  sincap: { emoji: '🐿', name: 'Sincap', en: 'Squirrel', h: 0.35, v: 1.3, w: 3, lure: 'findik' },
+  tavsan: { emoji: '🐰', name: 'Tavşan', en: 'Rabbit', model: 'animal-bunny', h: 0.4, v: 1.1, w: 3, lure: 'havuc' },
+  tilki: { emoji: '🦊', name: 'Tilki', en: 'Fox', model: 'animal-fox', h: 0.5, v: 0.9, w: 1.5 },
+  geyik: { emoji: '🦌', name: 'Geyik', en: 'Deer', model: 'animal-deer', h: 0.9, v: 0.6, w: 1 },
+  ari: { emoji: '🐝', name: 'Arı', en: 'Bee', model: 'animal-bee', h: 0.22, v: 1.0, w: 2, fly: 1.2, lure: 'cicek' },
+  kelebek: { emoji: '🦋', name: 'Kelebek', en: 'Butterfly', h: 0.3, v: 0.8, w: 2.5, fly: 1.0 },
 };
 const DAILY_GREETS = 8, REWARD = 5;
 const day = () => new Date(gameNow()).toISOString().slice(0, 10);

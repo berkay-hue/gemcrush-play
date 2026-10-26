@@ -109,9 +109,9 @@ export const HandsMixin = {
     const H = down.harvest; if (!H) return;
     if (this.sickle) { const s = this.sickle; this.sickle = null; this.tweens.add({ targets: s, alpha: 0, scale: 0.6, duration: 180, onComplete: () => s.destroy() }); }
     const k = H.done.size; if (!k) return;
-    this.lambReact && this.time.delayedCall(500, () => this.lambReact('joy', k > 2 ? '✋ ×' + k + ' — süper hasat! 🌾' : 'Mis gibi ürün! 🌾'));
+    this.lambReact && this.time.delayedCall(500, () => this.lambReact('joy', k > 2 ? t('superHarvest').replace('{n}', k) : t('lovelyCrop'))); // F402 (uygulamadaki b.fh.*): bakım metinleri seçili dilde
     this.toast(harvestNote({ ...H, k, em: H.em.join('') })); // F387 (uygulamadaki F288): tek dokunuşla aynı özet
-    const f = save.farm; if (k === 1 && !f.dragTip) { f.dragTip = 1; persist(); this.time.delayedCall(1300, () => this.toast('✋ Parmağını tarlaların üstünde sürükle, hepsini topla!')); }
+    const f = save.farm; if (k === 1 && !f.dragTip) { f.dragTip = 1; persist(); this.time.delayedCall(1300, () => this.toast(t('swipeHint'))); }
   },
 
   // ---- besleme kovası ----
@@ -142,7 +142,7 @@ export const HandsMixin = {
     c.on('dragstart', () => { this.bucketDrag = true; sfx.click(); this.tweens.killTweensOf(c); c.angle = 0; c.setScale(1.15); this.showHungerBars(true); });
     c.on('drag', (_p, x, y) => { c.setPosition(x, y); this.bucketHover(x, y); });
     c.on('dragend', () => { this.bucketDrag = false; const id = this.bucketHover(c.x, c.y); this.showHungerBars(false); if (id) this.feedAnimal(id); this.bucketBack(); });
-    c.on('pointerup', () => { if (!this.bucketDrag && !this._bucketTipped) { this._bucketTipped = 1; this.toast('🪣 Kovayı sürükleyip bir hayvanın üstüne bırak'); } });
+    c.on('pointerup', () => { if (!this.bucketDrag && !this._bucketTipped) { this._bucketTipped = 1; this.toast(t('bucketHint')); } });
   },
   bucketBack() {
     const c = this.bucket; if (!c) return; const [X, Y] = this.bucketHome;
@@ -188,10 +188,10 @@ export const HandsMixin = {
   },
   feedAnimal(id) {
     const before = hunger(id), r = feed(id), it = item(id);
-    if (r === 'cd') return this.toast(`${it.emoji} tok · ⏳ ${hhmm(feedLeft(id))}`);
-    if (r === 'sick') return this.toast(`${it.emoji} hasta — veteriner lazım 🩺`);
-    if (r === 'coins') { this.lambReact && this.lambReact('sad', 'Yem parası yetmedi 😢'); return this.toast(`🪙 yetersiz (${FEED_COINS} gerekli)`); }
-    if (r === 'energy') { this.lambReact && this.lambReact('sad', 'Enerjimiz bitti 😴'); return this.toast('⚡ enerji yok'); }
+    if (r === 'cd') return this.toast(t('feedCd').replace('{e}', it.emoji).replace('{t}', hhmm(feedLeft(id))));
+    if (r === 'sick') return this.toast(t('feedSick').replace('{e}', it.emoji));
+    if (r === 'coins') { this.lambReact && this.lambReact('sad', t('noFeedMoney')); return this.toast(t('feedNoCoins').replace('{n}', FEED_COINS)); }
+    if (r === 'energy') { this.lambReact && this.lambReact('sad', t('noEnergyLamb')); return this.toast(t('feedNoEnergy')); }
     sfx.coin && sfx.coin(); track('animal_feed', { id, before });
     this.w3.poke && this.w3.poke(id); this.w3.burst && this.w3.burst(id, 0x9ccc3a, 14);
     const a = this.w3.anchor(id, 0.5), bx = this.bucket ? this.bucket.x : 50, by = this.bucket ? this.bucket.y : 440;
@@ -200,8 +200,8 @@ export const HandsMixin = {
       this.tweens.add({ targets: f, x: a.x + (i - 2.5) * 8, y: a.y, angle: 180, scale: 0.6, delay: i * 40, duration: 380, ease: 'Quad.In', onComplete: () => f.destroy() });
     }
     if (navigator.vibrate) try { navigator.vibrate([10, 30, 10]); } catch (e) { /* yok */ }
-    this.toast(`${it.emoji} doydu 💚  −🪙${FEED_COINS}  −⚡1`);
-    if (this.lambReact) { const p = this.w3.where && this.w3.where(id); if (p && this.w3.mascotLook) this.w3.mascotLook(p[0], p[1]); this.lambReact('joy', 'Afiyet olsun ' + it.emoji + ' 💚'); }
+    this.toast(`${t('feedDone').replace('{e}', it.emoji)}  −🪙${FEED_COINS}  −⚡1`);
+    if (this.lambReact) { const p = this.w3.where && this.w3.where(id); if (p && this.w3.mascotLook) this.w3.mascotLook(p[0], p[1]); this.lambReact('joy', t('feedEnjoy').replace('{e}', it.emoji)); }
     if (this.energyTxt) this.energyTxt.setText(`⚡${energy()}/${E_MAX}`);
     if (this.bucket) this.bucket.dot.setVisible(this.ownedLivestock().some((k) => !isSick(k) && feedLeft(k) === 0 && hunger(k) < 70));
     if (rollGold(id) && this.goldEgg) this.goldEgg(id); // F37: mutlu hayvan besleyince altın yumurta şansı
