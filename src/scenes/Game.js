@@ -402,7 +402,8 @@ export class Game extends Phaser.Scene {
         }
         case 'boss_attack': { await this.bossAttackFx(e.cells); break; }
         case 'unlock': { const l = this.overlays[e.at[0] * 100 + e.at[1] + 10000]; if (l) { this.tweens.add({ targets: l, alpha: 0, scale: 1.5, duration: 200, onComplete: () => l.destroy() }); delete this.overlays[e.at[0] * 100 + e.at[1] + 10000]; }
-          const s = this.sprites[e.at[0] * 100 + e.at[1]]; const g = this.board.cells[e.at[0]][e.at[1]]; if (s && g) s.setTexture(gemKey(g)); break; }
+          // F399 (uygulamadaki #261): tahtanın SON hâli değil, kilit açıldığı andaki taş (yoksa sonradan bu hücreye düşen taşın rengini alıyordu)
+          const s = this.sprites[e.at[0] * 100 + e.at[1]]; if (s && e.gemType >= 0) s.setTexture(gemKey({ type: e.gemType, special: e.special, locked: false })); break; }
         case 'clear': {
           const tws = []; let flyN = 0;
           for (const [r, c] of e.cells) {
