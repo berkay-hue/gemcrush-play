@@ -93,7 +93,7 @@ export class Map extends Phaser.Scene {
 
     // --- HUD (fixed) ---
     this.hud = this.add.container(0, 0).setScrollFactor(0).setDepth(10);
-    const bar = this.add.rectangle(width / 2, 50, width, 100, 0x0a0f0d, 0.92);
+    const bar = this.add.rectangle(width / 2, 50, width, 100, 0x0a0f0d, 0.92).setInteractive(); // F371 (uygulamadaki F177): panel dokunuşu tutsun, kaydırılınca altına giren bölüm dairesi istemeden başlamasın
     this.hud.add(bar);
     this.hud.add(this.add.image(40, 50, 'heart').setScale(0.7));
     this.livesTxt = txt(this, 90, 42, '', 24, '#ffffff').setOrigin(0, 0.5);
