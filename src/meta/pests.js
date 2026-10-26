@@ -23,11 +23,13 @@ function rnd(id, slot, salt) {
 }
 export const hasScarecrow = (id) => !!st().scare[id];
 const crop = (id) => (save.farm && save.farm.crops || {})[id];
+// F378 (uygulamadaki F249): ekim anı pt; eski kayıtta yoksa readyAt - ms (hızlandırma readyAt'i kaydırınca zar yeniden atılmasın)
+export const plantedAt = (c) => (c.pt > 0 ? c.pt : c.readyAt - c.ms);
 
 // aktif zararlı: 'crow' | 'bug' | null. Ekimden sonraki ilk dilimden itibaren; kovulan dilim temiz kalır.
 export function pestAt(id, now = gameNow()) {
   const c = crop(id); if (!c || !c.ms) return null;
-  const planted = c.readyAt - c.ms, slot = Math.floor(now / SLOT);
+  const planted = plantedAt(c), slot = Math.floor(now / SLOT);
   if (slot <= Math.floor(planted / SLOT)) return null;
   // olgun ürüne son dilimdeki zararlı kalır (hasat edilene kadar)
   const s = Math.min(slot, Math.floor(c.readyAt / SLOT));

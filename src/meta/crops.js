@@ -83,7 +83,8 @@ export function plant(id, now = gameNow(), seed = seedOf(id)) {
   const cost = SEEDS[seed].cost || 0; if ((save.coins || 0) < cost) return false;
   if (isRare(seed) && !useRare(seed)) return false; // F34: nadir tohum envanterden harcanır, son tohum olarak hatırlanmaz
   save.coins -= cost; if (!isRare(seed)) (save.farm.lastSeed || (save.farm.lastSeed = {}))[id] = seed;
-  const ms = baseMs(id, seed, now); F()[id] = { seed, readyAt: now + ms, ms }; if (inSeason(seed, now)) F()[id].sez = 1; persist(); return true;
+  // F378 (uygulamadaki F249): pt = ekim anı (oyun saati); gübre/galibiyet/hızlandırma readyAt'i kaydırsa da zararlı zarı ve hava aynı kalır
+  const ms = baseMs(id, seed, now); F()[id] = { seed, readyAt: now + ms, ms, pt: now }; if (inSeason(seed, now)) F()[id].sez = 1; persist(); return true;
 }
 export function harvest(id, now = gameNow()) {
   if (cropState(id, now) !== 'ready') return null;
