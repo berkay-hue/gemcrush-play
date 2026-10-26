@@ -28,7 +28,7 @@ import { tasksPanel } from '../ui/tasks.js';
 import { tasksBadge } from '../meta/tasks.js';
 import { festActive, festMsLeft, festivalLevels, festDone, festNext, FEST_N, FEST_COINS, FEST_ALL_GEMS } from '../meta/event.js';
 import { TIERS, XP_TIER, pass, passLive, tierOf, claimable, claim, reward, rewardIcon, seasonMsLeft } from '../meta/pass.js';
-import { friendFarm, account, inbox } from '../meta/save.js';
+import { friendFarm, account, inbox, inboxPending, claimInbox } from '../meta/save.js';
 import { authForm } from '../ui/authForm.js';
 import { mktList, mktPost, mktBuy, mktClaim, mktBusy, mktPosting, trend, FEE, MAX_LISTINGS } from '../meta/market.js';
 import { NORMAL_SEEDS } from '../meta/crops.js';
@@ -154,6 +154,7 @@ export class Farm extends Phaser.Scene {
     button(this, width - 50, 280, 80, 40, `👥`, () => this.friends(), 0x2a333a, '#fff', 20);
     this.inboxBadge(width - 16, 264);
     this.waterClaim();
+    this.inboxRetry();
     button(this, width - 50, 330, 80, 40, '📜', () => this.tasks(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 380, 80, 40, '📸', () => this.snap(), 0x2a333a, '#fff', 20);
     button(this, width - 50, 430, 80, 40, '❓', () => this.guide(0), 0x2a333a, '#fff', 20); // F25: kuzu rehberi
@@ -1232,6 +1233,15 @@ export class Farm extends Phaser.Scene {
       if (!r || !this.sys.isActive()) return;
       this.refreshHud(); this.toast(`💧 ${r.n} ${t('lkGot')} · +${r.coins} 🪙`);
     }).catch(() => {}).finally(() => { Farm._wClaiming = false; });
+  }
+  // F347 (uygulamadaki F279): yanıtı kaybolmuş gelen kutusu alımı (hediyeler kutudan düştü, Topla görünmez) çiftliğe
+  // girişte aynı kimlikle yeniden denenir; sunucu o alımın sonucunu döner
+  inboxRetry() {
+    if (!inboxPending()) return;
+    claimInbox().then((g) => {
+      if (!g || !(g.life || g.coins) || !this.sys.isActive()) return;
+      this.refreshHud(); this.toast(`📬 ${g.life ? `+❤${g.life} ` : ''}${g.coins ? `+🪙${g.coins}` : ''}`.trim());
+    }).catch(() => {});
   }
   friends() {
     friendsPanel((code) => {
