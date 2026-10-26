@@ -32,6 +32,8 @@ export function feed(id, now = Date.now()) {
 export function cure(id, now = Date.now()) { const a = A(id, now); a.sick = false; a.fedAt = now; persist(); }
 export function cureWithGems(id) { if (!isSick(id) || !spendGems(CURE_GEMS)) return false; cure(id); return true; }
 export const sickList = (now = Date.now()) => LIVESTOCK.filter((id) => isSick(id, now));
-const day = () => Math.floor(Date.now() / 86400000);
-export function vetLeft() { const v = save.farm.vet; return v && v.day === day() ? Math.max(0, VET_PER_DAY - v.n) : VET_PER_DAY; }
-export function useVet() { if (!vetLeft()) return false; const v = save.farm.vet; save.farm.vet = { day: day(), n: v && v.day === day() ? v.n + 1 : 1 }; persist(); return true; }
+const day = (now = Date.now()) => Math.floor(now / 86400000);
+// F338 (uygulamadaki F262): saat geri alınınca hak dolmaz; yeni gün yalnız ileride başlar
+const vetSame = (v, now) => !!v && v.day >= day(now);
+export function vetLeft(now = Date.now()) { const v = save.farm.vet; return vetSame(v, now) ? Math.max(0, VET_PER_DAY - v.n) : VET_PER_DAY; }
+export function useVet(now = Date.now()) { if (!vetLeft(now)) return false; const v = save.farm.vet, same = vetSame(v, now); save.farm.vet = { day: same ? v.day : day(now), n: same ? v.n + 1 : 1 }; persist(); return true; }
