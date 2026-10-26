@@ -470,7 +470,7 @@ export function dailyStatus(now = Date.now()) {
   const last = save.daily.last;
   // F338 (uygulamadaki F259): alınan günden önceki bir gün de "alındı" sayılır (saati geri alıp ödülü yeniden almak kapandı)
   if (day <= last) return { available: false, streak: save.daily.streak };
-  const streak = last === day - 1 ? save.daily.streak : 0;
+  const streak = last === day - 1 ? save.daily.streak % 7 : 0; // F361 (uygulamadaki F78): seri 7 günde başa döner (takvim + ödül 25..300 döner)
   return { available: true, streak, reward: CONFIG.dailyRewards[Math.min(streak, CONFIG.dailyRewards.length - 1)] };
 }
 export function claimDaily(now = Date.now()) {
@@ -478,6 +478,7 @@ export function claimDaily(now = Date.now()) {
   if (!s.available) return 0;
   save.daily = { last: Math.floor(now / 86400000), streak: s.streak + 1 };
   addCoins(s.reward);
+  if (s.streak === 6) { save.boosters.hammer = (save.boosters.hammer || 0) + 1; addGems(1); } // F361 (uygulamadaki F78): 7. gün her yoldan 💎1 + 🔨1
   return s.reward;
 }
 
