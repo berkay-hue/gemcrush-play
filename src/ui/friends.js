@@ -1,13 +1,14 @@
 // F9: arkadaşlar paneli — kendi kodun + kopyala, kodla ekle, liste (ziyaret / çıkar). Hesap gerekir.
 // F11: ❤ can gönder / 🙏 can iste (arkadaş başına günde 1), 📬 gelen kutusu, 🎁 günlük kutu, 🏆 haftalık arkadaş sıralaması
 import { t } from '../i18n.js';
-import { account, myFriendCode, friendList, friendAdd, friendRemove, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox, farmLink } from '../meta/save.js';
+import { account, myFriendCode, friendList, friendAdd, friendRemove, friendReqs, friendReject, giftSend, inbox, claimInbox, friendLb, giftBoxReady, openGiftBox, farmLink } from '../meta/save.js';
 import { track } from '../analytics.js';
 import { authForm } from './authForm.js';
 import { shield } from './widgets.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const ERR = { bulunamadi: 'frNotFound', kendin: 'frSelf', limit: 'frLimit' };
+// F311: cok_istek limit'ten önce — sunucu kota hatasını eski sürümler için 'cok_istek limit' yazar, ilk eşleşen kazanır
+const ERR = { bulunamadi: 'frNotFound', kendin: 'frSelf', cok_istek: 'frTooMany', limit: 'frLimit' };
 
 export function friendsPanel(onVisit, onAuth, onChange) {
   if (!account()) {
@@ -135,10 +136,13 @@ export function friendsPanel(onVisit, onAuth, onChange) {
     const box = $('.list');
     if (!quiet || !draw.list) box.innerHTML = `<div style="text-align:center;color:#9fb3a8;padding:12px">…</div>`;
     let list;
-    try { list = (quiet && draw.list) || (draw.list = await friendList()); } catch { box.innerHTML = `<div style="text-align:center;color:#ff8a80;padding:12px">${t('rkOffline')}</div>`; return; }
+    try { list = (quiet && draw.list) || (draw.list = await friendList()); } catch {
+      if (!wrap.isConnected || tab !== 'fr') return;
+      box.innerHTML = reqHtml() + `<div style="text-align:center;color:#ff8a80;padding:12px">${t('rkOffline')}</div>`; bindReqs(box); return;
+    }
     if (!wrap.isConnected || tab !== 'fr') return;
-    if (!list || !list.length) { box.innerHTML = `<div style="text-align:center;color:#cfe3d8;padding:14px;font-size:15px">${t('frEmpty')}</div>`; return; }
-    box.innerHTML = list.map((f, i) => `
+    if (!list || !list.length) { box.innerHTML = reqHtml() + `<div style="text-align:center;color:#cfe3d8;padding:14px;font-size:15px">${t('frEmpty')}</div>`; bindReqs(box); return; }
+    box.innerHTML = reqHtml() + list.map((f, i) => `
       <div style="display:flex;align-items:center;gap:8px;background:${i % 2 ? '#1b2420' : '#222d28'};border-radius:12px;padding:8px 10px">
         <div style="font-size:26px">${esc(f.avatar || '🧑‍🌾')}</div>
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
@@ -148,6 +152,7 @@ export function friendsPanel(onVisit, onAuth, onChange) {
         <button data-v="${esc(f.code)}" style="${btn};background:linear-gradient(#ffd46b,#ffb71b);color:#1a1200;font-size:14px;padding:8px 10px">🏡</button>
         <button data-r="${esc(f.code)}" data-n="${esc(f.name)}" style="${btn};background:#2a333a;color:#ff8a80;font-size:14px;padding:8px 9px">✕</button>
       </div>`).join('');
+    bindReqs(box);
     box.querySelectorAll('[data-l]').forEach((b) => b.addEventListener('click', () => gift(b.dataset.l, 'life')));
     box.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => gift(b.dataset.q, 'req')));
     box.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { close(); onVisit(b.dataset.v); }));
@@ -156,13 +161,44 @@ export function friendsPanel(onVisit, onAuth, onChange) {
       try { await friendRemove(b.dataset.r); draw.list = null; draw(); } catch { msg(t('rkOffline')); }
     }));
   };
+  // F311: gelen arkadaşlık istekleri arkadaş listesinin başında, kaydırılan alanın içinde (çok istek listeyi ezmesin).
+  // ✓ kabul (friendAdd), ✕ ret. Yanıtlananlar geç gelen eski listeyle geri gelmesin.
+  let reqs = [];
+  const answered = new Set(), answering = new Set();
+  const reqHtml = () => reqs.filter((x) => !answered.has(String(x.code))).map((x) => `<div style="display:flex;align-items:center;gap:8px;background:#1f3348;border:2px solid #8fd8ff;border-radius:12px;padding:6px 10px">
+      <div style="flex:1;min-width:0;font-size:14px">${esc(x.avatar || '🧑‍🌾')} <b>${esc(x.name)}</b> ${t('frWantsFriend')}</div>
+      <button data-acc="${esc(x.code)}" title="${t('frAccept')}" style="${btn};background:linear-gradient(#6ff29a,#2ee06a);color:#04220e;font-size:15px;padding:7px 10px">✓</button>
+      <button data-rej="${esc(x.code)}" title="${t('frReject')}" style="${btn};background:#2a333a;color:#ff8a80;font-size:15px;padding:7px 10px">✕</button></div>`).join('');
+  const bindReqs = (box) => {
+    box.querySelectorAll('[data-acc]').forEach((b) => b.addEventListener('click', () => answer(b.dataset.acc, true)));
+    box.querySelectorAll('[data-rej]').forEach((b) => b.addEventListener('click', () => answer(b.dataset.rej, false)));
+  };
+  const drawReqs = async () => {
+    let r;
+    try { r = await friendReqs(); } catch { return; } // eski sunucuda RPC yok — sessiz geç
+    if (!wrap.isConnected) return;
+    reqs = (Array.isArray(r) ? r : []).filter((x) => x && x.code);
+    if (tab === 'fr' && draw.list) draw(true); // liste daha yükleniyorsa draw istekleri zaten çizer
+  };
+  const answer = async (c, ok) => {
+    if (answering.has(c) || answered.has(c)) return; // çift dokunma ikinci RPC atmasın
+    answering.add(c);
+    try {
+      const r = ok ? await friendAdd(c) : await friendReject(c);
+      answered.add(c);
+      if (ok) { msg(t(r && r.pending ? 'frReqOut' : 'frAdded'), true); draw.list = null; drawReqs(); }
+      if (tab === 'fr') draw(true);
+    } catch (er) { const k = Object.keys(ERR).find((x) => String(er.message).includes(x)); msg(t(k ? ERR[k] : 'rkOffline')); }
+    finally { answering.delete(c); }
+  };
   $('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = e.target.c.value.trim();
     if (!v) return;
     msg('…', true);
-    try { await friendAdd(v); e.target.c.value = ''; msg(t('frAdded'), true); draw.list = null; draw(); }
+    // F311: sunucu artık önce istek bırakır ({pending:true}); karşı taraf onaylayınca arkadaş olur
+    try { const r = await friendAdd(v); e.target.c.value = ''; msg(t(r && r.pending ? 'frReqOut' : 'frAdded'), true); draw.list = null; draw(); drawReqs(); }
     catch (er) { const k = Object.keys(ERR).find((x) => String(er.message).includes(x)); msg(t(k ? ERR[k] : 'rkOffline')); }
   });
-  draw(); drawInbox();
+  draw(); drawInbox(); drawReqs();
 }
