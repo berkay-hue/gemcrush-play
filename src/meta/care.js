@@ -22,7 +22,8 @@ export function happiness(id, now = Date.now()) {
   return Math.round((100 / 3) * (part(id, 'feed', now) + part(id, 'pet', now) + part(id, 'clean', now)));
 }
 export const careLeft = (id, k, now = Date.now()) => Math.max(0, lastOf(id, k) + CARE[k].cd - now);
-export const goldReady = (id, now = Date.now()) => C(id).gold !== day(now);
+// F338 (uygulamadaki F262): yalnız ileri bir günde açılır (saat geri alınınca yeniden açılmaz)
+export const goldReady = (id, now = Date.now()) => day(now) > (C(id).gold ?? -1);
 // { ok, err: 'cd'|'coins'|'energy'|'sick', gold }
 export function doCare(id, k, now = Date.now(), rnd = Math.random) {
   if (!CARE[k]) return { ok: false, err: 'x' };

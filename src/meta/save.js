@@ -276,7 +276,8 @@ export const waterClaimRaw = () => rpc('gc_water_claim', { p_token: tok() });
 export const farmLink = (code, base = (typeof location !== 'undefined' ? location.origin + location.pathname : '')) => `${base}?ciftlik=${encodeURIComponent(code)}`;
 export async function claimInbox() { return applyInbox(await rpc('gc_inbox_claim', { p_token: tok() })); }
 // günlük hediye kutusu (cihazda, günde 1)
-export function giftBoxReady(now = Date.now()) { return (save.giftBox || -1) !== Math.floor(now / 86400000); }
+// F338 (uygulamadaki F259): yalnız gün ileri gidince açılır; saati geri alıp düzeltmek kutuyu yeniden açmasın
+export function giftBoxReady(now = Date.now()) { return Math.floor(now / 86400000) > (save.giftBox ?? -1); }
 export function openGiftBox(now = Date.now(), rnd = Math.random) {
   if (!giftBoxReady(now)) return null;
   save.giftBox = Math.floor(now / 86400000);
@@ -361,17 +362,18 @@ export function recordWin(levelId, score, stars) {
 export function recordLoss() { save.levelsPlayed++; persist(); }
 
 // ---- daily ----
-export function dailyStatus() {
-  const day = Math.floor(Date.now() / 86400000);
+export function dailyStatus(now = Date.now()) {
+  const day = Math.floor(now / 86400000);
   const last = save.daily.last;
-  if (last === day) return { available: false, streak: save.daily.streak };
+  // F338 (uygulamadaki F259): alınan günden önceki bir gün de "alındı" sayılır (saati geri alıp ödülü yeniden almak kapandı)
+  if (day <= last) return { available: false, streak: save.daily.streak };
   const streak = last === day - 1 ? save.daily.streak : 0;
   return { available: true, streak, reward: CONFIG.dailyRewards[Math.min(streak, CONFIG.dailyRewards.length - 1)] };
 }
-export function claimDaily() {
-  const s = dailyStatus();
+export function claimDaily(now = Date.now()) {
+  const s = dailyStatus(now);
   if (!s.available) return 0;
-  save.daily = { last: Math.floor(Date.now() / 86400000), streak: s.streak + 1 };
+  save.daily = { last: Math.floor(now / 86400000), streak: s.streak + 1 };
   addCoins(s.reward);
   return s.reward;
 }
