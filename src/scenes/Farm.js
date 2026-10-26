@@ -90,7 +90,8 @@ export class Farm extends Phaser.Scene {
     if (this.w3) for (const id in PETS) this.w3.setItem(id, petsOpen() ? 'owned' : 'hidden');
     // live chickens wander around the coop
     if (!this.w3 && owns('tavuk')) spawnChickens(this, 2 + (owns('horoz') ? 2 : 0), { x: 40, y: 400, w: 200, h: 110 }, owns('horoz'));
-    if (data.cropCut) this.toast(`🌽 −${Math.round(WIN_CUT / 60000) * data.cropCut} ${t('minShort')}!`);
+    // F393: her sayaç ayrı ayrı −5 dk kısalır; sayaç sayısıyla çarpılmaz (uçan etiketler de −5 dk diyor)
+    if (data.cropCut) this.toast(`🌽 −${Math.round(WIN_CUT / 60000)} ${t('minShort')}!`);
     if (data.gubre && Object.keys(data.gubre).length) this.time.delayedCall(data.cropCut ? 1600 : 0, () => this.toast(`🧪 ${bagsLine(data.gubre)} ${getLang() === 'en' ? 'fertilizer' : 'gübre'}`));
 
     // HUD
