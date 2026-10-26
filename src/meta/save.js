@@ -155,6 +155,39 @@ export function progressScore(s) { return (s.level || 0) * 1000 + Object.values(
 // kalıyordu. Çalışan dil kayda uyar; kayıtta dil yoksa seçili dil yazılır (sonraki açılış da aynı dilde açılır).
 function keepLang() { if (typeof save.lang === 'string') setLang(save.lang); save.lang = getLang(); }
 function adopt(obj) { const next = migrate({ ...def(), ...obj }); Object.keys(save).forEach((k) => delete save[k]); Object.assign(save, next); keepLang(); try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
+// F309: buluta yazmadan önce buluttaki kayıtta olup bu kayıtta olmayan mağaza alımları (uygulamada alınıp itilmiş;
+// iapLog = son 20 {id, p, g}) bu kayda işlenir — uygulamadaki _mergeCloudBuys'ın karşılığı. Yoksa web'in ileri kaydı
+// itilince ödenmiş altın/elmas silinirdi. iapGranted kırpıldıysa (100) hangisinin verildiği bilinemez → atlanır.
+// Kumbara (piggy_break) alındığı andaki elmasla (g). Sunucuya yeni bir şey açmaz: kayıt zaten istemciden itiliyor.
+const PIGGY = 'co.saascorner.farmtastic.iap.piggy_break';
+function mergeCloudBuys(c, t = save) {
+  const log = c && Array.isArray(c.iapLog) ? c.iapLog : null;
+  if (!log) return false;
+  const done = Array.isArray(t.iapGranted) ? t.iapGranted.map(String) : [];
+  if (done.length >= 100) return false;
+  let mine = Array.isArray(t.iapLog) ? t.iapLog.filter((e) => e && typeof e === 'object') : [];
+  let ch = false;
+  for (const e of log) {
+    if (!e || typeof e !== 'object') continue;
+    const { id, p, g } = e;
+    if (typeof id !== 'string' || !id || typeof p !== 'string' || done.includes(id)) continue;
+    const pr = (CONFIG.iap.products || []).find((x) => x.id === p), gg = p === PIGGY && Number.isFinite(g) && g > 0 ? Math.floor(g) : 0;
+    if (!pr && !gg) continue;
+    if (gg) t.gems = (t.gems || 0) + gg;
+    else {
+      if (pr.removeAds) t.removeAds = true;
+      if (pr.starter) t.starterBought = true;
+      if (pr.lives) t.lives = Math.max(t.lives || 0, 0) + pr.lives;
+      if (pr.coins) t.coins = (t.coins || 0) + pr.coins;
+      if (pr.gems) t.gems = (t.gems || 0) + pr.gems;
+    }
+    done.push(id);
+    mine = mine.filter((x) => x.id !== id); mine.push(gg ? { id, p, g: gg } : { id, p });
+    ch = true;
+  }
+  if (ch) { t.iapGranted = done.slice(-100); t.iapLog = mine.slice(-20); }
+  return ch;
+}
 // F312: buluta yazmadan önce çek. Bulut bu sekmenin base'inden sonra başka yerde (uygulama, öbür sekme)
 // değiştiyse ve ilerlemesi geride değilse onu al, sayfayı yenile — eski sekme yeni kaydı ezmesin.
 // base bilinmiyorsa (açılış ya da açılışta çekme hatası) açılış kuralı: ilerleme, eşitse sürüm, eşit sürümde bulut.
@@ -196,6 +229,8 @@ async function sync(boot, lr) {
     save.rev = rev(c) + 1;
     try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {}
   }
+  // F309: itiş buluttaki uygulama alımlarını silmesin
+  if (mergeCloudBuys(c)) { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
   const sent = sig(save), f = force; // yazma sürerken içe aktarılan kod zorlamasını korur
   // yazma sunucuya ulaşıp yanıtı kaybolabilir: base bilinmez sayılır, sekme bulutta gördüğü kendi kopyasını
   // başkasının yazması sanıp sonraki düzenlemeleri silmez (açılış kuralı: eşit ilerlemede yeni sürüm kalır)
@@ -215,6 +250,7 @@ function flush(a, s, b, f) {
         if (b === null ? sig(c) === sig(s) || cs > ls || (cs === ls && rev(c) >= rev(s)) : sig(c) === b ? sig(s) === b : cs >= ls) return false;
       }
     }
+    mergeCloudBuys(c, s); // F309
     await rpc('gc_push', { p_token: a.token, p_save: s });
     return false;
   };
