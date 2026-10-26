@@ -767,8 +767,9 @@ export class Farm extends Phaser.Scene {
       c.add(this.add.rectangle(width / 2, by, bw, 22, 0x1d2226).setStrokeStyle(2, 0x000000, 0.4));
       const bar = this.add.rectangle(bx, by, Math.max(4, bw * chainProg(id)), 18, 0xffb71b).setOrigin(0, 0.5); c.add(bar);
       const left = txt(this, width / 2, cy + 98, `⏳ ${fmtMs(chainLeft(id))}`, 20, '#ffe58a'); c.add(left);
+      // F384: OK/✕ ile kapanırken (c.closing, 150 ms solma) üretim biterse sayaç pencereyi yeniden açmasın
       const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => {
-        if (!c.active) return tk.remove();
+        if (!c.active || c.closing) return tk.remove();
         if (chainState(id) === 'ready') { tk.remove(); again(); return; }
         bar.width = Math.max(4, bw * chainProg(id)); left.setText(`⏳ ${fmtMs(chainLeft(id))}`);
       } });
