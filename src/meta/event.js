@@ -6,15 +6,17 @@ export { festActive, festMsLeft, festivalLevels, FEST_N };
 export const FEST_COINS = 60, FEST_HALF = { hammer: 1 }, FEST_ALL_GEMS = 10;
 function ev(now = Date.now()) {
   const w = festWeek(now);
-  if (!save.event || save.event.week !== w) { save.event = { week: w, done: 0 }; }
+  if (!save.event || !Number.isInteger(save.event.week) || w > save.event.week) { save.event = { week: w, done: 0 }; } // F341: geri saatte sıfırlanmaz
   return save.event;
 }
-export const festDone = (now) => ev(now).done;
-export const festNext = (now) => (festActive(now) && ev(now).done < FEST_N ? ev(now).done + 1 : 0);
+// F341 (uygulamadaki F263): kayıt ileri bir haftaya aitse (saat geri alındı) festival oynanmaz, ödül vermez
+const cur = (e, now = Date.now()) => e.week === festWeek(now);
+export const festDone = (now) => { const e = ev(now); return cur(e, now) ? e.done : 0; };
+export const festNext = (now) => { const e = ev(now); return festActive(now) && cur(e, now) && e.done < FEST_N ? e.done + 1 : 0; };
 // festival bölümü kazanıldı → ödül özeti (sıra dışı / süresi geçmiş kazanç sayılmaz)
 export function festWin(n, now = Date.now()) {
   const e = ev(now);
-  if (!festActive(now) || n !== e.done + 1) return null;
+  if (!festActive(now) || !cur(e, now) || n !== e.done + 1) return null;
   e.done = n; addCoins(FEST_COINS);
   const r = { coins: FEST_COINS };
   if (n === 5) { save.boosters.hammer = (save.boosters.hammer || 0) + 1; r.hammer = 1; }

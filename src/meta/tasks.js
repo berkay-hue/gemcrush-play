@@ -63,8 +63,9 @@ function T(now = Date.now()) {
   let t = save.tasks;
   if (!t || typeof t !== 'object') t = save.tasks = {};
   const d = dayIdx(now), w = weekIdx(now);
-  if (t.d !== d) { t.d = d; t.dBase = snap(); t.dDone = []; t.dChest = false; }
-  if (t.w !== w) { t.w = w; t.wBase = snap(); t.wDone = []; t.wChest = false; }
+  // F341 (uygulamadaki F263): yalnız ileri giden gün/hafta sıfırlar; saat geri alınınca alınmış görev ve sandık yeniden açılmaz
+  if (!Number.isInteger(t.d) || d > t.d) { t.d = d; t.dBase = snap(); t.dDone = []; t.dChest = false; }
+  if (!Number.isInteger(t.w) || w > t.w) { t.w = w; t.wBase = snap(); t.wDone = []; t.wChest = false; }
   if (!t.ach || typeof t.ach !== 'object') t.ach = {};
   if (!t.cards || typeof t.cards !== 'object') t.cards = {};
   if (!Array.isArray(t.sets)) t.sets = [];
