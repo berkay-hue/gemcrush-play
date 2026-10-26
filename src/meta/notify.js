@@ -5,6 +5,7 @@ import { save } from './save.js';
 import { CROPS, SEEDS } from './crops.js';
 import { festActive, festMsLeft } from '../engine/festival.js';
 import { t } from '../i18n.js';
+import { gameNow, deviceMs } from './clock.js'; // F356: süreler oyun saatiyle
 
 const DAY = 86400000, QUIET_FROM = 22, QUIET_TO = 9;
 // sessiz saatlere (22:00–09:00) düşeni 09:00'a kaydır
@@ -14,7 +15,7 @@ export function unquiet(at) {
   else if (h < QUIET_TO) d.setHours(QUIET_TO, 0, 0, 0);
   return d.getTime();
 }
-export function plan(s = save, now = Date.now()) {
+export function plan(s = save, now = gameNow()) {
   const out = [];
   const max = CONFIG.lives.max, regen = CONFIG.lives.regenMs;
   if ((s.lives ?? max) < max) {
@@ -52,7 +53,7 @@ export async function scheduleAll() {
   try {
     await p.schedule({ notifications: list.map((n) => ({
       id: n.id, title: t(`nt_${n.key}_t`).replace('{e}', n.emoji || '🌾'), body: t(`nt_${n.key}_b`).replace('{e}', n.emoji || '🌾'),
-      schedule: { at: new Date(n.at), allowWhileIdle: true },
+      schedule: { at: new Date(deviceMs(n.at)), allowWhileIdle: true },
     })) });
   } catch (e) { console.warn('notify', e); }
 }

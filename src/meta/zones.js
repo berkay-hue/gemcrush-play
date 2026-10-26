@@ -3,6 +3,7 @@
 import { save, persist, addCoins, addGems, spendCoins, spendGems, spendStars, starBalance } from './save.js';
 import { spendEnergy } from './energy.js';
 import { WIN_CUT } from './crops.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const M = 60000, H = 60 * M;
 export const OBST = {
@@ -25,36 +26,36 @@ export function openZone(z) {
 }
 const find = (z, o) => ZONES[z].obstacles.find((x) => x.id === o);
 // 'locked' | 'idle' | 'clearing' | 'ready' | 'done'
-export function obstState(z, o, now = Date.now()) {
+export function obstState(z, o, now = gameNow()) {
   if (!zoneOpen(z)) return 'locked';
   const v = Z()[z].clr[o];
   if (v === undefined) return 'idle';
   if (v === 'done') return 'done';
   return now >= v ? 'ready' : 'clearing';
 }
-export const obstLeft = (z, o, now = Date.now()) => (obstState(z, o, now) === 'clearing' ? Z()[z].clr[o] - now : 0);
+export const obstLeft = (z, o, now = gameNow()) => (obstState(z, o, now) === 'clearing' ? Z()[z].clr[o] - now : 0);
 // returns '' on success or a reason: 'coins' | 'energy'
-export function startClear(z, o, now = Date.now()) {
+export function startClear(z, o, now = gameNow()) {
   if (obstState(z, o, now) !== 'idle') return 'state';
   const k = OBST[find(z, o).kind];
   if (save.coins < k.coins) return 'coins';
   if (!spendEnergy(k.energy, now)) return 'energy';
   spendCoins(k.coins); Z()[z].clr[o] = now + k.ms; persist(); return '';
 }
-export function collectClear(z, o, now = Date.now()) {
+export function collectClear(z, o, now = gameNow()) {
   if (obstState(z, o, now) !== 'ready') return null;
   const r = OBST[find(z, o).kind].reward;
   Z()[z].clr[o] = 'done'; if (r.coins) addCoins(r.coins); if (r.gems) addGems(r.gems); persist(); return r;
 }
-export const clearRushCost = (z, o, now = Date.now()) => Math.max(1, Math.ceil(obstLeft(z, o, now) / H));
-export function clearRush(z, o, viaAd = false, now = Date.now()) {
+export const clearRushCost = (z, o, now = gameNow()) => Math.max(1, Math.ceil(obstLeft(z, o, now) / H));
+export function clearRush(z, o, viaAd = false, now = gameNow()) {
   if (obstState(z, o, now) !== 'clearing') return false;
   if (!viaAd && !spendGems(clearRushCost(z, o, now))) return false;
   Z()[z].clr[o] = now; persist(); return true;
 }
 export const zoneDone = (z) => zoneOpen(z) && ZONES[z].obstacles.every((o) => Z()[z].clr[o.id] === 'done');
 // every match-3 win: all clearing timers −WIN_CUT
-export function zoneCut(now = Date.now()) {
+export function zoneCut(now = gameNow()) {
   let n = 0;
   for (const st of Object.values(Z())) for (const [o, v] of Object.entries(st.clr)) if (typeof v === 'number' && v > now) { st.clr[o] = Math.max(now, v - WIN_CUT); n++; }
   if (n) persist(); return n;

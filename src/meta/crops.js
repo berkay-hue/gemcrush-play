@@ -10,6 +10,7 @@ import { pestAt, PEST_CUT } from './pests.js';
 import { comboOf, comboMul, beeSpeed } from './combo.js';
 import { isRare, useRare, rollRare, RARE } from './rare.js';
 import { HAIL_CUT } from './hava.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const M = 60000, H = 60 * M;
 export const WIN_CUT = 5 * M;
@@ -51,11 +52,11 @@ export const CROP_GOODS = { tarla1: 'wheat', tarla2: 'corn' }; // eski; artık S
 // F4: tarla seviyesi (paraya yükseltilir, BLD_MAX'e kadar): -%10 süre / seviye, ürün 1,1,2,2,3
 export const plotLvl = (id) => bldLvl(id);
 // F31: mevsim tohumu %25 hızlı büyür
-const baseMs = (id, seed, now = Date.now()) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id) * beeSpeed(id) * (inSeason(seed, now) ? SPEED : 1)); // F33: kovan yakını %15 hızlı
+const baseMs = (id, seed, now = gameNow()) => Math.round(SEEDS[seed].ms * (1 - 0.1 * (plotLvl(id) - 1)) * layerSpeed(id) * beeSpeed(id) * (inSeason(seed, now) ? SPEED : 1)); // F33: kovan yakını %15 hızlı
 // ekili ürün kendi süresini taşır (sonradan gübre alınca ilerleme çubuğu sıçramaz)
 export const cropMs = (id) => (F()[id] && F()[id].ms) || baseMs(id, SEEDS[seedOf(id)] ? seedOf(id) : 'wheat');
 // F31: mevsimde ekilen ürün %20 pahalı satılır (ekim anındaki mevsim geçerli)
-export const seedPrice = (seed, now = Date.now()) => Math.round(SEEDS[seed].price * (inSeason(seed, now) ? PRICE : 1));
+export const seedPrice = (seed, now = gameNow()) => Math.round(SEEDS[seed].price * (inSeason(seed, now) ? PRICE : 1));
 export const cropYield = (id) => 1 + Math.floor((plotLvl(id) - 1) / 2) + layerYield(id);
 export const plotUpgradeCost = (id) => 60 * plotLvl(id) * plotLvl(id);
 export function upgradePlot(id) {
@@ -65,25 +66,25 @@ export function upgradePlot(id) {
 }
 
 // 'empty' | 'growing' | 'ready'
-export function cropState(id, now = Date.now()) {
+export function cropState(id, now = gameNow()) {
   const c = F()[id];
   if (!c) return 'empty';
   return now >= c.readyAt ? 'ready' : 'growing';
 }
 // 0..1 growth
-export function growth(id, now = Date.now()) {
+export function growth(id, now = gameNow()) {
   const c = F()[id]; if (!c) return 0;
   return Math.max(0, Math.min(1, 1 - (c.readyAt - now) / cropMs(id)));
 }
-export function msLeft(id, now = Date.now()) { const c = F()[id]; return c ? Math.max(0, c.readyAt - now) : 0; }
-export function plant(id, now = Date.now(), seed = seedOf(id)) {
+export function msLeft(id, now = gameNow()) { const c = F()[id]; return c ? Math.max(0, c.readyAt - now) : 0; }
+export function plant(id, now = gameNow(), seed = seedOf(id)) {
   if (!CROPS[id] || !owns(id) || F()[id] || !SEEDS[seed]) return false;
   const cost = SEEDS[seed].cost || 0; if ((save.coins || 0) < cost) return false;
   if (isRare(seed) && !useRare(seed)) return false; // F34: nadir tohum envanterden harcanır, son tohum olarak hatırlanmaz
   save.coins -= cost; if (!isRare(seed)) (save.farm.lastSeed || (save.farm.lastSeed = {}))[id] = seed;
   const ms = baseMs(id, seed, now); F()[id] = { seed, readyAt: now + ms, ms }; if (inSeason(seed, now)) F()[id].sez = 1; persist(); return true;
 }
-export function harvest(id, now = Date.now()) {
+export function harvest(id, now = gameNow()) {
   if (cropState(id, now) !== 'ready') return null;
   const info = cropInfo(id), seed = seedOf(id);
   const sez = !!F()[id].sez, dolu = !!F()[id].dolu, pest = pestAt(id, now), combo = comboOf(id), cm = comboMul(id); // F33: kombo komşu başına +%10 // F32: kovulmamış zararlı ürünün %30'unu yer
@@ -99,21 +100,21 @@ export function harvest(id, now = Date.now()) {
   persist(); return { coins, good, n: put, seed, emoji: info.emoji, replant, sez, pest, dolu, combo, rare, gem, cutHit };
 }
 // F17: traktör hazır ekinleri kendisi biçer ve yeniden eker
-export function autoHarvest(now = Date.now()) {
+export function autoHarvest(now = gameNow()) {
   if (!owns('traktor')) return 0;
   let sum = 0;
   for (const id of Object.keys(CROPS)) if (cropState(id, now) === 'ready') { sum += harvest(id, now).coins; if (!F()[id]) plant(id, now); }
   return sum;
 }
 // called on every level win; returns list of crop ids that were shortened
-export function winCut(now = Date.now()) {
+export function winCut(now = gameNow()) {
   const hit = [];
   for (const [id, c] of Object.entries(F())) if (c.readyAt > now) { c.readyAt = Math.max(now, c.readyAt - WIN_CUT); hit.push(id); }
   if (hit.length) persist();
   return hit;
 }
-export function cropRushCost(id, now = Date.now()) { return Math.max(1, Math.ceil(msLeft(id, now) / H)); }
-export function cropRush(id, viaAd = false, now = Date.now()) {
+export function cropRushCost(id, now = gameNow()) { return Math.max(1, Math.ceil(msLeft(id, now) / H)); }
+export function cropRush(id, viaAd = false, now = gameNow()) {
   if (cropState(id, now) !== 'growing') return false;
   if (!viaAd && !spendGems(cropRushCost(id, now))) return false;
   F()[id].readyAt = now; persist(); return true;

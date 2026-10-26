@@ -2,6 +2,7 @@
 import { save, persist } from './save.js';
 import { owns } from './farm.js';
 import { inventory, stash, ambarFull } from './produce.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 const M = 60000;
 export const CHAIN = {
@@ -11,24 +12,24 @@ export const CHAIN = {
 const C = () => { const f = save.farm; if (!f.chain || typeof f.chain !== 'object') f.chain = {}; return f.chain; };
 
 // 'none' (bina yok) | 'idle' | 'busy' | 'ready'
-export function state(id, now = Date.now()) {
+export function state(id, now = gameNow()) {
   if (!CHAIN[id] || !owns(id)) return 'none';
   const j = C()[id]; if (!j || !j.until) return 'idle';
   return now >= j.until ? 'ready' : 'busy';
 }
-export const msLeft = (id, now = Date.now()) => Math.max(0, ((C()[id] || {}).until || 0) - now);
-export const progress = (id, now = Date.now()) => (state(id, now) === 'busy' ? 1 - msLeft(id, now) / CHAIN[id].ms : state(id, now) === 'ready' ? 1 : 0);
+export const msLeft = (id, now = gameNow()) => Math.max(0, ((C()[id] || {}).until || 0) - now);
+export const progress = (id, now = gameNow()) => (state(id, now) === 'busy' ? 1 - msLeft(id, now) / CHAIN[id].ms : state(id, now) === 'ready' ? 1 : 0);
 export const missing = (id) => Object.entries(CHAIN[id].in).filter(([g, n]) => (inventory()[g] || 0) < n).map(([g]) => g);
-export const canStart = (id, now = Date.now()) => state(id, now) === 'idle' && !missing(id).length;
-export function start(id, now = Date.now()) {
+export const canStart = (id, now = gameNow()) => state(id, now) === 'idle' && !missing(id).length;
+export function start(id, now = gameNow()) {
   if (!canStart(id, now)) return false;
   const inv = inventory(); for (const [g, n] of Object.entries(CHAIN[id].in)) inv[g] -= n;
   C()[id] = { until: now + CHAIN[id].ms }; persist(); return true;
 }
 // hazır ürünü ambara alır; ambar doluysa null
-export function collectChain(id, now = Date.now()) {
+export function collectChain(id, now = gameNow()) {
   if (state(id, now) !== 'ready' || ambarFull()) return null;
   if (!stash(CHAIN[id].out, 1)) return null;
   delete C()[id]; persist(); return CHAIN[id].out;
 }
-export const anyReady = (now = Date.now()) => Object.keys(CHAIN).some((id) => state(id, now) === 'ready');
+export const anyReady = (now = gameNow()) => Object.keys(CHAIN).some((id) => state(id, now) === 'ready');

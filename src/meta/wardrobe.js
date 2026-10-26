@@ -1,5 +1,6 @@
 // F27: Kuzucuk'un gardırobu — şapka / tulum / aksesuar yuvaları; 🪙 ya da 💎 ile alınır, 3D kuzuda canlı giyilir.
 import { save, persist, spendCoins, spendGems } from './save.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const SLOTS = ['hat', 'suit', 'acc'];
 // cost: { c: jeton } | { g: elmas } | null (bedava) ; lvl: açılma seviyesi
@@ -47,7 +48,7 @@ export const worn = (id) => { const it = byId[id]; return !!it && st()[it.slot] 
 // F346 (uygulamadaki F227/F303): seçilen parça kayda sabitlenir, yalnız gün ileri gidince yenilenir. Eskiden her açılışta
 // tarihten yeniden hesaplanıyordu: tarihi ya da saat dilimini değiştirmek her seferinde başka bir parçayı yarı fiyata getiriyordu.
 // Alınmış ya da seviye kilitli parça da artık fırsat olmaz.
-export function dailyDeal(d = new Date()) {
+export function dailyDeal(d = new Date(gameNow())) {
   const day = Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5);
   const w = st(), pin = w.deal && typeof w.deal === 'object' ? w.deal : null;
   const pd = pin && Number.isInteger(pin.d) ? pin.d : -1, dd = pd > day ? pd : day;

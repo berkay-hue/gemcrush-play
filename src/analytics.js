@@ -3,6 +3,7 @@
 import { CONFIG } from './config.js';
 import { save } from './meta/save.js';
 import { bump } from './meta/tasks.js';
+import { gameNow, learnServerTime } from './meta/clock.js'; // F356
 
 const QKEY = 'gemcrush.events';
 const AKEY = 'gemcrush.attempts';
@@ -17,7 +18,7 @@ export function track(name, props = {}) {
   if (!kind || !Number.isFinite(level)) return;
   if (kind === 'start') { attempts[level] = (attempts[level] || 0) + 1; try { localStorage.setItem(AKEY, JSON.stringify(attempts)); } catch {} }
   queue.push({ device: save.deviceId, level, kind, attempt: attempts[level] || 1, stars: props.stars ?? null,
-    moves_left: props.movesLeft ?? null, score: props.score ?? null, ts: new Date().toISOString() });
+    moves_left: props.movesLeft ?? null, score: props.score ?? null, ts: new Date(gameNow()).toISOString() });
   if (queue.length > 500) queue = queue.slice(-500);
   try { localStorage.setItem(QKEY, JSON.stringify(queue)); } catch {}
   if (queue.length >= 20) flush();
@@ -35,6 +36,7 @@ export async function flush() {
       headers: { apikey: c.key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_events: batch }),
     });
+    learnServerTime(r.headers && r.headers.get && r.headers.get('date')); // F356 (uygulamadaki F298): sunucu saati oyun saatini düzeltir
     if (!r.ok) throw new Error(r.status);
   } catch { queue.unshift(...batch); }
   busy = false;

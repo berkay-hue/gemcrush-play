@@ -1,13 +1,14 @@
 // F14: Hasat festivali — saf (DOM'suz) bölüm üretici; test-bot da bunu kullanır.
 // Festival her iki haftada bir, 7 gün sürer (epoch haftası çiftse açık).
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 export const WEEK = 604800000, FEST_N = 10, FEST_BASE = 1000;
 const TEMPLATES = [12, 25, 38, 47, 56, 63, 74, 85, 93, 100];
 export const FEST_EXTRA = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]; // şablona eklenen hamle
 
-export const festWeek = (now = Date.now()) => Math.floor(now / WEEK);
-export const festActive = (now = Date.now()) => festWeek(now) % 2 === 1;
+export const festWeek = (now = gameNow()) => Math.floor(now / WEEK);
+export const festActive = (now = gameNow()) => festWeek(now) % 2 === 1;
 // açıksa bitişe, kapalıysa sonraki başlangıca kalan ms
-export function festMsLeft(now = Date.now()) {
+export function festMsLeft(now = gameNow()) {
   const w = festWeek(now);
   return (w + 1) * WEEK - now;
 }

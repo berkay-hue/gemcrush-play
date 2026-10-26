@@ -3,6 +3,7 @@ import { t, getLang } from '../i18n.js';
 import { dailyTasks, weeklyTasks, claimTask, chestReady, openChest, CHEST, achList, claimAch, SETS, CARDS, hasCard, setState, claimSet, weekIdx } from '../meta/tasks.js';
 import { track } from '../analytics.js';
 import { shield } from './widgets.js';
+import { gameNow } from '../meta/clock.js'; // F356: süreler oyun saatiyle
 
 const nm = (o) => (getLang() === 'tr' ? o.tr : o.en);
 const fmtLeft = (ms) => { const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000); return h >= 24 ? `${Math.floor(h / 24)}${t('dShort')} ${h % 24}${t('hShort')}` : `${h}${t('hShort')} ${m}${t('mShort')}`; };
@@ -44,7 +45,7 @@ export function tasksPanel(onChange, tab0 = 'd') {
   }
   function drawTasks(kind) {
     const list = kind === 'd' ? dailyTasks() : weeklyTasks();
-    const now = Date.now(), end = kind === 'd' ? (Math.floor(now / 86400000) + 1) * 86400000 : ((weekIdx(now) + 1) * 7 - 3) * 86400000;
+    const now = gameNow(), end = kind === 'd' ? (Math.floor(now / 86400000) + 1) * 86400000 : ((weekIdx(now) + 1) * 7 - 3) * 86400000;
     const all = list.every((r) => r.claimed), ready = chestReady(kind), opened = all && !ready, c = CHEST[kind];
     let h = `<div style="font-size:13px;color:#9fb3a8">⏳ ${t('tkResets')} <b data-left>${fmtLeft(end - now)}</b></div>`;
     h += list.map((q) => card(`<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700">${qLabel(q)}</div><div style="font-size:12px;color:#9fb3a8">${q.p}/${q.n} · 🪙 ${q.coins}</div>${bar(q.p, q.n)}</div>${q.claimed ? '<div style="font-size:22px">✅</div>' : claimBtn(`data-claim="${q.id}"`, t('claim'), q.done)}`)).join('');

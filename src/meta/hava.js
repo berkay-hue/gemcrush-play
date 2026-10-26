@@ -2,6 +2,7 @@
 // dolu (seralı olmayan ekinin %30'u gider), rüzgâr, açık. Tahmin önceden görünür. Test: ?hava=yagmur|dolu|kurak|ruzgar|acik
 import { save, persist } from './save.js';
 import { hasLayer } from './layers.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const SLOT = 3 * 3600e3, RAIN_CUT = 20 * 60e3, DRY_ADD = 30 * 60e3, HAIL_CUT = 0.7;
 export const HAVA = {
@@ -21,14 +22,14 @@ function pick(slot) {
   return r < 18 ? 'yagmur' : r < 25 ? 'dolu' : r < 35 ? 'kurak' : r < 55 ? 'ruzgar' : 'acik';
 }
 export const havaSlot = (slot) => override() || pick(slot);
-export const havaAt = (now = Date.now()) => havaSlot(slotOf(now));
-export const hava = (now = Date.now()) => HAVA[havaAt(now)];
+export const havaAt = (now = gameNow()) => havaSlot(slotOf(now));
+export const hava = (now = gameNow()) => HAVA[havaAt(now)];
 // şimdiki + sonraki n dilim: [{ id, at }]
-export const forecast = (now = Date.now(), n = 4) => Array.from({ length: n + 1 }, (_, i) => { const s = slotOf(now) + i; return { id: havaSlot(s), at: s * SLOT }; });
-export const msToNextSlot = (now = Date.now()) => (slotOf(now) + 1) * SLOT - now;
+export const forecast = (now = gameNow(), n = 4) => Array.from({ length: n + 1 }, (_, i) => { const s = slotOf(now) + i; return { id: havaSlot(s), at: s * SLOT }; });
+export const msToNextSlot = (now = gameNow()) => (slotOf(now) + 1) * SLOT - now;
 
 // geçen her yeni dilimin etkisini o dilimin başında büyüyen ekinlere uygular (ilk çalışmada geriye dönük değil)
-export function havaTick(now = Date.now()) {
+export function havaTick(now = gameNow()) {
   const f = save.farm || (save.farm = {}), cur = slotOf(now);
   if (typeof f.havaSlot !== 'number' || f.havaSlot > cur) { f.havaSlot = cur; persist(); return []; }
   if (f.havaSlot === cur) return [];

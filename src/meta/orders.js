@@ -2,6 +2,7 @@
 import { save, persist, addCoins, addGems } from './save.js';
 import { owns } from './farm.js';
 import { GOODS } from './produce.js';
+import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
 
 export const SLOTS = 3;
 export const SKIP_MS = 15 * 60000;
@@ -31,7 +32,7 @@ export function makeOrder(rnd = Math.random) {
 }
 
 // eksik/bekleyen yuvaları doldurur; liste döner
-export function refreshOrders(now = Date.now()) {
+export function refreshOrders(now = gameNow()) {
   const o = O(); let ch = false;
   for (let i = 0; i < SLOTS; i++) {
     const x = o.list[i];
@@ -44,7 +45,7 @@ export function refreshOrders(now = Date.now()) {
 export const canDeliver = (i) => { const x = O().list[i]; return !!x && !x.wait && Object.entries(x.need).every(([g, n]) => ((save.farm.inv || {})[g] || 0) >= n); };
 export const readyCount = () => { refreshOrders(); return O().list.filter((_, i) => canDeliver(i)).length; };
 
-export function deliver(i, now = Date.now()) {
+export function deliver(i, now = gameNow()) {
   if (!canDeliver(i)) return null;
   const o = O(), x = o.list[i], before = farmLevel();
   for (const [g, n] of Object.entries(x.need)) save.farm.inv[g] -= n;
@@ -54,7 +55,7 @@ export function deliver(i, now = Date.now()) {
   persist();
   return { coins: x.coins, xp: x.xp, levelUp: up ? farmLevel() : 0 };
 }
-export function skip(i, now = Date.now()) {
+export function skip(i, now = gameNow()) {
   const o = O(); if (!o.list[i] || o.list[i].wait) return false;
   o.list[i] = { wait: now + SKIP_MS }; persist(); return true;
 }

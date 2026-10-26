@@ -1,5 +1,5 @@
 import { buildTextures } from '../textures.js';
-import { save, tickLives, account, syncOnBoot, settlePendingLevel, publicFarm } from '../meta/save.js';
+import { save, tickLives, account, syncOnBoot, settlePendingLevel, publicFarm, clockProbe } from '../meta/save.js';
 import { linkCode } from '../meta/link.js';
 import { authForm } from '../ui/authForm.js';
 import { setLang, detectLang, t } from '../i18n.js';
@@ -13,9 +13,9 @@ export class Boot extends Phaser.Scene {
     buildTextures(this);
     setLang(save.lang || detectLang());
     // F355 (uygulamadaki F180): yarım kalan bölüm eşitleme bittikten sonra kayıp sayılır; hata açılışı asla kilitlemesin
-    const synced = (account() ? syncOnBoot().catch(() => {}) : Promise.resolve())
-      .then(() => { try { const id = settlePendingLevel(); if (id) track('level_abandon', { level: id }); } catch {} });
-    tickLives();
+    // F356 (uygulamadaki F298): misafir de açılışta sunucu saatini öğrensin (yavaş ağda girişi en çok 3 sn bekletir)
+    const synced = (account() ? syncOnBoot().catch(() => {}) : Promise.race([clockProbe(), new Promise((r) => setTimeout(r, 3000))]))
+      .then(() => { try { tickLives(); } catch {} try { const id = settlePendingLevel(); if (id) track('level_abandon', { level: id }); } catch {} }); // can dolumu sunucu saati öğrenildikten sonra
     track('session_start', { level: save.level, lang: save.lang });
     const { width, height } = this.scale;
     this.cameras.main.setBackgroundColor('#0a0f0d');
