@@ -115,7 +115,8 @@ export class Game extends Phaser.Scene {
     if (this.level.id === 1 && !save.tutorialDone) this.tutorial();
     else if (this.level.id >= 6) this.preLevel();
     // level intro toast
-    if (!this.level.boss) this.toast(this.level.name || `${t('level')} ${this.level.id}`, 30);
+    // F391 (uygulamadaki F229): levels.json adı hep "Seviye N"; normal bölümde çevrilmiş başlık, festivalde yerelleştirilmiş ad
+    if (!this.level.boss) this.toast(this.level.festival ? this.level.name : `${t('level')} ${this.level.id}`, 30);
     const q = currentQuest(); if (q) this.time.delayedCall(1400, () => { if (!this.ended) this.toast(`📜 ${t('questNext')}: ${q.text[getLang()] || q.text.tr}`, 20); });
   }
 
