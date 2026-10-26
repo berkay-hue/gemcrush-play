@@ -1,6 +1,7 @@
 // Small shared UI helpers for Phaser scenes.
 import { sfx } from '../sound.js';
 import { buildIcons, splitIcon, iconKey } from './icons.js';
+import { t } from '../i18n.js';
 
 export const FONT = '"Baloo 2", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
@@ -140,8 +141,10 @@ export function modal(scene, w, h) {
 }
 
 export function fmtMs(ms) {
-  const s = Math.ceil(ms / 1000), m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
+  // F390 (uygulamadaki F228): 1 saatten uzunsa s:dd:ss, 1 günden uzunsa gün+saat (10 saatlik mısır "599:59" yazıyordu); geçmiş süre "-1:-5" değil 0:00
+  const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0');
+  if (h >= 24) return `${Math.floor(h / 24)}${t('dShort')} ${h % 24}${t('hShort')}`;
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
 // Sahne girişinde yumuşak açılış (main.js tüm sahnelere bağlar)
