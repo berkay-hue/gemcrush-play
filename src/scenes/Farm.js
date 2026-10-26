@@ -370,14 +370,16 @@ export class Farm extends Phaser.Scene {
     m.add(txt(this, width / 2, height / 2 - 125, cropInfo(id).emoji, 60));
     m.add(txt(this, width / 2, height / 2 - 70, `${this.itemName(it)} · ${cropInfo(id).name[getLang()] || cropInfo(id).name.tr}`, 26, '#ffb71b'));
     const left = txt(this, width / 2, height / 2 - 30, `⏳ ${fmtMs(msLeft(id))}`, 26, '#ffe58a'); m.add(left);
-    const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
+    // F382 (uygulamadaki F316): süre dolunca pencere '⏳ 0:00'da asılı kalmasın — kapanır, tarla hemen olgun çizilir
+    const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!m.active) return tk.remove(); if (cropState(id) !== 'growing') { tk.remove(); close(); this.refreshHud(); return; } left.setText(`⏳ ${fmtMs(msLeft(id))}`); } });
     m.add(txt(this, width / 2, height / 2 + 2, `${t('cropTip')}  ·  ${t('level')} ${plotLvl(id)}`, 17, '#9dffb8'));
     { const en = getLang() === 'en', cb = comboOf(id), bz = beeNear(id), bits = [cb ? `🔗×${cb} +%${Math.round(cb * COMBO_STEP * 100)} ${en ? 'coins' : 'para'}` : '', bz ? `🐝 ${en ? '15% faster' : '%15 hızlı'}` : ''].filter(Boolean);
       m.add(txt(this, width / 2, height / 2 + 24, bits.length ? bits.join('  ·  ') : (en ? '🔗 Same seed side by side = +10% each' : '🔗 Aynı tohumu yan yana ek = komşu başına +%10'), 14, bits.length ? '#ffd45a' : '#9fb3a8')); }
     m.add(button(this, width / 2, height / 2 + 60, 300, 56, `▶ ${t('play')} (−5 ${t('minShort')})`, () => { close(); this.playBtn.emit('pointerup'); }, 0x2ee06a, '#04220e', 20));
     const cost = cropRushCost(id), ok = save.gems >= cost;
     const done = () => { sfx.coin(); close(); this.drawCrop(c, it); };
-    m.add(button(this, width / 2 - 100, height / 2 + 125, 180, 48, `💎 ${cost} ${t('rush')}`, () => { if (cropRush(id)) { track('crop_rush', { plot: id, via: 'gems' }); done(); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 17));
+    // F382 (uygulamadaki F316): elmas yetmezse 💎 sessiz kalmasın; ekin olgunlaştıysa pencere kapansın
+    m.add(button(this, width / 2 - 100, height / 2 + 125, 180, 48, `💎 ${cost} ${t('rush')}`, () => { if (cropRush(id)) { track('crop_rush', { plot: id, via: 'gems' }); done(); } else if (cropState(id) === 'growing') { sfx.bad(); this.toast(t('needGems')); } else { close(); this.refreshHud(); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 17));
     m.add(button(this, width / 2 + 100, height / 2 + 125, 180, 48, `📺 ${t('rush')}`, async () => { if (await showRewarded('crop_rush') && cropRush(id, true)) { track('crop_rush', { plot: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 17));
     m.add(button(this, width / 2, height / 2 + 180, 300, 44, `🧱 ${getLang() === 'en' ? 'Field layers' : 'Tarla katmanları'}`, () => { close(); this.layersModal(id); }, 0xc98a3e, '#2a1604', 17));
     // F39: taştan gelen gübre — renk tohuma uyar (kırmızı→çilek/domates…), su her ekine
@@ -807,9 +809,11 @@ export class Farm extends Phaser.Scene {
       }, 0x2ee06a, '#04220e', 22));
       else {
         const left = txt(this, width / 2, height / 2 + 45, `${pr.emoji} ⏳ ${fmtMs(readyAt(id) - gameNow())}`, 22, '#ffe58a'); c.add(left);
-        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!c.active) return tk.remove(); left.setText(`${pr.emoji} ⏳ ${fmtMs(Math.max(0, readyAt(id) - gameNow()))}`); } });
+        // F382 (uygulamadaki F316): ürün hazır olunca 0:00'da asılı kalmasın — pencere Topla düğmesiyle yeniden açılır (kapanırken açılmaz)
+        const tk = this.time.addEvent({ delay: 1000, loop: true, callback: () => { if (!c.active || c.closing) return tk.remove(); if (isReady(id)) { tk.remove(); close(); this.itemModal(id); return; } left.setText(`${pr.emoji} ⏳ ${fmtMs(Math.max(0, readyAt(id) - gameNow()))}`); } });
         const done = () => { sfx.coin(); close(); this.scene.restart(); };
-        c.add(button(this, width / 2 - 95, height / 2 + 110, 170, 50, `💎 ${rushCost(id)} ${t('rush')}`, () => { if (rush(id)) { track('farm_rush', { item: id, via: 'gems' }); done(); } }, save.gems >= rushCost(id) ? 0x8fe3ff : 0x2a333a, save.gems >= rushCost(id) ? '#06222e' : '#777', 18));
+        // F382 (uygulamadaki F316): elmas yetmezse 💎 sessiz kalmasın; ürün hazırsa Topla penceresi açılsın
+        c.add(button(this, width / 2 - 95, height / 2 + 110, 170, 50, `💎 ${rushCost(id)} ${t('rush')}`, () => { if (rush(id)) { track('farm_rush', { item: id, via: 'gems' }); done(); } else if (!isReady(id)) { sfx.bad(); this.toast(t('needGems')); } else { close(); this.itemModal(id); } }, save.gems >= rushCost(id) ? 0x8fe3ff : 0x2a333a, save.gems >= rushCost(id) ? '#06222e' : '#777', 18));
         c.add(button(this, width / 2 + 95, height / 2 + 110, 170, 50, `📺 ${t('rush')}`, async () => { if (await showRewarded('farm_rush') && rush(id, true)) { track('farm_rush', { item: id, via: 'ad' }); done(); } }, 0x3f7bff, '#fff', 18));
       }
       return;
