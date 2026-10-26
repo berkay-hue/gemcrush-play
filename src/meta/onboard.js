@@ -12,12 +12,16 @@ export const FTUE = [
   { id: 'plant', text: '👆 Tarla al ve ek, ürün zamanla büyür' },
   { id: 'pet', text: '👆 Bir hayvana dokun, onu sev' },
 ];
-const st = () => (save.farm.ftue = save.farm.ftue || { i: 0 });
 // Existing players (already past level 3 or owning the coop) skip the guide.
+// F385 (uygulamadaki F205): yalnız rehber kaydı ilk kurulurken (atlanınca skipped yazılır); yeni oyuncu 1-3'ü 'Sonraki'
+// ile geçip çiftliğe 4. seviyede dönünce rehberi kaybetmesin
+const st = () => {
+  const f = (save.farm.ftue = save.farm.ftue || {});
+  if (f.i == null) { const old = save.level > 3 || owns('kumes'); f.i = old ? FTUE.length : 0; if (old) f.skipped = true; persist(); }
+  return f;
+};
 export function ftueCurrent() {
-  const f = st();
-  if (f.i === 0 && (save.level > 3 || owns('kumes'))) { f.i = FTUE.length; persist(); }
-  return FTUE[f.i] || null;
+  return FTUE[st().i] || null;
 }
 export function ftueDone(id) {
   const cur = ftueCurrent();
