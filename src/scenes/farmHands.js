@@ -2,6 +2,7 @@
 import { save, persist } from '../meta/save.js';
 import { item, status, owns } from '../meta/farm.js';
 import { cropState, harvest, SEEDS } from '../meta/crops.js';
+import { pestAt } from '../meta/pests.js';
 import { hunger, feed, feedLeft, isSick, LIVESTOCK, FEED_COINS } from '../meta/animals.js';
 import { energy, E_MAX } from '../meta/energy.js';
 import { rollGold } from '../meta/care.js';
@@ -80,7 +81,8 @@ export const HandsMixin = {
   // pad pointerdown'dan: hazır tarlada başlarsa sürükleyerek hasat moduna gir
   harvestStart(p, down) {
     const id = this.placing || this.editing ? null : this.w3.pick(p.x, p.y);
-    if (!this.isReadyPlot(id)) return false;
+    // F360 (uygulamadaki F287): zararlı tarlada basış hasat başlatmaz; bırakınca plotTap önce zararlıyı kovar (+5 🪙, tam verim)
+    if (!this.isReadyPlot(id) || pestAt(id)) return false;
     down.harvest = { done: new Set(), n: 0, coins: 0, em: [] };
     this.sickle = this.add.image(p.x, p.y - 30, 'sickle').setDepth(950).setScale(1.2);
     this.harvestAt(p, down);
@@ -90,7 +92,7 @@ export const HandsMixin = {
     const H = down.harvest; if (!H) return;
     if (this.sickle) { this.sickle.setPosition(p.x, p.y - 30); this.sickle.angle = Math.sin(Date.now() / 60) * 25; }
     const id = this.w3.pick(p.x, p.y);
-    if (!this.isReadyPlot(id) || H.done.has(id)) return;
+    if (!this.isReadyPlot(id) || pestAt(id) || H.done.has(id)) return; // F360 (uygulamadaki F287): zararlı tarla süpürülmez
     H.done.add(id);
     const r = this.harvestPlot(id, true); if (!r) return;
     H.n += r.n || 0; H.coins += r.coins || 0; if (!H.em.includes(r.emoji)) H.em.push(r.emoji);
