@@ -509,7 +509,8 @@ export class Farm extends Phaser.Scene {
   }
   toast(msg) {
     const { width } = this.scale;
-    const tt = txt(this, width / 2, 260, msg, 24, '#ffffff').setDepth(2000).setStroke('#0a0f0d', 6);
+    // F417: tek satırdı; uzun ipuçları ekranın iki yanından kesiliyordu
+    const tt = txt(this, width / 2, 260, msg, 24, '#ffffff', { wordWrap: { width: width - 48 } }).setDepth(2000).setStroke('#0a0f0d', 6);
     this.tweens.add({ targets: tt, y: 220, alpha: 0, delay: 900, duration: 700, onComplete: () => tt.destroy() });
   }
   drawQuest() {
