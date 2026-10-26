@@ -340,7 +340,31 @@ export function deviceId() {
   catch { return `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
 export const publicWater = (code) => rpc('gc_public_water', { p_code: code, p_device: deviceId() });
-export const waterClaimRaw = () => rpc('gc_water_claim', { p_token: tok() });
+// F408 (uygulamadaki F279): ödül veren alımlar (pazar topla/geri çek, sulama) kimlikle gider; yanıt kaybolursa kimlik
+// saklanır, sonraki alım aynı kimlikle gider ve sunucu o alımın sonucunu döner (ödül kaybolmaz, iki kez sayılmaz)
+const CNKEY = 'gemcrush.claimNonce.v1:';
+const claimBusy = new Set();
+const newNonce = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+export const claimPending = (key) => { try { return !!localStorage.getItem(`${CNKEY}${key}:${account()?.user}`); } catch { return false; } };
+export async function claimOnce(fn, body = {}, key = fn) {
+  if (claimBusy.has(key)) return null; // çift dokunuş: süren alım varken ikinci istek gitmez
+  claimBusy.add(key);
+  try {
+    const tk = tok(), u = account().user, sk = `${CNKEY}${key}:${u}`;
+    let n = null;
+    try { n = localStorage.getItem(sk); } catch {}
+    if (!n) { n = newNonce(); try { localStorage.setItem(sk, n); } catch {} }
+    const done = () => { try { if (localStorage.getItem(sk) === n) localStorage.removeItem(sk); } catch {} };
+    let r;
+    try { r = await rpc(fn, { p_token: tk, ...body, p_nonce: n }); }
+    catch (e) { if (e.server) done(); throw e; } // sunucu reddi geri alındı → kimlik düşer; belirsiz hatada kalır
+    if (account()?.user !== u) return null; // yanıt gelmeden hesap değişti: kimlik eski hesapta bekler
+    if (r == null) throw new Error('ag'); // gövde okunamadı: sonuç bilinmiyor, kimlik kalır
+    done();
+    return r;
+  } finally { claimBusy.delete(key); }
+}
+export const waterClaimRaw = () => claimOnce('gc_water_claim', {});
 export const farmLink = (code, base = (typeof location !== 'undefined' ? location.origin + location.pathname : '')) => `${base}?ciftlik=${encodeURIComponent(code)}`;
 // F347 (uygulamadaki F226/F326): sunucu yalnız boş yer kadar can hediyesi alır, kalanı kutuda bekler. Eskiden gc_inbox_claim
 // bütün canları kutudan düşüyordu, üst sınırı aşanlar kayboluyordu. Alım bir kimlikle gider; yanıt kaybolursa kimlik cihazda
