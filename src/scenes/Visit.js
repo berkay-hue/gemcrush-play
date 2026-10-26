@@ -73,12 +73,13 @@ export class Visit extends Phaser.Scene {
     // F11: yardım et — ekinleri sula / hayvanları besle; ikiniz de ödül alırsınız (günde 1)
     if (f && f.code) {
       const note = txt(this, width / 2, height - 172, '', 16, '#ffe7a3').setShadow(0, 2, 'rgba(10,15,13,0.7)', 6, false, true);
-      let busy = false;
+      // F370 (uygulamadaki F131): ağ/sunucu hatasında düğme açık kalsın (tekrar denenebilir); yalnız başarı ya da "bugün yardım ettin" kapatır
+      let busy = false, done = false;
       const hb = button(this, width / 2, height - 132, 240, 56, `💧 ${t('frHelp')}`, async () => {
-        if (busy) return; busy = true;
-        try { await helpFriend(f.code); track('friend_help'); note.setText(`🌱 ${t('frHelped')}`).setColor('#8ff0b0'); if (w && w.burst) owned.slice(0, 6).forEach((id) => w.burst(id, 0x6fd3ff, 10)); }
-        catch (er) { note.setText(String(er.message).includes('bugun') ? t('frHelpedToday') : `⚠️ ${t('rkOffline')}`).setColor('#ffe7a3'); }
-        hb.setAlpha(0.5);
+        if (busy || done) return; busy = true;
+        try { await helpFriend(f.code); done = true; track('friend_help'); note.setText(`🌱 ${t('frHelped')}`).setColor('#8ff0b0'); if (w && w.burst) owned.slice(0, 6).forEach((id) => w.burst(id, 0x6fd3ff, 10)); }
+        catch (er) { done = String(er.message).includes('bugun'); note.setText(done ? t('frHelpedToday') : `⚠️ ${t('rkOffline')}`).setColor('#ffe7a3'); }
+        busy = false; if (done) hb.setAlpha(0.5);
       }, 0x2ee06a, '#04220e', 20);
     }
     button(this, width / 2, height - 60, 240, 64, `⬅ ${t('frBack')}`, () => this.scene.start('Farm'), 0xffb71b, '#1a1200', 22);

@@ -64,6 +64,8 @@ export class Farm extends Phaser.Scene {
   create(data = {}) {
     this._data = data;
     this._coinShown = null; this._coinAnim = false; // F41: yeniden girişte altın sayısı boş kalmasın
+    // F370 (uygulamadaki F131): sahne örneği yeniden kullanılıyor; yerleştirme/Düzenle ortasında çıkınca (🗺, HUD +) bayraklar kalıyordu, afiş yok → dönüşte her dokunuş hayalet binayı taşıyordu (çiftlik kilitli)
+    this.placing = null; this.editing = false; this.placeBanner = null; this.editBanner = null;
     const { width, height } = this.scale;
     this.levels = this.cache.json.get('levels');
     tickLives();
