@@ -12,7 +12,9 @@ export class Boot extends Phaser.Scene {
   create() {
     buildTextures(this);
     setLang(save.lang || detectLang());
-    const synced = account() ? syncOnBoot().catch(() => {}) : Promise.resolve();
+    // F355 (uygulamadaki F180): yarım kalan bölüm eşitleme bittikten sonra kayıp sayılır; hata açılışı asla kilitlemesin
+    const synced = (account() ? syncOnBoot().catch(() => {}) : Promise.resolve())
+      .then(() => { try { const id = settlePendingLevel(); if (id) track('level_abandon', { level: id }); } catch {} });
     tickLives();
     track('session_start', { level: save.level, lang: save.lang });
     const { width, height } = this.scale;

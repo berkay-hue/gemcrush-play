@@ -420,13 +420,21 @@ export function spendLife() {
 }
 // Can yalnız KAYBEDİNCE gider. Bölüm başında "askıda" işaretlenir; kazanınca silinir,
 // kaybedince/çıkınca can düşülür. Uygulama bölüm ortasında kapatılırsa açılışta düşülür.
-export function beginLevel(id) { save.inLevel = id; persist(); }
+// F355 (uygulamadaki F180): bu çalıştırmada başlayan bölüm açılış hesabına karışmaz (link ziyareti → çiftlik → bölüm, eşitleme bitmeden)
+let levelBegun = false;
+export function beginLevel(id) { levelBegun = true; save.inLevel = id; persist(); }
 export function endLevel(won) {
   if (!save.inLevel) return;
   save.inLevel = 0;
   if (!won) spendLife(); else persist();
 }
-export function settlePendingLevel() { if (save.inLevel) endLevel(false); }
+// F355: bölüm ortasında kapatılan sekme açılışta kaybetmiş sayılır — yoksa sekmeyi kapatıp kaçmak canı korurdu. Kapanan bölümün no'sunu döner.
+export function settlePendingLevel() {
+  const id = save.inLevel;
+  if (!id || levelBegun) return 0;
+  recordLoss(); endLevel(false);
+  return id;
+}
 // F342 (uygulamadaki F175): can eklemek üst sınırı aşan hediye canları silmez; ödül canları cap ile hediye sınırına kadar eklenir
 export function addLife(n = 1, cap = CONFIG.lives.max) { save.lives = Math.max(save.lives, Math.min(cap, save.lives + n)); persist(); }
 
