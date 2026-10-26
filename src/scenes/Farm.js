@@ -1277,7 +1277,7 @@ export class Farm extends Phaser.Scene {
   // F12: görevler/başarım/albüm — alınabilir ödül sayısı 📜 üstünde
   taskBadge(x, y) {
     if (this.tkBadge) { this.tkBadge.destroy(); this.tkBadge = null; }
-    const n = tasksBadge();
+    const n = this._tkN = tasksBadge(); // F389 (uygulamadaki F272): rozetteki son sayı saklanır; refreshHud değişince yeniden çizer
     if (!n) return;
     const c = this.tkBadge = this.add.container(x, y).setDepth(50);
     c.add(this.add.circle(0, 0, 12, 0xff4d5e).setStrokeStyle(2, 0xffffff));
@@ -1428,6 +1428,8 @@ export class Farm extends Phaser.Scene {
     if (this.havaBtn) this.havaBtn.label.setText(hava().emoji);
     if (this.nodes) this.tickCrops();
     if (this.ordBtn) { const n = readyCount(); this.ordBtn.label.setText(n ? `📋 ✓${n}` : '📋'); }
+    // F389 (uygulamadaki F272): çiftlikte tamamlanan görev 📜 rozetini panel açılmadan göstersin; sayı değiştiyse eski rozet silinip yeniden çizilir
+    if (tasksBadge() !== this._tkN) this.taskBadge(this.scale.width - 16, 314);
   }
 
   tryStart(lv) {
