@@ -39,6 +39,7 @@ export class Game extends Phaser.Scene {
     this.board = new Board(this.level, (Date.now() ^ (this.level.seed * 7919)) >>> 0, this.perks);
     this.board.moves += this.perks.extraMoves;
     this.busy = false; this.ended = false; this.sel = null; this.mode = null; this.idle = 0;
+    this.leaving = false; this.won = false; this.lost = false; this.skipFarm = false; this.farmData = null; // F404: sahne yeniden kullanılır, önceki bölümden kalmasın
     beginLevel(this.level.id);
     track('level_start', { level: this.level.id, lives: save.lives, coins: save.coins });
 
@@ -821,7 +822,7 @@ export class Game extends Phaser.Scene {
     if (this.board.isLost()) return this.outOfMoves();
   }
   async win() {
-    this.ended = true; sfx.win(); endLevel(true); haptic('heavy');
+    this.ended = true; this.won = true; sfx.win(); endLevel(true); haptic('heavy');
     const left = this.board.moves;
     this.lambMood('happy');
     if (this.boss && this.boss.active) { this.wolfIdle && this.wolfIdle.stop(); this.boss.setTexture('wolf_hurt'); this.tweens.add({ targets: this.boss, x: this.scale.width + 140, angle: 20, duration: 700, delay: 350, ease: 'Back.In' }); }
@@ -841,8 +842,11 @@ export class Game extends Phaser.Scene {
     track('level_win', { level: this.level.id, score, stars, newStars, movesLeft: left });
     if (fr) track('event_win', { n: fest, all: !!fr.all });
     await this.victoryFx(left);
+    if (this.skipFarm || this.leaving) return this.go('Farm', this.farmData); // F404: kutlama sırasında ✕ → ödüller yazıldı, doğrudan çiftlik
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 460);
+    // F404 (uygulamadaki #204): pencerenin ✕'i → çiftlik; eskiden pencere kapanınca ekran düğmesiz donup kalıyordu
+    c.once('destroy', () => { if (c.closing) this.go('Farm', this.farmData); });
     c.add(txt(this, width / 2, height / 2 - 170, t('win'), 40, '#ffb71b'));
     const wl = this.add.image(width / 2 - 200, height / 2 - 150, 'lamb_happy').setDisplaySize(130, 130); c.add(wl);
     this.tweens.add({ targets: wl, y: wl.y - 14, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' });
@@ -862,10 +866,10 @@ export class Game extends Phaser.Scene {
     const nf = fest ? festNext() : 0;
     const last = fest ? !nf : this.level.id >= this.cache.json.get('levels').length;
     c.add(button(this, width / 2, height / 2 + 140, 300, 64, last ? t('map') : t('next'), async () => {
-      await maybeInterstitial('level_end');
-      if (last || this.vetFor) this.scene.start('Farm', this.farmData); else this.scene.start('Game', { level: fest ? festivalLevels(this.cache.json.get('levels'))[nf - 1] : this.cache.json.get('levels')[this.level.id] });
+      if (this.leaving) return; await maybeInterstitial('level_end');
+      if (last || this.vetFor) this.go('Farm', this.farmData); else this.go('Game', { level: fest ? festivalLevels(this.cache.json.get('levels'))[nf - 1] : this.cache.json.get('levels')[this.level.id] });
     }, 0x2ee06a, '#04220e'));
-    c.add(button(this, width / 2, height / 2 + 205, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm', this.farmData); }, 0x2a333a, '#fff', 18));
+    c.add(button(this, width / 2, height / 2 + 205, 200, 44, t('map'), async () => { if (this.leaving) return; await maybeInterstitial('level_end'); this.go('Farm', this.farmData); }, 0x2a333a, '#fff', 18));
   }
   outOfMoves() {
     this.ended = true;
@@ -888,8 +892,11 @@ export class Game extends Phaser.Scene {
     if (this.boss && this.boss.active) await this.wolfLunge(true);
     if (sheepOnLoss()) { addLife(1, GIFT_LIFE_CAP); this.time.delayedCall(600, () => this.toast('🐑 +1 ❤', 30)); }
     track('level_fail', { level: this.level.id, score: this.board.score });
+    if (this.leaving) return; // F404: başka yoldan çıkılıyorsa pencere açılmasın
+    this.lost = true; // F404: kayıp yazıldı, koyun canı verildi; HUD ✕ artık çiftliğe dönebilir
     const { width, height } = this.scale;
     const { c } = modal(this, 440, 340);
+    c.once('destroy', () => { if (c.closing) this.go('Farm'); }); // F404 (uygulamadaki #204): pencerenin ✕'i → çiftlik (eskiden ekran donuyordu)
     c.add(txt(this, width / 2, height / 2 - 100, t('lose'), 36, '#ff3b5c'));
     c.add(this.add.image(width / 2 - 190, height / 2 - 130, 'lamb_scared').setDisplaySize(120, 120));
     if (this.level.boss) c.add(this.add.image(width / 2 + 190, height / 2 - 130, 'wolf').setDisplaySize(120, 120));
@@ -897,11 +904,20 @@ export class Game extends Phaser.Scene {
     // F362 (uygulamadaki F173): Tekrar veteriner hedefini (vetFor) taşısın; yoksa tekrarda kazanınca hayvan iyileşmez
     // F379 (uygulamadaki F142): Tekrar önce canı tazelesin (pencere açıkken dolan can sayılsın); can yoksa sessizce çiftliğe düşmesin, haritada can penceresi açılsın
     tickLives(); const hasLife = save.lives > 0;
-    c.add(button(this, width / 2, height / 2 + 40, 300, 64, hasLife ? t('retry') : `❤ ${t('noLives')}`, async () => { await maybeInterstitial('level_end'); tickLives(); if (save.lives > 0) this.scene.start('Game', { level: this.level, vetFor: this.vetFor }); else this.scene.start('Map', { livesModal: true }); }, hasLife ? 0x2ee06a : 0x3f7bff, hasLife ? '#04220e' : '#fff'));
-    c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { await maybeInterstitial('level_end'); this.scene.start('Farm'); }, 0x2a333a, '#fff', 18));
+    c.add(button(this, width / 2, height / 2 + 40, 300, 64, hasLife ? t('retry') : `❤ ${t('noLives')}`, async () => { if (this.leaving) return; await maybeInterstitial('level_end'); tickLives(); if (save.lives > 0) this.go('Game', { level: this.level, vetFor: this.vetFor }); else this.go('Map', { livesModal: true }); }, hasLife ? 0x2ee06a : 0x3f7bff, hasLife ? '#04220e' : '#fff'));
+    c.add(button(this, width / 2, height / 2 + 115, 200, 44, t('map'), async () => { if (this.leaving) return; await maybeInterstitial('level_end'); this.go('Farm'); }, 0x2a333a, '#fff', 18));
+  }
+  // F404: tek çıkış kapısı — ✕ ile düğme aynı anda tetiklenirse ikinci sahne geçişi yapılmaz
+  go(key, data) {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.scene.start(key, data);
   }
   quit() {
-    if (this.ended || this.quitOpen) return;
+    if (this.leaving || this.quitOpen) return;
+    // F404 (uygulamadaki #204): bölüm bitince HUD ✕ hiçbir şey yapmıyordu; kaybedildiyse çiftliğe, kazanıldıysa ödüllerle çiftliğe.
+    // Hamle bitti penceresi açıkken (henüz kayıp yazılmadı) ya da kurt atağı sürerken eskisi gibi bir şey yapmaz; yoksa can düşmeden çıkılır ya da koyun canı kaybolurdu.
+    if (this.ended) { if (this.lost) this.go('Farm'); else if (!this.won) return; else if (this.farmData) this.go('Farm', this.farmData); else this.skipFarm = true; return; }
     const { width, height } = this.scale;
     this.quitOpen = true; this.clearSel(); this.dragFrom = null; // F377 (uygulamadaki F128): pencere açılırken seçim/sürükleme temizlensin
     const { c, close } = modal(this, 420, 300);
