@@ -24,6 +24,8 @@ export const HandsMixin = {
     const w = this.w3;
     w.setSignText && w.setSignText(farmTitle());
     this.buildBucket();
+    // F424: açık kalan açlık çubuğu takibi sahne kapanınca kalksın
+    this.events.once('shutdown', () => { if (this.hbarEv) { this.events.off('update', this.hbarEv); this.hbarEv = null; } });
   },
 
   // ---- tabela ----
