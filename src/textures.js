@@ -259,6 +259,13 @@ export function buildTextures(scene) {
     ctx.fillStyle = 'rgba(255,230,190,.35)'; for (const [x, y, r] of [[0.36, 0.34, 0.07], [0.6, 0.3, 0.04], [0.66, 0.6, 0.05]]) { ctx.beginPath(); ctx.arc(s * x, s * y, s * r, 0, 7); ctx.fill(); }
     ctx.fillStyle = '#2e1a0a'; for (const [x, y, r] of [[0.46, 0.64, 0.05], [0.3, 0.56, 0.03]]) { ctx.beginPath(); ctx.arc(s * x, s * y, s * r, 0, 7); ctx.fill(); }
   });
+  // F345 (uygulamadaki F62) yosun: taşın üstünde yarı saydam yeşil örtü + kenar püskülleri (taş görünür kalır)
+  make('moss', (ctx) => {
+    ctx.fillStyle = 'rgba(70,140,50,.38)'; ctx.beginPath(); ctx.arc(s * 0.5, s * 0.5, s * 0.44, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(90,170,60,.85)';
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; ctx.beginPath(); ctx.arc(s * 0.5 + Math.cos(a) * s * 0.4, s * 0.5 + Math.sin(a) * s * 0.4, s * (i % 2 ? 0.055 : 0.075), 0, 7); ctx.fill(); }
+    ctx.fillStyle = 'rgba(160,220,110,.7)'; for (const [x, y, r] of [[0.22, 0.3, 0.03], [0.78, 0.36, 0.025], [0.3, 0.78, 0.028], [0.72, 0.76, 0.03]]) { ctx.beginPath(); ctx.arc(s * x, s * y, s * r, 0, 7); ctx.fill(); }
+  });
   make('lock', (ctx) => {
     // hafif karartma: kilitli taş "donmuş" görünsün
     ctx.fillStyle = 'rgba(20,28,40,.22)'; ctx.beginPath(); ctx.roundRect(s * 0.04, s * 0.04, s * 0.92, s * 0.92, s * 0.14); ctx.fill();
