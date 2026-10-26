@@ -4,13 +4,14 @@ import { CROPS, SEEDS } from './crops.js';
 import { PRODUCTS, isReady } from './produce.js';
 import { owns } from './farm.js';
 import { gameNow } from './clock.js'; // F356: süreler oyun saatiyle
+import { t } from '../i18n.js'; // F401 (uygulamadaki ft*/c.away.*): rehber ve 'sen yokken' metinleri seçili dilde
 
 export const FTUE = [
-  { id: 'play', text: '👆 İlk bölümü oyna, yıldız kazan' },
-  { id: 'reward', text: '✨ Kazandıkların çiftliğe uçuyor!' },
-  { id: 'coop', text: '👆 Kümese dokun, yıldızla satın al' },
-  { id: 'plant', text: '👆 Tarla al ve ek, ürün zamanla büyür' },
-  { id: 'pet', text: '👆 Bir hayvana dokun, onu sev' },
+  { id: 'play', key: 'ftPlay' },
+  { id: 'reward', key: 'ftReward' },
+  { id: 'coop', key: 'ftCoop' },
+  { id: 'plant', key: 'ftPlant' },
+  { id: 'pet', key: 'ftPet' },
 ];
 // Existing players (already past level 3 or owning the coop) skip the guide.
 // F385 (uygulamadaki F205): yalnız rehber kaydı ilk kurulurken (atlanınca skipped yazılır); yeni oyuncu 1-3'ü 'Sonraki'
@@ -43,10 +44,10 @@ export function awaySummary(now = gameNow()) {
   save.lastSeen = now; persist();
   if (!last || now - last < 10 * 60000) return null;
   const crops = save.farm.crops || {}; const lines = [];
-  for (const [id, c] of Object.entries(crops)) if (c.readyAt > last && c.readyAt <= now) CROPS[id] && lines.push(`${(SEEDS[c.seed] || CROPS[id]).emoji} hasat hazır`);
+  for (const [id, c] of Object.entries(crops)) if (c.readyAt > last && c.readyAt <= now) CROPS[id] && lines.push(t('awayCrop').replace('{e}', (SEEDS[c.seed] || CROPS[id]).emoji));
   const prod = (save.farm.prod || {});
-  for (const id in PRODUCTS) if (prod[id] > last && isReady(id, now)) lines.push(`${PRODUCTS[id].emoji || '📦'} ürün toplanmayı bekliyor`);
+  for (const id in PRODUCTS) if (prod[id] > last && isReady(id, now)) lines.push(t('awayGood').replace('{e}', PRODUCTS[id].emoji || '📦'));
   const h = Math.floor((now - last) / 3600000), m = Math.floor((now - last) / 60000) % 60;
-  return { away: h ? `${h} sa ${m} dk` : `${m} dk`, lines };
+  return { away: (h ? t('awayHm').replace('{h}', h) : t('awayM')).replace('{m}', m), lines };
 }
 export function touchSeen() { save.lastSeen = gameNow(); persist(); }

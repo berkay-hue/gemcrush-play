@@ -671,7 +671,7 @@ export class Farm extends Phaser.Scene {
       this.tweens.add({ targets: h, x: a.x + (Math.random() - 0.5) * 110, y: a.y - 60 - Math.random() * 70, alpha: 0, scale: 1.4, duration: 900 + i * 60, ease: 'Cubic.Out', onComplete: () => h.destroy() });
     }
     if (this._petId === id && Date.now() - this._petT < 2500) { this._petId = null; this.card && this.card.destroy(); return this.careModal(id); }
-    if (ftueDone('pet')) { this.drawHint(); this.toast('🎉 Rehber tamam! Çiftlik senin.'); }
+    if (ftueDone('pet')) { this.drawHint(); this.toast(t('ftDone')); }
     { const r = doCare(id, 'pet'); if (r.gold) this.goldEgg(id); } // F37: sevmek bakımdır (1 saatte bir sayılır)
     const lv0 = lovePet(id);
     if (lv0.reward) { sfx.coin && sfx.coin(); this.toast(`💞 Sevgi turu tamam! +🪙${lv0.reward.coins} +💎${lv0.reward.gems}`); this.refreshHud(); }
@@ -1145,7 +1145,7 @@ export class Farm extends Phaser.Scene {
     const cur = ftueCurrent(); if (!cur) return;
     const { width, height } = this.scale;
     const c = this.hint = this.add.container(width / 2, height - 215).setDepth(40);
-    const tx = txt(this, 0, 0, cur.text.replace(/^👆\s*/, ''), 18, '#1a1200');
+    const tx = txt(this, 0, 0, t(cur.key).replace(/^👆\s*/, ''), 18, '#1a1200'); // F401: seçili dilde
     c.add([this.add.rectangle(0, 0, tx.width + 36, 44, 0xffe58a).setStrokeStyle(3, 0x3a2a10), tx]);
     this.tweens.add({ targets: c, y: c.y - 8, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' });
     if (!this.hintTarget(cur.id)) return;
@@ -1181,12 +1181,12 @@ export class Farm extends Phaser.Scene {
   // F8: session greeting = daily streak reward, then "while you were away"
   greet() {
     const away = awaySummary();
-    const next = () => { if (away && away.lines.length) this.dialog([['🌙', { tr: `Sen yokken (${away.away}): ${away.lines.slice(0, 4).join(', ')}` }]]); };
+    const next = () => { if (!away || !away.lines.length) return; const s = t('awayTitle').replace('{d}', away.away).replace('{l}', away.lines.slice(0, 4).join(', ')); this.dialog([['🌙', { tr: s, en: s }]]); }; // F401: seçili dilde
     const d = farmDaily(); if (!d.available) return next();
     const { width, height } = this.scale;
     const { c, close } = modal(this, 440, 340);
     c.add(txt(this, width / 2, height / 2 - 120, `🎁 ${t('daily')}`, 30, '#ffb71b'));
-    c.add(txt(this, width / 2, height / 2 - 70, `🔥 ${d.streak + 1}. gün serisi`, 20, '#fff'));
+    c.add(txt(this, width / 2, height / 2 - 70, t('streakDay').replace('{n}', d.streak + 1), 20, '#fff'));
     for (let i = 0; i < 7; i++) {
       const x = width / 2 - 180 + i * 60, on = i <= d.streak % 7;
       c.add([this.add.rectangle(x, height / 2 - 10, 50, 56, on ? 0xffb71b : 0x2a333a), txt(this, x, height / 2 - 10, i === 6 ? '💎' : `${i + 1}`, 18, on ? '#1a1200' : '#9fb3a8')]);
