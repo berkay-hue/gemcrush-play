@@ -546,7 +546,8 @@ export class Farm extends Phaser.Scene {
     [['sell', `🪙 ${t('sellTab')}`], ['craft', `🔁 ${t('tradeTab')}`], ['pazar', `🤝 ${t('pzTab')}`]].forEach(([k, l], i) => c.add(button(this, width / 2 - 146 + i * 146, top + 118, 138, 48, l, () => { close(); this.market(k); }, k === tab ? 0xffb71b : 0x2a333a, k === tab ? '#1a1200' : '#fff', 18)));
     const inv = inventory();
     const icons = { shuffle: '🔀', hammer: '🔨', moves5: '+5', prism: '🌈' };
-    const again = () => { close(); this.market(tab); this.refreshHud(); };
+    // F380 (uygulamadaki F201): Pazar isteği sürerken pencere kapandıysa (✕/sekme, 150 ms solma dahil) yanıt Pazar'ı yeniden açmasın, üst üste yığmasın; çiftlikten çıkıldıysa hiçbir şeye dokunmasın
+    const again = () => { if (!this.sys.isActive()) return; if (c.active && !c.closing) { close(); this.market(tab); } this.refreshHud(); };
     if (tab === 'sell') {
       const step = Object.keys(GOODS).length > 7 ? 58 : Object.keys(GOODS).length > 5 ? 76 : 88, bh = Math.min(46, step - 12);
       Object.values(GOODS).forEach((p, i) => {
