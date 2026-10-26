@@ -5,12 +5,14 @@ import { save, tickLives } from '../meta/save.js';
 import { txt, button, modal, fmtMs } from '../ui/widgets.js';
 import { WIN_CUT, cropState } from '../meta/crops.js';
 import { CATALOG, owns } from '../meta/farm.js';
-import { isSick, vetLeft, useVet, cureWithGems, CURE_GEMS, LIVESTOCK } from '../meta/animals.js';
+import { isSick, vetLeft, useVet, cureWithGems, CURE_GEMS, LIVESTOCK, VET_PER_DAY } from '../meta/animals.js';
 import { bereketLeft } from '../meta/bereket.js';
 import { sfx } from '../sound.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 
 const MIN = Math.round(WIN_CUT / 60000);
+// F400 (uygulamadaki b.fe.*): kart/pencere metinleri seçili dilde; hayvan ham kimliğiyle (inek1) değil adıyla
+const animalName = (id) => { const it = CATALOG.find((i) => i.id === id); return (it && it.name && (it.name[getLang()] || it.name.tr)) || id; };
 
 export const BridgeMixin = {
   bridgeArrive(d) {
@@ -38,7 +40,7 @@ export const BridgeMixin = {
         this.tweens.add({ targets: s, x: e.x, y: e.y + 8, scale: 0.5, delay: delay + i * 120, duration: 650, ease: 'Cubic.In', onComplete: () => { s.destroy(); this.tweens.add({ targets: e, scale: 1.4, yoyo: true, duration: 120 }); } });
       }
     }
-    if (d.bereket) this.time.delayedCall(delay + 600, () => this.toast('🌾 Bereket! 10 dk hasat ×2'));
+    if (d.bereket) this.time.delayedCall(delay + 600, () => this.toast(t('feBountyToast')));
     if (d.cured) this.danceAnimal(d.cured);
   },
 
@@ -49,14 +51,14 @@ export const BridgeMixin = {
       const s = txt(this, a.x, a.y, e, 28).setDepth(1500);
       this.tweens.add({ targets: s, x: a.x + (i - 2) * 35, y: a.y - 90, alpha: 0, delay: 200 + i * 150, duration: 1300, onComplete: () => s.destroy() });
     });
-    this.toast('🩺 İyileşti! 💃');
+    this.toast(t('feHealed'));
   },
 
   // Bereket badge under the energy line; ticks with refreshHud
   drawBereket() {
     const { width } = this.scale;
     this.berTxt = txt(this, width / 2, 122, '', 15, '#ffe58a').setOrigin(0.5, 0).setStroke('#0a0f0d', 4).setDepth(950);
-    const tick = () => { const ms = bereketLeft(); this.berTxt.setText(ms ? `🌾 Bereket ×2 · ${fmtMs(ms)}` : ''); };
+    const tick = () => { const ms = bereketLeft(); this.berTxt.setText(ms ? t('feBountyBadge').replace('{t}', fmtMs(ms)) : ''); };
     tick(); this.time.addEvent({ delay: 1000, loop: true, callback: tick });
   },
 
@@ -66,33 +68,34 @@ export const BridgeMixin = {
     if (save.lives <= 0) { this.scene.start('Map', { livesModal: true }); return; }
     const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
     const { c, close } = modal(this, 440, 400);
-    c.add(txt(this, cx, cy - 160, vetFor ? '🩺 Veteriner bölümü' : lv.festival ? lv.name : `🪧 Bölüm ${lv.id}`, 28, '#ffb71b'));
-    c.add(txt(this, cx, cy - 118, 'Bu bölüm çiftliğine ne kazandırır?', 17, '#fff'));
+    c.add(txt(this, cx, cy - 160, vetFor ? t('feVetLevel') : lv.festival ? lv.name : t('feLevel').replace('{n}', lv.id), 28, '#ffb71b'));
+    c.add(txt(this, cx, cy - 118, t('feBrings'), 17, '#fff'));
     const growing = CATALOG.filter((i) => i.kind === 'plot' && owns(i.id) && cropState(i.id) === 'growing').length;
     const rows = [];
-    if (vetFor) rows.push(`💚 ${vetFor} iyileşir ve dans eder`);
-    rows.push(growing ? `🌽 ${growing} tarla −${MIN} dk` : `🌽 Ekili tarlalar −${MIN} dk`);
-    rows.push('⚡ +2 enerji (3⭐ ise +3)');
-    rows.push('🌾 3⭐ → 10 dk Bereket (hasat ×2)');
-    rows.push('⭐ Yeni yıldızlar = yeni hayvan/bina');
+    if (vetFor) rows.push(t('feVetDance').replace('{n}', animalName(vetFor)));
+    rows.push(growing ? t('feFieldsCut').replace('{n}', growing).replace('{m}', MIN) : t('fePlantedCut').replace('{m}', MIN));
+    rows.push(t('feEnergy'));
+    rows.push(t('feBounty'));
+    rows.push(t('feNewStars'));
     rows.forEach((r, i) => c.add(txt(this, cx, cy - 75 + i * 36, r, 18, '#9dffb8')));
-    c.add(button(this, cx, cy + 140, 280, 60, '▶ OYNA', () => { close(); this.scene.start('Game', { level: lv, vetFor }); }, 0x2ee06a, '#04220e', 24));
+    c.add(button(this, cx, cy + 140, 280, 60, t('fePlay'), () => { close(); this.scene.start('Game', { level: lv, vetFor }); }, 0x2ee06a, '#04220e', 24));
   },
 
   vetModal(id) {
     const { width, height } = this.scale; const cx = width / 2, cy = height / 2;
     const { c, close } = modal(this, 420, 320);
     c.add(txt(this, cx, cy - 110, '🤒', 60));
-    c.add(txt(this, cx, cy - 50, `${id} hasta`, 26, '#ffb71b'));
+    c.add(txt(this, cx, cy - 50, t('feSick').replace('{n}', animalName(id)), 26, '#ffb71b'));
     const n = vetLeft();
-    c.add(txt(this, cx, cy - 12, `Veteriner bölümünü kazan → iyileşir (bugün ${n}/3)`, 16, '#fff'));
+    c.add(txt(this, cx, cy - 18, t('feVetWin').replace('{n}', n).replace('{m}', VET_PER_DAY), 16, '#fff'));
+    c.add(txt(this, cx, cy + 6, t('feLoseKeep'), 13, '#9dffb8'));
     const lvN = Math.min(save.level, this.levels.length);
-    c.add(button(this, cx, cy + 50, 300, 56, n ? '🩺 Veteriner bölümü' : '🩺 Yarın tekrar', () => {
+    c.add(button(this, cx, cy + 50, 300, 56, n ? t('feVetLevel') : t('feTomorrow'), () => {
       // F398 (uygulamadaki #204): hak dokunuşta değil kazanınca düşer (Game.win → useVet); kaybedilen deneme hakkı yemez
       if (!vetLeft()) return; close(); this.preLevel(this.levels[lvN - 1], id);
     }, n ? 0x2ee06a : 0x2a333a, n ? '#04220e' : '#777', 20));
     const ok = save.gems >= CURE_GEMS;
-    c.add(button(this, cx, cy + 115, 220, 48, `💎 ${CURE_GEMS} hemen`, () => { if (cureWithGems(id)) { close(); this.scene.restart({ cured: id }); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 18));
+    c.add(button(this, cx, cy + 115, 220, 48, t('feCureNow').replace('{n}', CURE_GEMS), () => { if (cureWithGems(id)) { close(); this.scene.restart({ cured: id }); } }, ok ? 0x8fe3ff : 0x2a333a, ok ? '#06222e' : '#777', 18));
   },
 };
 export const isSickAnimal = (id) => LIVESTOCK.includes(id) && owns(id) && isSick(id);
