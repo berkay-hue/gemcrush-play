@@ -189,6 +189,7 @@ export class Board {
     this.cascade = 0;
     this.clearSet(new Set([key(r, c)]), 'hammer');
     this.resolve(null);
+    if (!this.findValidMoves().length && !this.isWon()) this.shuffle(); // F348 (uygulamadaki F129): çekiç sonrası ölü tahta → playSwap gibi karıştır
     return this.events;
   }
 
