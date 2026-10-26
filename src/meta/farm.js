@@ -119,7 +119,9 @@ export function upgrade(id) {
   const c = upgradeCost(id); if ((save.coins || 0) < c) return false;
   save.coins -= c; (save.farm.lv || (save.farm.lv = {}))[id] = bldLvl(id) + 1; persist(); return true;
 }
-export const ambarCap = () => (owns('ambar') ? 50 * bldLvl('ambar') : 20);
+// F414 (uygulamadaki F103/F104): kayıt ortak; ek ambarlar (uygulamada alınır) da yer açar, her ambar 100×seviye. Web eski 20/50×seviye ile dolu sanıp toplamayı durduruyordu
+const AMBARS = ['ambar', 'ambar2', 'ambar3', 'ambar4'];
+export const ambarCap = () => (owns('ambar') ? AMBARS.reduce((c, a) => c + (owns(a) ? 100 * bldLvl(a) : 0), 0) : 40);
 
 // ---- Faz 2: animal perks ----
 export const PERK_TEXT = {
