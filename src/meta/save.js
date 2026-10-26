@@ -548,7 +548,9 @@ export function claimDaily(now = gameNow()) {
 
 // ---- farm stars (wallet) ----
 export function totalStars() { return Object.values(save.stars).reduce((a, n) => a + (n || 0), 0); }
-export function starBalance() { return Math.max(0, totalStars() - save.starsSpent); }
+// F416 (uygulamadaki F88): promosyon/admin hediyesi yıldızları uygulamada bonusStars'a yazılır; sunucu (gc_star_balance) da sayar. Web saymayınca cüzdan eksik görünüyordu
+const bonusStars = () => (Number.isFinite(save.bonusStars) ? Math.trunc(save.bonusStars) : 0);
+export function starBalance() { return Math.max(0, totalStars() + bonusStars() - save.starsSpent); }
 export function spendStars(n) { if (starBalance() < n) return false; save.starsSpent += n; persist(); return true; }
 // F38: oyuncu pazarı — hesaplı çağrı (token eklenir)
 export const acctRpc = (fn, body = {}) => rpc(fn, { p_token: tok(), ...body });
